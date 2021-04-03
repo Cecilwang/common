@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+  <remote
+    name="github"
+    fetch="ssh://git@cecilwang.github.com/common"
+    pushurl="ssh://git@cecilwang.github.com/common" />
+  <default
+    remote="github"
+    revision="master"
+    sync-j="4" />
+  <project path="common" name="common" revision="master" />
+</manifest>
