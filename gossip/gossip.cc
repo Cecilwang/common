@@ -10,33 +10,22 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include <iostream>
-#include <sstream>
+#include "gossip/gossip.h"
 
-#include "gtest/gtest.h"
+namespace gossip {
 
-#include "net/net.h"
+Cluster::Cluster(uint16_t port) : address_("0.0.0.0", port) {}
 
-namespace net {
-
-TEST(TestAddress, TestSimple) {
-  Address a1("0.0.0.0", 0);
-  Address a2("0.0.0.0", 0);
-  EXPECT_EQ(a1, a2);
-  Address a3("0.0.0.0", 1);
-  EXPECT_NE(a1, a3);
-  EXPECT_EQ(a1.ToString(), "0.0.0.0:0");
-  EXPECT_EQ(std::string(a1), "0.0.0.0:0");
-  EXPECT_EQ(static_cast<std::string>(a1), "0.0.0.0:0");
-  std::cout << a1 << std::endl;
+std::string Cluster::ToString() const {
   std::ostringstream ss;
-  ss << a1;
-  EXPECT_EQ(ss.str(), "0.0.0.0:0");
+  ss << "Cluster(self:" << self_ << " is listening on " << address_ << ")";
+  return ss.str();
 }
 
-TEST(TestNode, TestSimple) {
-  Node n;
-  std::cout << n << std::endl;
+Cluster::operator std::string() const { return ToString(); }
+
+std::ostream& operator<<(std::ostream& os, const Cluster& self) {
+  return os << self.ToString();
 }
 
-}  // namespace net
+}  // namespace gossip

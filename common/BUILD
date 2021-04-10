@@ -27,6 +27,12 @@ cc_library(
 )
 
 cc_library(
+    name = "string",
+    srcs = ["string.cc"],
+    hdrs = ["string.h"],
+)
+
+cc_library(
     name = "thread",
     srcs = ["thread.cc"],
     hdrs = ["thread.h"],
@@ -49,6 +55,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":generator",
+        ":string",
         ":thread",
         ":time",
         ":type",
@@ -59,12 +66,13 @@ cc_test(
     name = "common_test",
     srcs = [
         "generator_test.cc",
+        "string_test.cc",
         "thread_test.cc",
         "type_test.cc",
     ],
     deps = [
         ":common",
-        "@gtest//:gtest_main",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 

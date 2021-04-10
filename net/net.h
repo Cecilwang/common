@@ -23,12 +23,15 @@ limitations under the License.
 
 namespace net {
 
+std::string GetHostname();
+std::set<std::string> GetIPv4s();
+
 class Address {
  public:
-  Address(const std::string& ip, uint8_t port);
+  explicit Address(const std::string& ip = "0.0.0.0", uint16_t port = 80);
 
   const std::string& ip() const;
-  uint8_t port() const;
+  uint16_t port() const;
 
   bool operator==(const Address& other) const;
   bool operator!=(const Address& other) const;
@@ -39,7 +42,7 @@ class Address {
 
  private:
   std::string ip_;
-  uint8_t port_;
+  uint16_t port_;
 
   DISALLOW_COPY_AND_ASSIGN(Address);
 };
@@ -48,18 +51,13 @@ class Node {
  public:
   Node();
 
-  operator std::string() const {
-    std::ostringstream ss;
-    return ss.str();
-  }
-
-  friend std::ostream& operator<<(std::ostream& os, const Node& self) {
-    return os << std::string(self);
-  }
+  std::string ToString() const;
+  operator std::string() const;
+  friend std::ostream& operator<<(std::ostream& os, const Node& self);
 
  private:
-  std::set<std::string> hostnames_;
-  std::set<std::string> ip_;
+  std::string hostname_;
+  std::set<std::string> ips_;
 
   DISALLOW_COPY_AND_ASSIGN(Node);
 };

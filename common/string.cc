@@ -10,33 +10,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include <iostream>
-#include <sstream>
+#include "common/string.h"
 
-#include "gtest/gtest.h"
+namespace common {
 
-#include "net/net.h"
-
-namespace net {
-
-TEST(TestAddress, TestSimple) {
-  Address a1("0.0.0.0", 0);
-  Address a2("0.0.0.0", 0);
-  EXPECT_EQ(a1, a2);
-  Address a3("0.0.0.0", 1);
-  EXPECT_NE(a1, a3);
-  EXPECT_EQ(a1.ToString(), "0.0.0.0:0");
-  EXPECT_EQ(std::string(a1), "0.0.0.0:0");
-  EXPECT_EQ(static_cast<std::string>(a1), "0.0.0.0:0");
-  std::cout << a1 << std::endl;
-  std::ostringstream ss;
-  ss << a1;
-  EXPECT_EQ(ss.str(), "0.0.0.0:0");
+bool StartsWith(const char* str, const char* pattern) {
+  return strlen(pattern) <= strlen(str) &&
+         strncmp(str, pattern, strlen(pattern)) == 0;
 }
 
-TEST(TestNode, TestSimple) {
-  Node n;
-  std::cout << n << std::endl;
+bool StartsWith(const std::string& str, const std::string& pattern) {
+  return StartsWith(str.c_str(), pattern.c_str());
 }
 
-}  // namespace net
+}  // namespace common

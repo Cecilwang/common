@@ -77,16 +77,13 @@ int main() {
   A a2(a1);
   std::cout << "A a3(std::move(a1))" << std::endl;
   A a3(std::move(a1));
-
-  std::cout << "----------" << std::endl;
+  std::cout << "---------------------------------------------" << std::endl;
 
   std::cout << "B b1(A())" << std::endl;
   B b1((A()));
-
-  std::cout << "----------" << std::endl;
+  std::cout << "---------------------------------------------" << std::endl;
 
   // std::cout << "A a4 = GetA()" << std::endl;
   // A a4 = GetA();
-
-  // std::cout << "----------" << std::endl;
+  // std::cout << "---------------------------------------------" << std::endl;
 }

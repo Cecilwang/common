@@ -9,19 +9,14 @@ package(default_visibility = ["//gossip:internal"])
 
 load("//bazel/cpplint:cpplint.bzl", "cpplint")
 
-#cc_library(
-#    name = "time",
-#    srcs = ["time.cc"],
-#    hdrs = ["time.h"],
-#    deps = ["//common"],
-#)
-
 cc_library(
     name = "gossip",
+    srcs = ["gossip.cc"],
     hdrs = ["gossip.h"],
     visibility = ["//visibility:public"],
     deps = [
         "//common",
+        "//net",
     ],
 )
 
@@ -32,7 +27,7 @@ cc_test(
     ],
     deps = [
         ":gossip",
-        "@gtest//:gtest_main",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 

@@ -10,12 +10,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
+#include <iostream>
+
 #include "gtest/gtest.h"
 
 #include "gossip/gossip.h"
 
 namespace gossip {
 
-TEST(TestCluster, TestSimple) { Cluster c; }
+TEST(TestCluster, TestSimple) {
+  Cluster c;
+  std::cout << c << std::endl;
+}
 
 }  // namespace gossip

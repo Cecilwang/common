@@ -13,15 +13,26 @@ limitations under the License.
 #ifndef GOSSIP_GOSSIP_H_
 #define GOSSIP_GOSSIP_H_
 
+#include <string>
+
 #include "common/macro.h"
+
+#include "net/net.h"
 
 namespace gossip {
 
 class Cluster {
  public:
-  Cluster() = default;
+  explicit Cluster(uint16_t port = 2333);
+
+  std::string ToString() const;
+  operator std::string() const;
+  friend std::ostream& operator<<(std::ostream& os, const Cluster& self);
 
  private:
+  net::Node self_;
+  net::Address address_;
+
   DISALLOW_COPY_AND_ASSIGN(Cluster);
 };
 

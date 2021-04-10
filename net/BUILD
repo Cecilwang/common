@@ -9,13 +9,6 @@ package(default_visibility = ["//net:internal"])
 
 load("//bazel/cpplint:cpplint.bzl", "cpplint")
 
-#cc_library(
-#    name = "time",
-#    srcs = ["time.cc"],
-#    hdrs = ["time.h"],
-#    deps = ["//common"],
-#)
-
 cc_library(
     name = "net",
     srcs = ["net.cc"],
@@ -23,6 +16,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//common",
+        "@com_github_google_glog//:glog",
     ],
 )
 
@@ -33,7 +27,7 @@ cc_test(
     ],
     deps = [
         ":net",
-        "@gtest//:gtest_main",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 

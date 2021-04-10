@@ -12,12 +12,60 @@ limitations under the License.
 
 #include "net/net.h"
 
+#include <ifaddrs.h>
+#include <netdb.h>  // used by NI_MAXHOST
+#include <unistd.h>
+
+#include "glog/logging.h"
+
+#include "common/string.h"
+
 namespace net {
 
-Address::Address(const std::string& ip, uint8_t port) : ip_(ip), port_(port) {}
+std::string GetHostname() {
+  char hostname[256];
+  if (gethostname(hostname, sizeof(hostname)) == 0) {
+    return std::string(hostname);
+  } else {
+    LOG(WARNING) << "Failed to gethostname, errno: " << errno;
+  }
+  return "localhost";
+}
+
+std::set<std::string> GetIPv4s() {
+  std::set<std::string> ipv4s;
+
+  ifaddrs* ifaddr = nullptr;
+  if (getifaddrs(&ifaddr) == -1) {
+    LOG(WARNING) << "Failed to getifaddrs, errno: " << errno;
+    return ipv4s;
+  }
+
+  char ipv4[NI_MAXHOST];
+  for (ifaddrs* ifa = ifaddr; ifa != nullptr; ifa = ifa->ifa_next) {
+    auto addr = ifa->ifa_addr;
+    // clang-format off
+    if (addr == nullptr ||
+        addr->sa_family != AF_INET ||
+        getnameinfo(addr, sizeof(sockaddr_in), ipv4, sizeof(ipv4), nullptr, 0, NI_NUMERICHOST) != 0 ||  // NOLINT
+        common::StartsWith(ipv4, "127.")) {
+      continue;
+    }
+    // clang-format on
+    ipv4s.insert(std::string(ipv4));
+  }
+
+  freeifaddrs(ifaddr);
+
+  return ipv4s;
+}
+
+//------------------------------------------------------------------------------
+
+Address::Address(const std::string& ip, uint16_t port) : ip_(ip), port_(port) {}
 
 const std::string& Address::ip() const { return ip_; }
-uint8_t Address::port() const { return port_; }
+uint16_t Address::port() const { return port_; }
 
 bool Address::operator==(const Address& other) const {
   return port_ == other.port_ && ip_ == other.ip_;
@@ -36,6 +84,28 @@ std::string Address::ToString() const {
 Address::operator std::string() const { return ToString(); }
 
 std::ostream& operator<<(std::ostream& os, const Address& self) {
+  return os << self.ToString();
+}
+
+//------------------------------------------------------------------------------
+
+Node::Node() : hostname_(GetHostname()), ips_(GetIPv4s()) {}
+
+std::string Node::ToString() const {
+  std::ostringstream ss;
+  ss << "Node(" << hostname_ << ":[";
+  bool first = true;
+  for (const auto& x : ips_) {
+    first ? ss << x : ss << ", " << x;
+    first = false;
+  }
+  ss << "])";
+  return ss.str();
+}
+
+Node::operator std::string() const { return ToString(); }
+
+std::ostream& operator<<(std::ostream& os, const Node& self) {
   return os << self.ToString();
 }
 
