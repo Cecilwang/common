@@ -1,0 +1,69 @@
+syntax = "proto3";
+
+package common.gossip;
+
+import "google/protobuf/empty.proto";
+
+option cc_generic_services = true;
+
+message Address {
+  string ip = 1;
+  uint32 port = 2;
+}
+
+message Node {
+  string name = 1;
+  Address addr = 2;
+  enum State {
+    ALIVE = 0;
+    SUSPECT = 1;
+    DEAD = 2;
+    LEFT = 3;
+  }
+  State state = 3;
+  bytes metadata = 4;
+}
+
+message PingReq {
+  uint32 version = 1;
+  string name = 2;
+}
+
+message IndirectPingReq {
+  PingReq ping = 1;
+  Address addr = 2;
+}
+
+message PingResp {
+  uint32 version = 1;
+  enum Type {
+    ACK = 0;
+    NACK = 1;
+  }
+  Type type = 2;
+}
+
+message SuspectMsg {
+  uint32 version = 1;
+  string name = 2;
+  repeated string from = 3;
+}
+
+message DeadMsg {
+  uint32 version = 1;
+  string name = 2;
+  repeated string from = 3;
+}
+
+message SyncMsg {
+  uint32 version = 1;
+  repeated Node nodes = 2;
+}
+
+service GossipServer {
+  rpc Ping(PingReq) returns (PingResp) {}
+  rpc IndirectPing(IndirectPingReq) returns (PingResp) {}
+  rpc Sync(SyncMsg) returns (SyncMsg) {}
+  rpc Suspect(SuspectMsg) returns (google.protobuf.Empty) {}
+  rpc Dead(DeadMsg) returns (google.protobuf.Empty) {}
+}

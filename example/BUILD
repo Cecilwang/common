@@ -1,4 +1,4 @@
-load("//bazel/cpplint:cpplint.bzl", "cpplint")
+load("//third_party/cpplint:cpplint.bzl", "cpplint")
 
 cc_binary(
     name = "move_constructor_and_assignment",

@@ -1,0 +1,178 @@
+diff -rupN sofa-pbrpc-1.1.4/BUILD sofa1/BUILD
+--- sofa-pbrpc-1.1.4/BUILD	2018-05-24 16:23:29.000000000 +0900
++++ sofa1/BUILD	2021-04-12 20:15:54.295309742 +0900
+@@ -1,79 +1,85 @@
+-load("@protobuf//:protobuf.bzl", "cc_proto_library")
++load("@com_google_protobuf//:protobuf.bzl", "cc_proto_library")
+ 
+ RELATIVE_WELL_KNOWN_PROTOS = [
+-  "sofa/pbrpc/builtin_service.proto",
+-  "sofa/pbrpc/rpc_meta.proto",
+-  "sofa/pbrpc/rpc_option.proto"
++    "sofa/pbrpc/builtin_service.proto",
++    "sofa/pbrpc/rpc_meta.proto",
++    "sofa/pbrpc/rpc_option.proto",
+ ]
+ 
+ WELL_KNOWN_PROTOS = ["src/" + s for s in RELATIVE_WELL_KNOWN_PROTOS]
+ 
+ filegroup(
+-  name = "well_known_protos",
+-  srcs = WELL_KNOWN_PROTOS,
+-  visibility = ["//visibility:public"],
++    name = "well_known_protos",
++    srcs = WELL_KNOWN_PROTOS,
++    visibility = ["//visibility:public"],
+ )
+ 
+ cc_proto_library(
+-  name = "cc_protos",
+-  srcs = WELL_KNOWN_PROTOS,
+-  include = "src/",
+-  default_runtime = "@protobuf//:protobuf",
+-  protoc = "@protobuf//:protoc",
+-  deps = ["@protobuf//:cc_wkt_protos"],
+-  visibility = ["//visibility:public"]
++    name = "cc_protos",
++    srcs = WELL_KNOWN_PROTOS,
++    include = "src/",
++    default_runtime = "@com_google_protobuf//:protobuf",
++    protoc = "@com_google_protobuf//:protoc",
++    visibility = ["//visibility:public"],
++    deps = ["@com_google_protobuf//:cc_wkt_protos"],
+ )
+ 
+ cc_library(
+-  name = "rapidjson",
+-  hdrs = glob(["src/rapidjson/*.h", "src/rapidjson/internal/*.h"]),
+-  srcs = [],
+-  visibility = ["//main:__pkg__"],
++    name = "rapidjson",
++    srcs = [],
++    hdrs = glob([
++        "src/rapidjson/*.h",
++        "src/rapidjson/internal/*.h",
++    ]),
++    visibility = ["//main:__pkg__"],
+ )
+ 
+ cc_library(
+-  name = "sofa-pbrpc",
+-  hdrs = glob([
+-    "src/sofa/pbrpc/*.h",
+-    "src/sofa/pbrpc/smart_ptr/*.hpp",
+-    "src/sofa/pbrpc/smart_ptr/detail/*.hpp"
+-  ]),
+-  srcs = glob(["src/sofa/pbrpc/*.cc"]),
+-  deps = [
+-    ":cc_protos",
+-    ":rapidjson",
+-    "@protobuf//:protobuf",
+-    "@protobuf//:protoc_lib",
+-    "@snappy//:snappy",
+-    "@zlib//:zlib",
+-    "@gtest//:gtest",
+-    "@boost//:boost"
+-  ],
+-  copts = [
+-    "-Iexternal/googletest/include",
+-  ],
+-  visibility = ["//visibility:public"],
++    name = "sofa-pbrpc",
++    srcs = glob(["src/sofa/pbrpc/*.cc"]),
++    hdrs = glob([
++        "src/sofa/pbrpc/*.h",
++        "src/sofa/pbrpc/smart_ptr/*.hpp",
++        "src/sofa/pbrpc/smart_ptr/detail/*.hpp",
++    ]),
++    copts = [
++        "-Iexternal/googletest/include",
++    ],
++    visibility = ["//visibility:public"],
++    deps = [
++        ":cc_protos",
++        ":rapidjson",
++        "@boost",
++        "@com_google_protobuf//:protobuf",
++        "@com_google_protobuf//:protoc_lib",
++        "@com_google_googletest//:gtest",
++        "@snappy",
++        "@zlib",
++    ],
+ )
+ 
+ cc_library(
+-  name = "sofa-pbrpc-client-lib",
+-  hdrs = ["src/sofa/pbrpc/http-agent/http_agent.h"],
+-  srcs = ["src/sofa/pbrpc/http-agent/http_agent.cc"],
+-  deps = [
+-    ":sofa-pbrpc",
+-  ],
+-  visibility = ["//main:__pkg__"],
++    name = "sofa-pbrpc-client-lib",
++    srcs = ["src/sofa/pbrpc/http-agent/http_agent.cc"],
++    hdrs = ["src/sofa/pbrpc/http-agent/http_agent.h"],
++    visibility = ["//main:__pkg__"],
++    deps = [
++        ":sofa-pbrpc",
++    ],
+ )
+ 
+ cc_binary(
+-  name = "sofa-pbrpc-client",
+-  srcs = [
+-    "src/sofa/pbrpc/http-agent/sofa_pbrpc_client.cc",
+-  ],
+-  deps = [
+-    ":sofa-pbrpc-client-lib",
+-  ],
+-  visibility = ["//main:__pkg__"],
++    name = "sofa-pbrpc-client",
++    srcs = [
++        "src/sofa/pbrpc/http-agent/sofa_pbrpc_client.cc",
++    ],
++    visibility = ["//main:__pkg__"],
++    deps = [
++        ":sofa-pbrpc-client-lib",
++    ],
+ )
+ 
+-exports_files(["src/sofa/pbrpc/buffer.cc"], ["//unit-test:__pkg__"])
++exports_files(
++    ["src/sofa/pbrpc/buffer.cc"],
++    ["//unit-test:__pkg__"],
++)
+diff -rupN sofa-pbrpc-1.1.4/src/sofa/pbrpc/gzip_stream.h sofa1/src/sofa/pbrpc/gzip_stream.h
+--- sofa-pbrpc-1.1.4/src/sofa/pbrpc/gzip_stream.h	2018-05-24 16:23:29.000000000 +0900
++++ sofa1/src/sofa/pbrpc/gzip_stream.h	2021-04-12 21:44:19.658988305 +0900
+@@ -166,7 +166,7 @@ class GzipOutputStream : public Abstract
+   GzipOutputStream(
+       ZeroCopyOutputStream* sub_stream,
+       Format format,
+-      int buffer_size = -1) GOOGLE_ATTRIBUTE_DEPRECATED;
++      int buffer_size = -1) __attribute__((deprecated));
+ 
+   virtual ~GzipOutputStream();
+ 
+diff -rupN sofa-pbrpc-1.1.4/src/sofa/pbrpc/thread_group.h sofa1/src/sofa/pbrpc/thread_group.h
+--- sofa-pbrpc-1.1.4/src/sofa/pbrpc/thread_group.h	2018-05-24 16:23:29.000000000 +0900
++++ sofa1/src/sofa/pbrpc/thread_group.h	2021-04-12 21:58:31.974127659 +0900
+@@ -7,6 +7,7 @@
+ 
+ #include <sofa/pbrpc/common.h>
+ #include <sofa/pbrpc/ext_closure.h>
++#include <google/protobuf/stubs/callback.h>
+ 
+ namespace sofa {
+ namespace pbrpc {
+diff -rupN sofa-pbrpc-1.1.4/src/sofa/pbrpc/thread_group_impl.h sofa1/src/sofa/pbrpc/thread_group_impl.h
+--- sofa-pbrpc-1.1.4/src/sofa/pbrpc/thread_group_impl.h	2018-05-24 16:23:29.000000000 +0900
++++ sofa1/src/sofa/pbrpc/thread_group_impl.h	2021-04-12 21:58:25.698162943 +0900
+@@ -14,6 +14,7 @@
+ #include <sofa/pbrpc/io_service.h>
+ #include <sofa/pbrpc/ext_closure.h>
+ #include <sofa/pbrpc/counter.h>
++#include <google/protobuf/stubs/callback.h>
+ 
+ namespace sofa {
+ namespace pbrpc {

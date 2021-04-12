@@ -19,6 +19,20 @@ limitations under the License.
 
 namespace net {
 
+TEST(TestIP, TestSimple) {
+  EXPECT_TRUE(IsIPv4("0.0.0.0"));
+  EXPECT_TRUE(IsIPv4("127.0.0.1"));
+  EXPECT_FALSE(IsIPv4("300.0.0.1"));
+  EXPECT_FALSE(IsIPv4("a.0.0.1"));
+  EXPECT_FALSE(IsIPv4("-1.0.0.1"));
+
+  EXPECT_TRUE(IsIPv6("::"));
+  EXPECT_TRUE(IsIPv6("::1"));
+
+  IP ip1("127.0.0.1");
+  IP ip2(std::string("127.0.0.1"));
+}
+
 TEST(TestAddress, TestSimple) {
   Address a1("0.0.0.0", 0);
   Address a2("0.0.0.0", 0);

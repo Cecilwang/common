@@ -7,7 +7,7 @@ package_group(
 
 package(default_visibility = ["//gossip:internal"])
 
-load("//bazel/cpplint:cpplint.bzl", "cpplint")
+load("//third_party/cpplint:cpplint.bzl", "cpplint")
 
 cc_library(
     name = "gossip",
@@ -16,7 +16,9 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//common",
+        "//gossip/proto:gossip_cc_proto",
         "//net",
+        "@sofa-pbrpc",
     ],
 )
 

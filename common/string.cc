@@ -12,6 +12,8 @@ limitations under the License.
 
 #include "common/string.h"
 
+#include <cstring>
+
 namespace common {
 
 bool StartsWith(const char* str, const char* pattern) {

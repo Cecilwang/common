@@ -1,7 +1,30 @@
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+load("//bazel:cmake_http_archive.bzl", "cmake_http_archive")
 
-def common_workspace():
+def common_deps():
+    http_archive(
+        name = "rules_foreign_cc",
+        strip_prefix = "rules_foreign_cc-0.2.0",
+        url = "https://github.com/bazelbuild/rules_foreign_cc/archive/0.2.0.zip",
+    )  # Used by cmake_http_archive, boost
+
+    http_archive(
+        name = "boost",
+        url = "https://sourceforge.net/projects/boost/files/boost/1.61.0/boost_1_61_0.tar.bz2/download",
+        type = "tar.bz2",
+        strip_prefix = "boost_1_61_0/",
+        build_file = "//third_party/boost:boost.BUILD",
+        sha256 = "a547bd06c2fd9a71ba1d169d9cf0339da7ebf4753849a8f7d6fdb8feee99b640",
+    )  # Used by sofa-pbrpc
+
+    cmake_http_archive(
+        name = "snappy",
+        url = "https://github.com/google/snappy/archive/refs/tags/1.1.8.zip",
+        strip_prefix = "snappy-1.1.8",
+        sha256 = "38b4aabf88eb480131ed45bfb89c19ca3e2a62daeb081bdf001cfb17ec4cd303",
+    )  # Used by sofa-pbrpc
+
     http_archive(
         name = "com_github_gflags_gflags",
         sha256 = "34af2f15cf7367513b352bdcd2493ab14ce43692d2dcd9dfc499492966c64dcf",
@@ -32,4 +55,6 @@ def common_workspace():
         name = "sofa-pbrpc",
         remote = "https://github.com/baidu/sofa-pbrpc",
         tag = "v1.1.4",
+        patch_args = ["-p1"],
+        patches = ["//third_party/sofa-pbrpc:1.1.4.patch"],
     )

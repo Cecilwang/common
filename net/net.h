@@ -23,8 +23,33 @@ limitations under the License.
 
 namespace net {
 
+class IP;
+
 std::string GetHostname();
-std::set<std::string> GetIPv4s();
+std::set<IP> GetIPs();
+bool IsIPv4(const char* ip);
+bool IsIPv6(const char* ip);
+
+enum class IPType {
+  kIPv4 = 0,
+  kIPv6 = 1,
+  kUnknown = 2,
+};
+
+class IP {
+ public:
+  explicit IP(const char* ip);
+  explicit IP(const std::string& ip);
+  const std::string& ip() const;
+
+  bool operator<(const IP& other) const;
+  bool operator==(const IP& other) const;
+  bool operator!=(const IP& other) const;
+
+ private:
+  std::string ip_;
+  IPType type_ = IPType::kUnknown;
+};
 
 class Address {
  public:
@@ -41,7 +66,7 @@ class Address {
   friend std::ostream& operator<<(std::ostream& os, const Address& self);
 
  private:
-  std::string ip_;
+  IP ip_;
   uint16_t port_;
 
   DISALLOW_COPY_AND_ASSIGN(Address);
@@ -57,7 +82,7 @@ class Node {
 
  private:
   std::string hostname_;
-  std::set<std::string> ips_;
+  std::set<IP> ips_;
 
   DISALLOW_COPY_AND_ASSIGN(Node);
 };

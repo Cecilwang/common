@@ -7,7 +7,7 @@ package_group(
 
 package(default_visibility = ["//common:internal"])
 
-load("//bazel/cpplint:cpplint.bzl", "cpplint")
+load("//third_party/cpplint:cpplint.bzl", "cpplint")
 
 cc_library(
     name = "macro",

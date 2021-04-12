@@ -12,6 +12,7 @@ limitations under the License.
 
 #include "net/net.h"
 
+#include <arpa/inet.h>
 #include <ifaddrs.h>
 #include <netdb.h>  // used by NI_MAXHOST
 #include <unistd.h>
@@ -32,43 +33,83 @@ std::string GetHostname() {
   return "localhost";
 }
 
-std::set<std::string> GetIPv4s() {
-  std::set<std::string> ipv4s;
+std::set<IP> GetIPs() {
+  std::set<IP> ips;
 
   ifaddrs* ifaddr = nullptr;
   if (getifaddrs(&ifaddr) == -1) {
     LOG(WARNING) << "Failed to getifaddrs, errno: " << errno;
-    return ipv4s;
+    return ips;
   }
 
-  char ipv4[NI_MAXHOST];
+  char ip[NI_MAXHOST];
   for (ifaddrs* ifa = ifaddr; ifa != nullptr; ifa = ifa->ifa_next) {
     auto addr = ifa->ifa_addr;
-    // clang-format off
-    if (addr == nullptr ||
-        addr->sa_family != AF_INET ||
-        getnameinfo(addr, sizeof(sockaddr_in), ipv4, sizeof(ipv4), nullptr, 0, NI_NUMERICHOST) != 0 ||  // NOLINT
-        common::StartsWith(ipv4, "127.")) {
-      continue;
+    if (addr != nullptr) {
+      if (addr->sa_family == AF_INET) {
+        if (getnameinfo(addr, sizeof(sockaddr_in), ip, sizeof(ip), nullptr, 0,
+                        NI_NUMERICHOST) == 0 &&
+            !common::StartsWith(ip, "127.")) {
+          ips.insert(IP(ip));
+        }
+      } else if (addr->sa_family == AF_INET6) {
+        if (getnameinfo(addr, sizeof(sockaddr_in6), ip, sizeof(ip), nullptr, 0,
+                        NI_NUMERICHOST) == 0 &&
+            strcmp(ip, "::1") != 0) {
+          char* end = strchr(ip, '%');
+          size_t len = end ? end - ip : strlen(ip);
+          ips.insert(IP(std::string(ip, len)));
+        }
+      }
     }
-    // clang-format on
-    ipv4s.insert(std::string(ipv4));
   }
 
   freeifaddrs(ifaddr);
 
-  return ipv4s;
+  return ips;
 }
+
+bool IsIPv4(const char* ip) {
+  sockaddr_in sa;
+  return inet_pton(AF_INET, ip, &(sa.sin_addr)) == 1;
+}
+
+bool IsIPv6(const char* ip) {
+  sockaddr_in sa;
+  return inet_pton(AF_INET6, ip, &(sa.sin_addr)) == 1;
+}
+
+//------------------------------------------------------------------------------
+
+IP::IP(const char* ip) {
+  if (IsIPv4(ip)) {
+    ip_ = ip;
+    type_ = IPType::kIPv4;
+  } else if (IsIPv6(ip)) {
+    ip_ = ip;
+    type_ = IPType::kIPv6;
+  }
+}
+
+IP::IP(const std::string& ip) : IP(ip.c_str()) {}
+
+const std::string& IP::ip() const { return ip_; }
+
+bool IP::operator<(const IP& other) const { return ip_ < other.ip_; }
+
+bool IP::operator==(const IP& other) const { return ip_ == other.ip_; }
+
+bool IP::operator!=(const IP& other) const { return !(*this == other); }
 
 //------------------------------------------------------------------------------
 
 Address::Address(const std::string& ip, uint16_t port) : ip_(ip), port_(port) {}
 
-const std::string& Address::ip() const { return ip_; }
+const std::string& Address::ip() const { return ip_.ip(); }
 uint16_t Address::port() const { return port_; }
 
 bool Address::operator==(const Address& other) const {
-  return port_ == other.port_ && ip_ == other.ip_;
+  return port_ == other.port_ && ip() == other.ip();
 }
 
 bool Address::operator!=(const Address& other) const {
@@ -77,7 +118,7 @@ bool Address::operator!=(const Address& other) const {
 
 std::string Address::ToString() const {
   std::ostringstream ss;
-  ss << ip_ << ":" << std::to_string(port_);
+  ss << ip() << ":" << std::to_string(port_);
   return ss.str();
 }
 
@@ -89,14 +130,14 @@ std::ostream& operator<<(std::ostream& os, const Address& self) {
 
 //------------------------------------------------------------------------------
 
-Node::Node() : hostname_(GetHostname()), ips_(GetIPv4s()) {}
+Node::Node() : hostname_(GetHostname()), ips_(GetIPs()) {}
 
 std::string Node::ToString() const {
   std::ostringstream ss;
   ss << "Node(" << hostname_ << ":[";
   bool first = true;
   for (const auto& x : ips_) {
-    first ? ss << x : ss << ", " << x;
+    first ? ss << x.ip() : ss << ", " << x.ip();
     first = false;
   }
   ss << "])";
