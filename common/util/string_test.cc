@@ -10,21 +10,22 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "common/time.h"
+#include "gtest/gtest.h"
 
-#include <chrono>  // NOLINT
-#include <thread>  // NOLINT
+#include "common/util/string.h"
 
 namespace common {
+namespace util {
 
-uint64_t NowInMS() {
-  return std::chrono::duration_cast<std::chrono::milliseconds>(
-             std::chrono::system_clock::now().time_since_epoch())
-      .count();
+TEST(TestString, TestStartsWith) {
+  EXPECT_TRUE(StartsWith("abc", ""));
+  EXPECT_TRUE(StartsWith("abc", "a"));
+  EXPECT_TRUE(StartsWith("abc", "ab"));
+  EXPECT_TRUE(StartsWith("abc", "abc"));
+  EXPECT_FALSE(StartsWith("", "abc"));
+  EXPECT_FALSE(StartsWith("abc", "abcd"));
+  EXPECT_FALSE(StartsWith("aabc", "abc"));
 }
 
-void SleepForMS(uint64_t ms) {
-  std::this_thread::sleep_for(std::chrono::milliseconds(ms));
-}
-
+}  // namespace util
 }  // namespace common

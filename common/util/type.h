@@ -10,17 +10,28 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include <iostream>
+#ifndef COMMON_UTIL_TYPE_H_
+#define COMMON_UTIL_TYPE_H_
 
-#include "gtest/gtest.h"
+#include <cstdint>
+#include <string>
+#include <type_traits>
 
-#include "gossip/gossip.h"
+namespace common {
+namespace util {
 
-namespace gossip {
-
-TEST(TestCluster, TestSimple) {
-  Cluster c;
-  std::cout << c << std::endl;
+template <class T>
+std::string Typename() {
+  typedef typename std::remove_reference<T>::type NT;
+  std::string r = typeid(NT).name();
+  if (std::is_const<NT>::value) r += " const";
+  if (std::is_volatile<NT>::value) r += " volatile";
+  if (std::is_lvalue_reference<T>::value) r += "&";
+  if (std::is_rvalue_reference<T>::value) r += "&&";
+  return r;
 }
 
-}  // namespace gossip
+}  // namespace util
+}  // namespace common
+
+#endif  // COMMON_UTIL_TYPE_H_

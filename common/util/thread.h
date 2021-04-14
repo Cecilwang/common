@@ -10,8 +10,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef COMMON_THREAD_H_
-#define COMMON_THREAD_H_
+#ifndef COMMON_UTIL_THREAD_H_
+#define COMMON_UTIL_THREAD_H_
 
 #include <chrono>              // NOLINT
 #include <condition_variable>  // NOLINT
@@ -20,9 +20,10 @@ limitations under the License.
 #include <thread>  // NOLINT
 #include <utility>
 
-#include "common/macro.h"
+#include "common/util/macro.h"
 
 namespace common {
+namespace util {
 
 class Thread {
  public:
@@ -101,6 +102,7 @@ std::unique_ptr<LoopThreadWrap<F>> CreateLoopThread(F&& f,
       new LoopThreadWrap<F>(std::forward<F>(f), interval_ms));
 }
 
+}  // namespace util
 }  // namespace common
 
-#endif  // COMMON_THREAD_H_
+#endif  // COMMON_UTIL_THREAD_H_

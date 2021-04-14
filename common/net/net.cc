@@ -10,7 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "net/net.h"
+#include "common/net/net.h"
 
 #include <arpa/inet.h>
 #include <ifaddrs.h>
@@ -19,8 +19,9 @@ limitations under the License.
 
 #include "glog/logging.h"
 
-#include "common/string.h"
+#include "common/util/string.h"
 
+namespace common {
 namespace net {
 
 std::string GetHostname() {
@@ -49,7 +50,7 @@ std::set<IP> GetIPs() {
       if (addr->sa_family == AF_INET) {
         if (getnameinfo(addr, sizeof(sockaddr_in), ip, sizeof(ip), nullptr, 0,
                         NI_NUMERICHOST) == 0 &&
-            !common::StartsWith(ip, "127.")) {
+            !util::StartsWith(ip, "127.")) {
           ips.insert(IP(ip));
         }
       } else if (addr->sa_family == AF_INET6) {
@@ -151,3 +152,4 @@ std::ostream& operator<<(std::ostream& os, const Node& self) {
 }
 
 }  // namespace net
+}  // namespace common

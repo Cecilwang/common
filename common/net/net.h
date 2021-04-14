@@ -10,8 +10,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef NET_NET_H_
-#define NET_NET_H_
+#ifndef COMMON_NET_NET_H_
+#define COMMON_NET_NET_H_
 
 #include <iostream>
 #include <set>
@@ -19,8 +19,9 @@ limitations under the License.
 #include <string>
 #include <utility>
 
-#include "common/macro.h"
+#include "common/util/macro.h"
 
+namespace common {
 namespace net {
 
 class IP;
@@ -88,5 +89,6 @@ class Node {
 };
 
 }  // namespace net
+}  // namespace common
 
-#endif  // NET_NET_H_
+#endif  // COMMON_NET_NET_H_

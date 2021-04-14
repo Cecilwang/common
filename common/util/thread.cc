@@ -10,32 +10,34 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef GOSSIP_GOSSIP_H_
-#define GOSSIP_GOSSIP_H_
+#include "common/util/thread.h"
 
-#include <string>
+#include "common/util/time.h"
 
-#include "common/macro.h"
+namespace common {
+namespace util {
 
-#include "net/net.h"
+Thread::~Thread() { Stop(); }
 
-namespace gossip {
+void Thread::Idle(uint64_t ms) { SleepForMS(ms); }
 
-class Cluster {
- public:
-  explicit Cluster(uint16_t port = 2333);
+void Thread::Stop() {
+  if (running_) {
+    set_running(false);
+    cv_.notify_all();
+    thread_.join();
+  }
+}
 
-  std::string ToString() const;
-  operator std::string() const;
-  friend std::ostream& operator<<(std::ostream& os, const Cluster& self);
+void Thread::set_running(bool running) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  running_ = running;
+}
 
- private:
-  net::Node self_;
-  net::Address address_;
+void Thread::WaitUntilStop() {
+  std::unique_lock<std::mutex> lock(mutex_);
+  cv_.wait(lock, [this] { return !running_; });
+}
 
-  DISALLOW_COPY_AND_ASSIGN(Cluster);
-};
-
-}  // namespace gossip
-
-#endif  // GOSSIP_GOSSIP_H_
+}  // namespace util
+}  // namespace common

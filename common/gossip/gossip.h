@@ -10,26 +10,33 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef COMMON_TYPE_H_
-#define COMMON_TYPE_H_
+#ifndef COMMON_GOSSIP_GOSSIP_H_
+#define COMMON_GOSSIP_GOSSIP_H_
 
-#include <cstdint>
 #include <string>
-#include <type_traits>
+
+#include "common/net/net.h"
+#include "common/util/macro.h"
 
 namespace common {
+namespace gossip {
 
-template <class T>
-std::string Typename() {
-  typedef typename std::remove_reference<T>::type NT;
-  std::string r = typeid(NT).name();
-  if (std::is_const<NT>::value) r += " const";
-  if (std::is_volatile<NT>::value) r += " volatile";
-  if (std::is_lvalue_reference<T>::value) r += "&";
-  if (std::is_rvalue_reference<T>::value) r += "&&";
-  return r;
-}
+class Cluster {
+ public:
+  explicit Cluster(uint16_t port = 2333);
 
+  std::string ToString() const;
+  operator std::string() const;
+  friend std::ostream& operator<<(std::ostream& os, const Cluster& self);
+
+ private:
+  net::Node self_;
+  net::Address address_;
+
+  DISALLOW_COPY_AND_ASSIGN(Cluster);
+};
+
+}  // namespace gossip
 }  // namespace common
 
-#endif  // COMMON_TYPE_H_
+#endif  // COMMON_GOSSIP_GOSSIP_H_

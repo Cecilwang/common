@@ -12,7 +12,7 @@ limitations under the License.
 
 #include "gtest/gtest.h"
 
-#include "common/type.h"
+#include "common/util/type.h"
 
 namespace {
 int& foo_lref();
@@ -21,6 +21,7 @@ int foo_value();
 }  // namespace
 
 namespace common {
+namespace util {
 
 TEST(TestTypename, TestAll) {
   int i = 0;
@@ -38,4 +39,5 @@ TEST(TestTypename, TestAll) {
   EXPECT_EQ(Typename<decltype(foo_value())>(), "i");
 }
 
+}  // namespace util
 }  // namespace common

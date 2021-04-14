@@ -10,32 +10,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "common/thread.h"
+#ifndef COMMON_UTIL_STRING_H_
+#define COMMON_UTIL_STRING_H_
 
-#include "common/time.h"
+#include <string>
 
 namespace common {
+namespace util {
 
-Thread::~Thread() { Stop(); }
+bool StartsWith(const char* str, const char* pattern);
+bool StartsWith(const std::string& str, const std::string& pattern);
 
-void Thread::Idle(uint64_t ms) { SleepForMS(ms); }
-
-void Thread::Stop() {
-  if (running_) {
-    set_running(false);
-    cv_.notify_all();
-    thread_.join();
-  }
-}
-
-void Thread::set_running(bool running) {
-  std::lock_guard<std::mutex> lock(mutex_);
-  running_ = running;
-}
-
-void Thread::WaitUntilStop() {
-  std::unique_lock<std::mutex> lock(mutex_);
-  cv_.wait(lock, [this] { return !running_; });
-}
-
+}  // namespace util
 }  // namespace common
+
+#endif  // COMMON_UTIL_STRING_H_

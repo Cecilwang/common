@@ -1,11 +1,4 @@
-package_group(
-    name = "internal",
-    packages = [
-        "//net/...",
-    ],
-)
-
-package(default_visibility = ["//net:internal"])
+package(default_visibility = ["//common:internal"])
 
 load("//third_party/cpplint:cpplint.bzl", "cpplint")
 
@@ -15,7 +8,7 @@ cc_library(
     hdrs = ["net.h"],
     visibility = ["//visibility:public"],
     deps = [
-        "//common",
+        "//common/util",
         "@com_github_google_glog//:glog",
     ],
 )

@@ -10,11 +10,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef COMMON_MACRO_H_
-#define COMMON_MACRO_H_
+#ifndef COMMON_UTIL_MACRO_H_
+#define COMMON_UTIL_MACRO_H_
 
 #define DISALLOW_COPY_AND_ASSIGN(type) \
   type(const type&);                   \
   void operator=(const type&)
 
-#endif  // COMMON_MACRO_H_
+#endif  // COMMON_UTIL_MACRO_H_

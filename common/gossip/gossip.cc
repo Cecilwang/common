@@ -10,19 +10,24 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "common/string.h"
-
-#include <cstring>
+#include "common/gossip/gossip.h"
 
 namespace common {
+namespace gossip {
 
-bool StartsWith(const char* str, const char* pattern) {
-  return strlen(pattern) <= strlen(str) &&
-         strncmp(str, pattern, strlen(pattern)) == 0;
+Cluster::Cluster(uint16_t port) : address_("0.0.0.0", port) {}
+
+std::string Cluster::ToString() const {
+  std::ostringstream ss;
+  ss << "Cluster(self:" << self_ << " is listening on " << address_ << ")";
+  return ss.str();
 }
 
-bool StartsWith(const std::string& str, const std::string& pattern) {
-  return StartsWith(str.c_str(), pattern.c_str());
+Cluster::operator std::string() const { return ToString(); }
+
+std::ostream& operator<<(std::ostream& os, const Cluster& self) {
+  return os << self.ToString();
 }
 
+}  // namespace gossip
 }  // namespace common

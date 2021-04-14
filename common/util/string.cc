@@ -10,20 +10,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "gtest/gtest.h"
+#include "common/util/string.h"
 
-#include "common/string.h"
+#include <cstring>
 
 namespace common {
+namespace util {
 
-TEST(TestString, TestStartsWith) {
-  EXPECT_TRUE(StartsWith("abc", ""));
-  EXPECT_TRUE(StartsWith("abc", "a"));
-  EXPECT_TRUE(StartsWith("abc", "ab"));
-  EXPECT_TRUE(StartsWith("abc", "abc"));
-  EXPECT_FALSE(StartsWith("", "abc"));
-  EXPECT_FALSE(StartsWith("abc", "abcd"));
-  EXPECT_FALSE(StartsWith("aabc", "abc"));
+bool StartsWith(const char* str, const char* pattern) {
+  return strlen(pattern) <= strlen(str) &&
+         strncmp(str, pattern, strlen(pattern)) == 0;
 }
 
+bool StartsWith(const std::string& str, const std::string& pattern) {
+  return StartsWith(str.c_str(), pattern.c_str());
+}
+
+}  // namespace util
 }  // namespace common

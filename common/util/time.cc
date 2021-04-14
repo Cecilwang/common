@@ -10,16 +10,23 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef COMMON_TIME_H_
-#define COMMON_TIME_H_
+#include "common/util/time.h"
 
-#include "common/type.h"
+#include <chrono>  // NOLINT
+#include <thread>  // NOLINT
 
 namespace common {
+namespace util {
 
-uint64_t NowInMS();
-void SleepForMS(uint64_t ms);
+uint64_t NowInMS() {
+  return std::chrono::duration_cast<std::chrono::milliseconds>(
+             std::chrono::system_clock::now().time_since_epoch())
+      .count();
+}
 
+void SleepForMS(uint64_t ms) {
+  std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+}
+
+}  // namespace util
 }  // namespace common
-
-#endif  // COMMON_TIME_H_

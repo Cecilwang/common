@@ -10,22 +10,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "gossip/gossip.h"
+#ifndef COMMON_UTIL_TIME_H_
+#define COMMON_UTIL_TIME_H_
 
-namespace gossip {
+#include "common/util/type.h"
 
-Cluster::Cluster(uint16_t port) : address_("0.0.0.0", port) {}
+namespace common {
+namespace util {
 
-std::string Cluster::ToString() const {
-  std::ostringstream ss;
-  ss << "Cluster(self:" << self_ << " is listening on " << address_ << ")";
-  return ss.str();
-}
+uint64_t NowInMS();
+void SleepForMS(uint64_t ms);
 
-Cluster::operator std::string() const { return ToString(); }
+}  // namespace util
+}  // namespace common
 
-std::ostream& operator<<(std::ostream& os, const Cluster& self) {
-  return os << self.ToString();
-}
-
-}  // namespace gossip
+#endif  // COMMON_UTIL_TIME_H_

@@ -14,37 +14,15 @@ limitations under the License.
 
 #include "gtest/gtest.h"
 
-#include "common/thread.h"
-#include "common/time.h"
+#include "common/gossip/gossip.h"
 
 namespace common {
+namespace gossip {
 
-TEST(TestThread, TestSimple) {
-  auto t = CreateThread([](Thread* p) { std::cout << "Running" << std::endl; });
-  t->Run();
+TEST(TestCluster, TestSimple) {
+  Cluster c;
+  std::cout << c << std::endl;
 }
 
-TEST(TestThread, TestIdle) {
-  uint64_t ms = 1 * 1000;
-  auto t = CreateThread([ms](Thread* p) {
-    auto ts = NowInMS();
-    p->WaitUntilStop();
-    EXPECT_NEAR(NowInMS() - ts, ms, 100);
-  });
-  t->Run();
-  t->Idle(ms);
-  t->Stop();
-}
-
-TEST(TestLoopThread, TestSimple) {
-  uint64_t ms = 1 * 1000 + 100;
-  uint64_t interval_ms = 200;
-  int count = 0;
-  auto t = CreateLoopThread([&count] { ++count; }, interval_ms);
-  t->Run();
-  t->Idle(ms);
-  t->Stop();
-  EXPECT_EQ(count, ms / interval_ms);
-}
-
+}  // namespace gossip
 }  // namespace common

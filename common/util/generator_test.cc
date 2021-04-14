@@ -14,9 +14,10 @@ limitations under the License.
 
 #include "gtest/gtest.h"
 
-#include "common/generator.h"
+#include "common/util/generator.h"
 
 namespace common {
+namespace util {
 
 TEST(TestGenerator, TestReuse) {
   Generator<int> gen([](Generator<int>::Iterator* it) {
@@ -56,4 +57,5 @@ TEST(TestGenerator, TestConcurrent) {
   t2.join();
 }
 
+}  // namespace util
 }  // namespace common

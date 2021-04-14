@@ -10,8 +10,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef COMMON_GENERATOR_H_
-#define COMMON_GENERATOR_H_
+#ifndef COMMON_UTIL_GENERATOR_H_
+#define COMMON_UTIL_GENERATOR_H_
 
 #include <condition_variable>  // NOLINT
 #include <exception>
@@ -21,9 +21,10 @@ limitations under the License.
 #include <mutex>   // NOLINT
 #include <thread>  // NOLINT
 
-#include "common/macro.h"
+#include "common/util/macro.h"
 
 namespace common {
+namespace util {
 
 template <class T>
 class Generator {
@@ -146,6 +147,7 @@ class Generator {
   DISALLOW_COPY_AND_ASSIGN(Generator);
 };
 
+}  // namespace util
 }  // namespace common
 
-#endif  // COMMON_GENERATOR_H_
+#endif  // COMMON_UTIL_GENERATOR_H_

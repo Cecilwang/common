@@ -15,8 +15,9 @@ limitations under the License.
 
 #include "gtest/gtest.h"
 
-#include "net/net.h"
+#include "common/net/net.h"
 
+namespace common {
 namespace net {
 
 TEST(TestIP, TestSimple) {
@@ -54,3 +55,4 @@ TEST(TestNode, TestSimple) {
 }
 
 }  // namespace net
+}  // namespace common
