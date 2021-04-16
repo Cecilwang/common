@@ -26,12 +26,64 @@ TEST(TestIP, TestSimple) {
   EXPECT_FALSE(IsIPv4("300.0.0.1"));
   EXPECT_FALSE(IsIPv4("a.0.0.1"));
   EXPECT_FALSE(IsIPv4("-1.0.0.1"));
+  EXPECT_FALSE(IsIPv4("::"));
+  EXPECT_FALSE(IsIPv4("::1"));
 
   EXPECT_TRUE(IsIPv6("::"));
   EXPECT_TRUE(IsIPv6("::1"));
+  EXPECT_FALSE(IsIPv6("127.0.0.1"));
 
-  IP ip1("127.0.0.1");
-  IP ip2(std::string("127.0.0.1"));
+  {
+    IPv4 ip("127.0.0.1", 0);
+    EXPECT_EQ(ip.type(), IPType::kIPv4);
+    EXPECT_EQ(ip.val(), 2130706433);
+    EXPECT_EQ(ip.mask(), 0);
+    EXPECT_EQ(ip.subnetwork(), 0);
+  }
+  {
+    IPv4 ip("127.0.0.1", 8);
+    EXPECT_EQ(ip.type(), IPType::kIPv4);
+    EXPECT_EQ(ip.val(), 2130706433);
+    EXPECT_EQ(ip.mask(), 0xFF000000);
+    EXPECT_EQ(ip.subnetwork(), 2130706432);
+  }
+  {
+    IPv4 ip("127.0.0.1");
+    EXPECT_EQ(ip.type(), IPType::kIPv4);
+    EXPECT_EQ(ip.val(), 2130706433);
+    EXPECT_EQ(ip.mask(), 0xFFFFFFFF);
+    EXPECT_EQ(ip.subnetwork(), 2130706433);
+  }
+  {
+    IPv6 ip("2001:0db8:85a3:08d3:1319:8a2e:0370:7344", 0);
+    EXPECT_EQ(ip.type(), IPType::kIPv6);
+    EXPECT_EQ(ip.val().high, 0x20010db885a308d3);
+    EXPECT_EQ(ip.val().low, 0x13198a2e03707344);
+    EXPECT_EQ(ip.mask().high, 0);
+    EXPECT_EQ(ip.mask().low, 0);
+    EXPECT_EQ(ip.subnetwork().high, 0);
+    EXPECT_EQ(ip.subnetwork().low, 0);
+  }
+  {
+    IPv6 ip("2001:0db8:85a3:08d3:1319:8a2e:0370:7344", 64);
+    EXPECT_EQ(ip.type(), IPType::kIPv6);
+    EXPECT_EQ(ip.val().high, 0x20010db885a308d3);
+    EXPECT_EQ(ip.val().low, 0x13198a2e03707344);
+    EXPECT_EQ(ip.mask().high, 0xFFFFFFFFFFFFFFFF);
+    EXPECT_EQ(ip.mask().low, 0);
+    EXPECT_EQ(ip.subnetwork().high, 0x20010db885a308d3);
+    EXPECT_EQ(ip.subnetwork().low, 0);
+  }
+  {
+    IPv6 ip("2001:0db8:85a3:08d3:1319:8a2e:0370:7344");
+    EXPECT_EQ(ip.type(), IPType::kIPv6);
+    EXPECT_EQ(ip.val().high, 0x20010db885a308d3);
+    EXPECT_EQ(ip.val().low, 0x13198a2e03707344);
+    EXPECT_EQ(ip.mask().high, 0xFFFFFFFFFFFFFFFF);
+    EXPECT_EQ(ip.mask().low, 0xFFFFFFFFFFFFFFFF);
+    EXPECT_EQ(ip.subnetwork().high, 0x20010db885a308d3);
+    EXPECT_EQ(ip.subnetwork().low, 0x13198a2e03707344);
+  }
 }
 
 TEST(TestAddress, TestSimple) {

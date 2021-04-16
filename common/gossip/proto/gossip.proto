@@ -60,7 +60,7 @@ message SyncMsg {
   repeated Node nodes = 2;
 }
 
-service GossipServer {
+service GossipServerAPI {
   rpc Ping(PingReq) returns (PingResp) {}
   rpc IndirectPing(IndirectPingReq) returns (PingResp) {}
   rpc Sync(SyncMsg) returns (SyncMsg) {}

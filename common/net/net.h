@@ -14,12 +14,16 @@ limitations under the License.
 #define COMMON_NET_NET_H_
 
 #include <iostream>
+#include <memory>
 #include <set>
 #include <sstream>
 #include <string>
 #include <utility>
 
+#include <ifaddrs.h>
+
 #include "common/util/macro.h"
+#include "common/util/type.h"
 
 namespace common {
 namespace net {
@@ -27,7 +31,7 @@ namespace net {
 class IP;
 
 std::string GetHostname();
-std::set<IP> GetIPs();
+std::set<std::shared_ptr<IP>> GetPublicIPs();
 bool IsIPv4(const char* ip);
 bool IsIPv6(const char* ip);
 
@@ -39,18 +43,67 @@ enum class IPType {
 
 class IP {
  public:
-  explicit IP(const char* ip);
-  explicit IP(const std::string& ip);
+  IP(const char* ip, IPType type);
+
   const std::string& ip() const;
+  IPType type() const;
 
-  bool operator<(const IP& other) const;
-  bool operator==(const IP& other) const;
-  bool operator!=(const IP& other) const;
+  virtual bool contain(const IP* other) const = 0;
 
- private:
+  virtual std::string ToString(bool verbose = false) const = 0;
+  operator std::string() const;
+  friend std::ostream& operator<<(std::ostream& os, const IP& self);
+
+ protected:
   std::string ip_;
   IPType type_ = IPType::kUnknown;
 };
+
+class IPv4 : public IP {
+ public:
+  explicit IPv4(const char* ip, uint32_t n_mask = 32);
+
+  void set_mask(uint32_t mask);
+
+  bool contain(const IP* other) const override;
+
+  uint32_t val() const { return val_; }
+  uint32_t mask() const { return mask_; }
+  uint32_t subnetwork() const { return subnetwork_; }
+
+  std::string ToString(bool verbose = false) const override;
+
+ private:
+  uint32_t val_ = 0;
+  uint32_t mask_ = 0xFFFFFFFF;
+  uint32_t subnetwork_;
+};
+
+class IPv6 : public IP {
+ public:
+  explicit IPv6(const char* ip, uint32_t n_mask = 128);
+
+  void set_mask(uint8_t* mask);
+
+  bool contain(const IP* other) const override;
+
+  const util::UInt128& val() const { return val_; }
+  const util::UInt128& mask() const { return mask_; }
+  const util::UInt128& subnetwork() const { return subnetwork_; }
+
+  std::string ToString(bool verbose = false) const override;
+
+ private:
+  util::UInt128 val_;
+  util::UInt128 mask_;
+  util::UInt128 subnetwork_;
+};
+
+std::shared_ptr<IP> CreateIP(const char* ip);
+std::shared_ptr<IP> CreateIP(const std::string& ip);
+std::shared_ptr<IP> CreateIP(const char* ip, uint32_t n_mask);
+std::shared_ptr<IP> CreateIP(const std::string& ip, uint32_t n_mask);
+std::shared_ptr<IP> CreateIP(ifaddrs* ifa);
 
 class Address {
  public:
@@ -67,7 +120,7 @@ class Address {
   friend std::ostream& operator<<(std::ostream& os, const Address& self);
 
  private:
-  IP ip_;
+  std::shared_ptr<IP> ip_;
   uint16_t port_;
 
   DISALLOW_COPY_AND_ASSIGN(Address);
@@ -83,7 +136,7 @@ class Node {
 
  private:
   std::string hostname_;
-  std::set<IP> ips_;
+  std::set<std::shared_ptr<IP>> ips_;
 
   DISALLOW_COPY_AND_ASSIGN(Node);
 };

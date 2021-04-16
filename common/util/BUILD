@@ -9,6 +9,7 @@ cc_library(
 
 cc_library(
     name = "type",
+    srcs = ["type.cc"],
     hdrs = ["type.h"],
 )
 

@@ -31,6 +31,29 @@ std::string Typename() {
   return r;
 }
 
+struct UInt128 {
+  UInt128() = default;
+  UInt128(uint64_t high, uint64_t low);
+  explicit UInt128(const uint8_t u8[16]);
+
+  void set1(uint32_t n = 128);
+
+  UInt128 operator|(const UInt128& other);
+  UInt128 operator&(const UInt128& other);
+  UInt128 operator~(void);
+  UInt128 operator^(const UInt128& other);
+
+  bool operator<(const UInt128& other) const;
+  bool operator<=(const UInt128& other) const;
+  bool operator>(const UInt128& other) const;
+  bool operator>=(const UInt128& other) const;
+  bool operator==(const UInt128& other) const;
+  bool operator!=(const UInt128& other) const;
+
+  uint64_t high = 0ull;
+  uint64_t low = 0ull;
+};
+
 }  // namespace util
 }  // namespace common
 
