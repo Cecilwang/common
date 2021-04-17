@@ -7,6 +7,7 @@ def common_deps():
         name = "rules_foreign_cc",
         strip_prefix = "rules_foreign_cc-0.2.0",
         url = "https://github.com/bazelbuild/rules_foreign_cc/archive/0.2.0.zip",
+        sha256 = "e60cfd0a8426fa4f5fd2156e768493ca62b87d125cb35e94c44e79a3f0d8635f",
     )  # Used by cmake_http_archive, boost
 
     http_archive(
@@ -42,19 +43,34 @@ def common_deps():
     git_repository(
         name = "com_google_googletest",
         remote = "https://github.com/google/googletest",
-        tag = "release-1.10.0",
+        commit = "703bd9caab50b139428cea1aaff9974ebee5742e",
+        shallow_since = "1570114335 -0400",
+        patch_args = ["-p0"],
+        patches = ["//third_party/gtest:703bd9caab50b139428cea1aaff9974ebee5742e.patch"],
     )
 
     git_repository(
         name = "com_google_protobuf",
         remote = "https://github.com/protocolbuffers/protobuf",
-        tag = "v3.15.8",
+        commit = "436bd7880e458532901c58f4d9d1ea23fa7edd52",
+        shallow_since = "1617835118 -0700",
+    )
+
+    http_archive(
+        name = "gperftools",
+        build_file = "//third_party/gperftools:gperftools.BUILD",
+        sha256 = "1ee8c8699a0eff6b6a203e59b43330536b22bbcbe6448f54c7091e5efb0763c9",
+        strip_prefix = "gperftools-2.7",
+        urls = [
+            "https://github.com/gperftools/gperftools/releases/download/gperftools-2.7/gperftools-2.7.tar.gz",
+        ],
     )
 
     git_repository(
         name = "sofa-pbrpc",
         remote = "https://github.com/baidu/sofa-pbrpc",
-        tag = "v1.1.4",
+        commit = "68ef9412922649b760eab029d2a2ea1555d09b70",
+        shallow_since = "1527146609 +0800",
         patch_args = ["-p1"],
         patches = ["//third_party/sofa-pbrpc:1.1.4.patch"],
     )

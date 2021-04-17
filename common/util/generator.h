@@ -112,7 +112,7 @@ class Generator {
       if (it_) {
         try {
           it_->data_ = it_->Next().get();
-        } catch (FinishedException) {
+        } catch (const FinishedException&) {
           it_.reset(nullptr);
         }
       }

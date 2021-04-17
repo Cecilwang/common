@@ -1,3 +1,5 @@
+workspace(name = "common")
+
 load("//:workspace.bzl", "common_deps")
 
 common_deps()

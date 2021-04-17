@@ -1,0 +1,19 @@
+--- BUILD.bazel	2021-04-16 22:39:07.382974967 +0900
++++ BUILD.bazel.new	2021-04-16 23:42:57.343800156 +0900
+@@ -79,6 +79,7 @@ cc_library(
+         ":windows": [],
+         "//conditions:default": ["-pthread"],
+     }),
++    data = ["@common//third_party/gperftools:pprof"],
+     defines = select({
+         ":has_absl": ["GTEST_HAS_ABSL=1"],
+         "//conditions:default": [],
+@@ -107,7 +108,7 @@ cc_library(
+             "@com_google_absl//absl/types:variant",
+         ],
+         "//conditions:default": [],
+-    }),
++    }) + ["@gperftools//:tcmalloc_and_profiler"],
+ )
+ 
+ cc_library(

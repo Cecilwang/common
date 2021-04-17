@@ -1,3 +1,68 @@
-test --test_output=all
+#################### Common ####################
 
-test:cpplint --test_tag_filters="cpplint" //...
+# Speed Up
+startup --batch_cpu_scheduling
+startup --host_jvm_args="-XX:-UseParallelGC"
+common --experimental_multi_threaded_digest
+
+common --color=yes
+
+#################### Build ####################
+
+build --platform_suffix=-host
+build --show_timestamps
+#build --spawn_strategy=standalone
+
+# C/C++
+build --cxxopt=-fdiagnostics-color=always
+build --cxxopt=-std=c++11
+build --host_cxxopt=-std=c++11
+build --copt=-O3
+build --per_file_copt=//common/.*\.cc@-Wall,-Werror
+build --per_file_copt=external/.*@-w
+
+# Instrinsic
+build:intrinsic_arm-neon --copt=-D__ARM_NEON --copt=-D__ARM_NEON__ --copt=-mfpu=neon --copt=-mfloat-abi=softfp
+build:intrinsic_aarch64-neon --copt=-D__ARM_NEON --copt=-D__ARM_NEON__
+build:intrinsic_sse4 --copt=-msse2 --copt=-msse3 --copt=-msse4
+build:intrinsic_avx --copt=-mavx
+build:intrinsic_avx2 --copt=-mavx --copt=-mavx2 --copt=-mfma
+#build:intrinsic_avx512 --copt=-march=skylake-avx512
+#build:intrinsic_avx512 --copt=-mprefer-vector-width=512
+build:intrinsic_avx512 --config=intrinsic_avx2
+build:intrinsic_avx512 --copt=-mavx512cd
+build:intrinsic_avx512 --copt=-mavx512vl
+build:intrinsic_avx512 --copt=-mavx512dq
+build:intrinsic_avx512 --copt=-mavx512bw
+build:intrinsic_avx512 --copt=-mavx512ifma
+build:intrinsic_avx512 --copt=-mavx512vbmi
+
+# Release
+build:release --copt=-fvisibility=hidden
+
+#################### Test ####################
+
+test --test_output=errors
+test --flaky_test_attempts=3
+test --test_tag_filters=-cpplint
+
+# HeapCheck
+test --test_env=HEAPCHECK=normal
+test --test_env=PPROF_PATH=third_party/gperftools/bin/pprof
+test:disable_heap_check --test_env=HEAPCHECK=
+test:disable_heap_check --test_env=PPROF_PATH=
+
+# CPPLINT
+test:cpplint --test_tag_filters=cpplint
+test:cpplint --build_tests_only
+test:cpplint --flaky_test_attempts=1
+
+#################### Coverage ####################
+
+coverage --platform_suffix=-coverage
+coverage --javabase="@bazel_tools//tools/jdk:remote_jdk11"
+coverage --instrument_test_targets
+coverage --nocache_test_results
+coverage --test_tag_filters=-cpplint
+coverage --combined_report=lcov
+#coverage --coverage_report_generator="@bazel_tools//tools/test:coverage_report_generator"

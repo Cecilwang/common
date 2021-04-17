@@ -15,9 +15,10 @@ limitations under the License.
 #include "common/util/type.h"
 
 namespace {
-int& foo_lref();
-int&& foo_rref();
-int foo_value();
+int _;
+int& foo_lref() { return _; }
+int&& foo_rref() { return std::move(_); }
+int foo_value() { return 1; }
 }  // namespace
 
 namespace common {

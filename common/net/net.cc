@@ -212,7 +212,6 @@ std::shared_ptr<IP> CreateIP(ifaddrs* ifa) {
     return nullptr;
   }
   char ip[NI_MAXHOST];
-  uint32_t n_mask = 0;
   if (IFAIsIPv4(ifa) && GetIPv4FromIFA(ifa, ip)) {
     auto ret = new IPv4(ip);
     if (ifa->ifa_netmask) {

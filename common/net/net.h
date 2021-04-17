@@ -13,14 +13,14 @@ limitations under the License.
 #ifndef COMMON_NET_NET_H_
 #define COMMON_NET_NET_H_
 
+#include <ifaddrs.h>
+
 #include <iostream>
 #include <memory>
 #include <set>
 #include <sstream>
 #include <string>
 #include <utility>
-
-#include <ifaddrs.h>
 
 #include "common/util/macro.h"
 #include "common/util/type.h"

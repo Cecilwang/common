@@ -1,0 +1,561 @@
+diff --git a/base/linux_syscall_support.h b/base/linux_syscall_support.h
+index 13aa415..eed96f9 100644
+--- a/base/linux_syscall_support.h
++++ b/base/linux_syscall_support.h
+@@ -171,6 +171,10 @@ extern "C" {
+
+ #endif
+
++#ifdef __ANDROID__
++typedef unsigned long ulong;
++#endif
++
+ /* As glibc often provides subtly incompatible data structures (and implicit
+  * wrapper functions that convert them), we provide our own kernel data
+  * structures for use by the system calls.
+diff --git a/base/sysinfo.cc b/base/sysinfo.cc
+index 36f7067..74a95cb 100644
+--- a/base/sysinfo.cc
++++ b/base/sysinfo.cc
+@@ -155,6 +155,15 @@ static size_t slow_strlen(const char *s) {
+ const char* GetenvBeforeMain(const char* name) {
+   const int namelen = slow_strlen(name);
+ #if defined(HAVE___ENVIRON)   // if we have it, it's declared in unistd.h
++#ifdef __ANDROID__
++  if (environ) {            // can exist but be NULL, if statically linked
++    for (char** p = environ; *p; p++) {
++      if (!slow_memcmp(*p, name, namelen) && (*p)[namelen] == '=')
++        return *p + namelen+1;
++    }
++    return NULL;
++  }
++#else
+   if (__environ) {            // can exist but be NULL, if statically linked
+     for (char** p = __environ; *p; p++) {
+       if (!slow_memcmp(*p, name, namelen) && (*p)[namelen] == '=')
+@@ -163,6 +172,7 @@ const char* GetenvBeforeMain(const char* name) {
+     return NULL;
+   }
+ #endif
++#endif
+ #if defined(PLATFORM_WINDOWS)
+   // TODO(mbelshe) - repeated calls to this function will overwrite the
+   // contents of the static buffer.
+diff --git a/config.h b/config.h
+new file mode 100644
+index 0000000..ff7ef80
+--- /dev/null
++++ b/config.h
+@@ -0,0 +1,343 @@
++/* config.h.  Generated from config.h.in by configure.  */
++/* config.h.in.  Generated from configure.ac by autoheader.  */
++
++
++#ifndef GPERFTOOLS_CONFIG_H_
++#define GPERFTOOLS_CONFIG_H_
++
++
++/* Build new/delete operators for overaligned types */
++/* #undef ENABLE_ALIGNED_NEW_DELETE */
++
++/* Build runtime detection for sized delete */
++/* #undef ENABLE_DYNAMIC_SIZED_DELETE */
++
++/* report large allocation */
++/* #undef ENABLE_LARGE_ALLOC_REPORT */
++
++/* Build sized deletion operators */
++/* #undef ENABLE_SIZED_DELETE */
++
++/* Define to 1 if compiler supports __builtin_stack_pointer */
++/* #undef HAVE_BUILTIN_STACK_POINTER */
++
++/* Define to 1 if you have the <conflict-signal.h> header file. */
++/* #undef HAVE_CONFLICT_SIGNAL_H */
++
++/* define if the compiler supports basic C++11 syntax */
++#define HAVE_CXX11 1
++
++/* Define to 1 if you have the <cygwin/signal.h> header file. */
++/* #undef HAVE_CYGWIN_SIGNAL_H */
++
++/* Define to 1 if you have the declaration of `backtrace', and to 0 if you
++   don't. */
++/* #undef HAVE_DECL_BACKTRACE */
++
++/* Define to 1 if you have the declaration of `cfree', and to 0 if you don't.
++   */
++#define HAVE_DECL_CFREE 1
++
++/* Define to 1 if you have the declaration of `memalign', and to 0 if you
++   don't. */
++#define HAVE_DECL_MEMALIGN 1
++
++/* Define to 1 if you have the declaration of `nanosleep', and to 0 if you
++   don't. */
++/* #undef HAVE_DECL_NANOSLEEP */
++
++/* Define to 1 if you have the declaration of `posix_memalign', and to 0 if
++   you don't. */
++#define HAVE_DECL_POSIX_MEMALIGN 1
++
++/* Define to 1 if you have the declaration of `pvalloc', and to 0 if you
++   don't. */
++#define HAVE_DECL_PVALLOC 1
++
++/* Define to 1 if you have the declaration of `sleep', and to 0 if you don't.
++   */
++/* #undef HAVE_DECL_SLEEP */
++
++/* Define to 1 if you have the declaration of `uname', and to 0 if you don't.
++   */
++#define HAVE_DECL_UNAME 1
++
++/* Define to 1 if you have the declaration of `valloc', and to 0 if you don't.
++   */
++#define HAVE_DECL_VALLOC 1
++
++/* Define to 1 if you have the <dlfcn.h> header file. */
++#define HAVE_DLFCN_H 1
++
++/* Define to 1 if the system has the type `Elf32_Versym'. */
++#define HAVE_ELF32_VERSYM 1
++
++/* Define to 1 if you have the <execinfo.h> header file. */
++#define HAVE_EXECINFO_H 1
++
++/* Define to 1 if you have the <fcntl.h> header file. */
++#define HAVE_FCNTL_H 1
++
++/* Define to 1 if you have the <features.h> header file. */
++#define HAVE_FEATURES_H 1
++
++/* Define to 1 if you have the `fork' function. */
++#define HAVE_FORK 1
++
++/* Define to 1 if you have the `geteuid' function. */
++#define HAVE_GETEUID 1
++
++/* Define to 1 if you have the `getpagesize' function. */
++#ifdef __ANDROID__
++#undef HAVE_GETPAGESIZE
++#else
++#define HAVE_GETPAGESIZE 1
++#endif
++
++/* Define to 1 if you have the <glob.h> header file. */
++#ifdef __ANDROID__
++#undef HAVE_GLOB_H
++#else
++#define HAVE_GLOB_H 1
++#endif
++
++/* Define to 1 if you have the <grp.h> header file. */
++#define HAVE_GRP_H 1
++
++/* Define to 1 if you have the <inttypes.h> header file. */
++#define HAVE_INTTYPES_H 1
++
++/* Define to 1 if you have the <libunwind.h> header file. */
++/* #undef HAVE_LIBUNWIND_H */
++
++/* Define to 1 if you have the <linux/ptrace.h> header file. */
++#define HAVE_LINUX_PTRACE_H 1
++
++/* Define if this is Linux that has SIGEV_THREAD_ID */
++#define HAVE_LINUX_SIGEV_THREAD_ID 1
++
++/* Define to 1 if you have the <malloc.h> header file. */
++#define HAVE_MALLOC_H 1
++
++/* Define to 1 if you have the <memory.h> header file. */
++#define HAVE_MEMORY_H 1
++
++/* Define to 1 if you have a working `mmap' system call. */
++#define HAVE_MMAP 1
++
++/* define if the compiler implements namespaces */
++#define HAVE_NAMESPACES 1
++
++/* Define to 1 if you have the <poll.h> header file. */
++#define HAVE_POLL_H 1
++
++/* define if libc has program_invocation_name */
++#ifdef __ANDROID__
++#undef HAVE_PROGRAM_INVOCATION_NAME
++#else
++#define HAVE_PROGRAM_INVOCATION_NAME 1
++#endif
++
++/* Define if you have POSIX threads libraries and header files. */
++#define HAVE_PTHREAD 1
++
++/* defined to 1 if pthread symbols are exposed even without include pthread.h
++   */
++/* #undef HAVE_PTHREAD_DESPITE_ASKING_FOR */
++
++/* Define to 1 if you have the <pwd.h> header file. */
++#define HAVE_PWD_H 1
++
++/* Define to 1 if you have the `sbrk' function. */
++#define HAVE_SBRK 1
++
++/* Define to 1 if you have the <sched.h> header file. */
++#define HAVE_SCHED_H 1
++
++/* Define to 1 if you have the <stdint.h> header file. */
++#define HAVE_STDINT_H 1
++
++/* Define to 1 if you have the <stdlib.h> header file. */
++#define HAVE_STDLIB_H 1
++
++/* Define to 1 if you have the <strings.h> header file. */
++#define HAVE_STRINGS_H 1
++
++/* Define to 1 if you have the <string.h> header file. */
++#define HAVE_STRING_H 1
++
++/* Define to 1 if the system has the type `struct mallinfo'. */
++#define HAVE_STRUCT_MALLINFO 1
++
++/* Define to 1 if you have the <sys/cdefs.h> header file. */
++#define HAVE_SYS_CDEFS_H 1
++
++/* Define to 1 if you have the <sys/param.h> header file. */
++#ifdef __ANDROID__
++#undef HAVE_SYS_PARAM_H
++#else
++#define HAVE_SYS_PARAM_H 1
++#endif
++
++/* Define to 1 if you have the <sys/prctl.h> header file. */
++#define HAVE_SYS_PRCTL_H 1
++
++/* Define to 1 if you have the <sys/resource.h> header file. */
++#define HAVE_SYS_RESOURCE_H 1
++
++/* Define to 1 if you have the <sys/socket.h> header file. */
++#define HAVE_SYS_SOCKET_H 1
++
++/* Define to 1 if you have the <sys/stat.h> header file. */
++#define HAVE_SYS_STAT_H 1
++
++/* Define to 1 if you have the <sys/syscall.h> header file. */
++#define HAVE_SYS_SYSCALL_H 1
++
++/* Define to 1 if you have the <sys/types.h> header file. */
++#define HAVE_SYS_TYPES_H 1
++
++/* Define to 1 if you have the <sys/ucontext.h> header file. */
++#define HAVE_SYS_UCONTEXT_H 1
++
++/* Define to 1 if you have the <sys/wait.h> header file. */
++#define HAVE_SYS_WAIT_H 1
++
++/* Define to 1 if compiler supports __thread */
++#define HAVE_TLS 1
++
++/* Define to 1 if you have the <ucontext.h> header file. */
++#define HAVE_UCONTEXT_H 1
++
++/* Define to 1 if you have the <unistd.h> header file. */
++#define HAVE_UNISTD_H 1
++
++/* Whether <unwind.h> contains _Unwind_Backtrace */
++#define HAVE_UNWIND_BACKTRACE 1
++
++/* Define to 1 if you have the <unwind.h> header file. */
++#define HAVE_UNWIND_H 1
++
++/* Define to 1 if you have the <valgrind.h> header file. */
++/* #undef HAVE_VALGRIND_H */
++
++/* define if your compiler has __attribute__ */
++#define HAVE___ATTRIBUTE__ 1
++
++/* define if your compiler supports alignment of functions */
++#define HAVE___ATTRIBUTE__ALIGNED_FN 1
++
++/* Define to 1 if compiler supports __environ */
++#define HAVE___ENVIRON 1
++
++/* Define to 1 if the system has the type `__int64'. */
++/* #undef HAVE___INT64 */
++
++/* Define to 1 if you have the `__sbrk' function. */
++#ifdef __ANDROID__
++#undef HAVE___SBRK
++#else
++#define HAVE___SBRK 1
++#endif
++
++/* prefix where we look for installed files */
++#define INSTALL_PREFIX "/usr/local"
++
++/* Define to 1 if int32_t is equivalent to intptr_t */
++/* #undef INT32_EQUALS_INTPTR */
++
++/* Define to the sub-directory where libtool stores uninstalled libraries. */
++#define LT_OBJDIR ".libs/"
++
++/* Name of package */
++#define PACKAGE "gperftools"
++
++/* Define to the address where bug reports for this package should be sent. */
++#define PACKAGE_BUGREPORT "gperftools@googlegroups.com"
++
++/* Define to the full name of this package. */
++#define PACKAGE_NAME "gperftools"
++
++/* Define to the full name and version of this package. */
++#define PACKAGE_STRING "gperftools 2.7"
++
++/* Define to the one symbol short name of this package. */
++#define PACKAGE_TARNAME "gperftools"
++
++/* Define to the home page for this package. */
++#define PACKAGE_URL ""
++
++/* Define to the version of this package. */
++#define PACKAGE_VERSION "2.7"
++
++/* How to access the PC from a struct ucontext */
++#ifdef __LINARO_RELEASE__
++#define PC_FROM_UCONTEXT uc_mcontext.pc
++#elif defined __ANDROID__
++#define PC_FROM_UCONTEXT uc_mcontext.arm_pc
++#else
++#define PC_FROM_UCONTEXT uc_mcontext.gregs[REG_RIP]
++#endif
++
++/* Always the empty-string on non-windows systems. On windows, should be
++   "__declspec(dllexport)". This way, when we compile the dll, we export our
++   functions/classes. It's safe to define this here because config.h is only
++   used internally, to compile the DLL, and every DLL source file #includes
++   "config.h" before anything else. */
++#define PERFTOOLS_DLL_DECL /**/
++
++/* printf format code for printing a size_t and ssize_t */
++#define PRIdS "ld"
++
++/* printf format code for printing a size_t and ssize_t */
++#define PRIuS "lu"
++
++/* printf format code for printing a size_t and ssize_t */
++#define PRIxS "lx"
++
++/* Mark the systems where we know it's bad if pthreads runs too
++   early before main (before threads are initialized, presumably).  */
++#ifdef __FreeBSD__
++#define PTHREADS_CRASHES_IF_RUN_TOO_EARLY 1
++#endif
++
++/* Define to necessary symbol if this constant uses a non-standard name on
++   your system. */
++/* #undef PTHREAD_CREATE_JOINABLE */
++
++/* Define to 1 if you have the ANSI C header files. */
++#define STDC_HEADERS 1
++
++/* the namespace where STL code like vector<> is defined */
++#define STL_NAMESPACE std
++
++/* Define 32K of internal pages size for tcmalloc */
++/* #undef TCMALLOC_32K_PAGES */
++
++/* Define 64K of internal pages size for tcmalloc */
++/* #undef TCMALLOC_64K_PAGES */
++
++/* Define 8 bytes of allocation alignment for tcmalloc */
++/* #undef TCMALLOC_ALIGN_8BYTES */
++
++/* Version number of package */
++#define VERSION "2.7"
++
++/* C99 says: define this to get the PRI... macros from stdint.h */
++#ifndef __STDC_FORMAT_MACROS
++# define __STDC_FORMAT_MACROS 1
++#endif
++
++/* Define to `__inline__' or `__inline' if that's what the C compiler
++   calls it, or to nothing if 'inline' is not supported under any name.  */
++#ifndef __cplusplus
++/* #undef inline */
++#endif
++
++
++#ifdef __MINGW32__
++#include "windows/mingw.h"
++#endif
++
++#endif  /* #ifndef GPERFTOOLS_CONFIG_H_ */
++
+diff --git a/gperftools/tcmalloc.h b/gperftools/tcmalloc.h
+new file mode 100644
+index 0000000..d69fbc7
+--- /dev/null
++++ b/gperftools/tcmalloc.h
+@@ -0,0 +1,163 @@
++// -*- Mode: C; c-basic-offset: 2; indent-tabs-mode: nil -*-
++/* Copyright (c) 2003, Google Inc.
++ * All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions are
++ * met:
++ *
++ *     * Redistributions of source code must retain the above copyright
++ * notice, this list of conditions and the following disclaimer.
++ *     * Redistributions in binary form must reproduce the above
++ * copyright notice, this list of conditions and the following disclaimer
++ * in the documentation and/or other materials provided with the
++ * distribution.
++ *     * Neither the name of Google Inc. nor the names of its
++ * contributors may be used to endorse or promote products derived from
++ * this software without specific prior written permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
++ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
++ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
++ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
++ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
++ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
++ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
++ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
++ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
++ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
++ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ *
++ * ---
++ * Author: Sanjay Ghemawat <opensource@google.com>
++ *         .h file by Craig Silverstein <opensource@google.com>
++ */
++
++#ifndef TCMALLOC_TCMALLOC_H_
++#define TCMALLOC_TCMALLOC_H_
++
++#include <stddef.h>                     /* for size_t */
++#ifdef __cplusplus
++#include <new>                          /* for std::nothrow_t, std::align_val_t */
++#endif
++
++/* Define the version number so folks can check against it */
++#define TC_VERSION_MAJOR  2
++#define TC_VERSION_MINOR  7
++#define TC_VERSION_PATCH  ""
++#define TC_VERSION_STRING "gperftools 2.7"
++
++/* For struct mallinfo, if it's defined. */
++#if 1
++# include <malloc.h>
++#endif
++
++#ifndef PERFTOOLS_NOTHROW
++
++#if __cplusplus >= 201103L
++#define PERFTOOLS_NOTHROW noexcept
++#elif defined(__cplusplus)
++#define PERFTOOLS_NOTHROW throw()
++#else
++# ifdef __GNUC__
++#  define PERFTOOLS_NOTHROW __attribute__((__nothrow__))
++# else
++#  define PERFTOOLS_NOTHROW
++# endif
++#endif
++
++#endif
++
++#ifndef PERFTOOLS_DLL_DECL
++# ifdef _WIN32
++#   define PERFTOOLS_DLL_DECL  __declspec(dllimport)
++# else
++#   define PERFTOOLS_DLL_DECL
++# endif
++#endif
++
++#ifdef __cplusplus
++extern "C" {
++#endif
++  /*
++   * Returns a human-readable version string.  If major, minor,
++   * and/or patch are not NULL, they are set to the major version,
++   * minor version, and patch-code (a string, usually "").
++   */
++  PERFTOOLS_DLL_DECL const char* tc_version(int* major, int* minor,
++                                            const char** patch) PERFTOOLS_NOTHROW;
++
++  PERFTOOLS_DLL_DECL void* tc_malloc(size_t size) PERFTOOLS_NOTHROW;
++  PERFTOOLS_DLL_DECL void* tc_malloc_skip_new_handler(size_t size) PERFTOOLS_NOTHROW;
++  PERFTOOLS_DLL_DECL void tc_free(void* ptr) PERFTOOLS_NOTHROW;
++  PERFTOOLS_DLL_DECL void tc_free_sized(void *ptr, size_t size) PERFTOOLS_NOTHROW;
++  PERFTOOLS_DLL_DECL void* tc_realloc(void* ptr, size_t size) PERFTOOLS_NOTHROW;
++  PERFTOOLS_DLL_DECL void* tc_calloc(size_t nmemb, size_t size) PERFTOOLS_NOTHROW;
++  PERFTOOLS_DLL_DECL void tc_cfree(void* ptr) PERFTOOLS_NOTHROW;
++
++  PERFTOOLS_DLL_DECL void* tc_memalign(size_t __alignment,
++                                       size_t __size) PERFTOOLS_NOTHROW;
++  PERFTOOLS_DLL_DECL int tc_posix_memalign(void** ptr,
++                                           size_t align, size_t size) PERFTOOLS_NOTHROW;
++  PERFTOOLS_DLL_DECL void* tc_valloc(size_t __size) PERFTOOLS_NOTHROW;
++  PERFTOOLS_DLL_DECL void* tc_pvalloc(size_t __size) PERFTOOLS_NOTHROW;
++
++  PERFTOOLS_DLL_DECL void tc_malloc_stats(void) PERFTOOLS_NOTHROW;
++  PERFTOOLS_DLL_DECL int tc_mallopt(int cmd, int value) PERFTOOLS_NOTHROW;
++#if 1
++  PERFTOOLS_DLL_DECL struct mallinfo tc_mallinfo(void) PERFTOOLS_NOTHROW;
++#endif
++
++  /*
++   * This is an alias for MallocExtension::instance()->GetAllocatedSize().
++   * It is equivalent to
++   *    OS X: malloc_size()
++   *    glibc: malloc_usable_size()
++   *    Windows: _msize()
++   */
++  PERFTOOLS_DLL_DECL size_t tc_malloc_size(void* ptr) PERFTOOLS_NOTHROW;
++
++#ifdef __cplusplus
++  PERFTOOLS_DLL_DECL int tc_set_new_mode(int flag) PERFTOOLS_NOTHROW;
++  PERFTOOLS_DLL_DECL void* tc_new(size_t size);
++  PERFTOOLS_DLL_DECL void* tc_new_nothrow(size_t size,
++                                          const std::nothrow_t&) PERFTOOLS_NOTHROW;
++  PERFTOOLS_DLL_DECL void tc_delete(void* p) PERFTOOLS_NOTHROW;
++  PERFTOOLS_DLL_DECL void tc_delete_sized(void* p, size_t size) PERFTOOLS_NOTHROW;
++  PERFTOOLS_DLL_DECL void tc_delete_nothrow(void* p,
++                                            const std::nothrow_t&) PERFTOOLS_NOTHROW;
++  PERFTOOLS_DLL_DECL void* tc_newarray(size_t size);
++  PERFTOOLS_DLL_DECL void* tc_newarray_nothrow(size_t size,
++                                               const std::nothrow_t&) PERFTOOLS_NOTHROW;
++  PERFTOOLS_DLL_DECL void tc_deletearray(void* p) PERFTOOLS_NOTHROW;
++  PERFTOOLS_DLL_DECL void tc_deletearray_sized(void* p, size_t size) PERFTOOLS_NOTHROW;
++  PERFTOOLS_DLL_DECL void tc_deletearray_nothrow(void* p,
++                                                 const std::nothrow_t&) PERFTOOLS_NOTHROW;
++
++#if 0 && __cplusplus >= 201703L
++  PERFTOOLS_DLL_DECL void* tc_new_aligned(size_t size, std::align_val_t al);
++  PERFTOOLS_DLL_DECL void* tc_new_aligned_nothrow(size_t size, std::align_val_t al,
++                                          const std::nothrow_t&) PERFTOOLS_NOTHROW;
++  PERFTOOLS_DLL_DECL void tc_delete_aligned(void* p, std::align_val_t al) PERFTOOLS_NOTHROW;
++  PERFTOOLS_DLL_DECL void tc_delete_sized_aligned(void* p, size_t size, std::align_val_t al) PERFTOOLS_NOTHROW;
++  PERFTOOLS_DLL_DECL void tc_delete_aligned_nothrow(void* p, std::align_val_t al,
++                                            const std::nothrow_t&) PERFTOOLS_NOTHROW;
++  PERFTOOLS_DLL_DECL void* tc_newarray_aligned(size_t size, std::align_val_t al);
++  PERFTOOLS_DLL_DECL void* tc_newarray_aligned_nothrow(size_t size, std::align_val_t al,
++                                               const std::nothrow_t&) PERFTOOLS_NOTHROW;
++  PERFTOOLS_DLL_DECL void tc_deletearray_aligned(void* p, std::align_val_t al) PERFTOOLS_NOTHROW;
++  PERFTOOLS_DLL_DECL void tc_deletearray_sized_aligned(void* p, size_t size, std::align_val_t al) PERFTOOLS_NOTHROW;
++  PERFTOOLS_DLL_DECL void tc_deletearray_aligned_nothrow(void* p, std::align_val_t al,
++                                                 const std::nothrow_t&) PERFTOOLS_NOTHROW;
++#endif
++}
++#endif
++
++/* We're only un-defining for public */
++#if !defined(GPERFTOOLS_CONFIG_H_)
++
++#undef PERFTOOLS_NOTHROW
++
++#endif /* GPERFTOOLS_CONFIG_H_ */
++
++#endif  /* #ifndef TCMALLOC_TCMALLOC_H_ */
