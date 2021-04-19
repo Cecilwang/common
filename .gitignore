@@ -7,3 +7,5 @@ bazel-out
 bazel-testlogs
 
 tags
+
+.cache
