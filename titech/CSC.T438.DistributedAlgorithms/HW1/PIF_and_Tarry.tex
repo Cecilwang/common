@@ -1,0 +1,149 @@
+\documentclass{article}
+
+\usepackage[a4paper, total={6.5in, 11in}]{geometry}
+\usepackage[linesnumbered, boxed, noline]{algorithm2e}
+\usepackage{amsmath}
+\usepackage{ifthen}
+
+\SetKw{kWhen}{when}
+\SetKw{kIs}{is}
+\SetKw{kReceived}{received}
+\SetKw{kFrom}{from}
+\SetKw{kDo}{do}
+\SetKw{kSend}{send}
+\SetKw{kTo}{to}
+\SetKw{kForEach}{for each}
+\SetKw{kEndFor}{end for}
+\SetKw{kIf}{if}
+\SetKw{kThen}{then}
+\SetKw{kElse}{else}
+\SetKw{kEndIf}{end if}
+\SetKw{kLet}{let}
+
+\newcommand{\fNewLine}{
+  \DontPrintSemicolon\;\PrintSemicolon
+}
+
+\SetKwBlock{EmptyBlock}{}{}
+
+\newcommand{\fRecv}[3]{
+  \ifthenelse{\equal{#2}{}}{
+    \kWhen #1 \kIs \kReceived \kDo \EmptyBlock{#3}
+  }{
+    \kWhen #1 \kIs \kReceived \kFrom #2 \kDo \EmptyBlock{#3} 
+  }
+}
+
+\newcommand{\fSend}[4]{
+  \ifthenelse{\equal{#1}{}}{
+    \kSend #3 \kTo #4
+  }{
+    \kForEach #1 $\in$ #2 \kDo \kSend #3 \kTo #4 \kEndFor
+  }
+}
+
+\newcommand{\fIf}[2]{
+  \kIf #1 \kThen #2 \kEndIf \fNewLine
+}
+
+\newcommand{\fElse}[1]{
+  \kElse #1 \fNewLine \kEndIf
+}
+
+\SetKwIF{If}{ElseIf}{Else}{if}{then}{else if}{else}{\kEndIf}
+
+\newcommand{\abs}[1]{\lvert #1 \rvert}
+
+\begin{document}
+
+\section{Broadcast/Convergecast}
+
+Every process should send GO/BACK message with the ID of the root, and the root will send GO with itself. Now, all of the variables($parent, children, expected\_msg, val\_set$) will store the data in a 2-D array where the first index indicates the different roots. \\
+
+\begin{algorithm}[H]
+  \fRecv{START()}{}{
+    $parent_{i,i} \gets i;$
+    $children_{i,i} \gets \emptyset;$
+    $expected\_msg_{i,i} \gets \abs{neighbors_i};$
+    \fNewLine
+    \fSend{$j$}{$neighbors_i$}{GO($i, data$)}{$p_j$}
+  }
+
+  \fNewLine
+
+  \fRecv{GO($root, data$)}{$p_j$}{
+    \uIf{$parent_{root,i} = \perp$}{
+      $parent_{root,i} \gets j;$
+      $children_{root,i} \gets \emptyset;$
+      $expected\_msg_{root,i} \gets \abs{neighbors_i \backslash \{j\}};$
+      \fNewLine
+      \uIf{$expected\_msg_{root,i}=0$}{
+        \fSend{}{}{BACK($root, \{i,v_i\}$)}{$p_j$}
+      } \fElse{\fSend{$k$}{$neighbors_i \backslash \{j\}$}{GO($root, data$)}{$p_k$}}
+    } \fElse{\fSend{}{}{BACK($root, \emptyset$)}{$p_j$}} 
+  }
+
+  \fNewLine
+
+  \fRecv{BACK($root, val\_set$)}{$p_j$}{
+    $expected\_msg_{root,i} \gets expected\_msg_{root,i}-1$\;
+    $val\_set_{root,j} \gets val\_set$\;
+    \fIf{$val\_set \ne \emptyset$}{$children_{root,i} \gets children_{root,i} \cup \{j\}$}
+    \If{$expected\_msg_{root,i}=0$}{
+      $val\_set \gets (\bigcup_{x \in children_i}val\_set_{root, x}) \cup \{(i, v_i)\}$\; 
+      \uIf{$i \ne root$}{
+        \fSend{}{}{Back($root, val\_set$)}{$parent_{root, i}$} 
+      } \fElse{$p_i$ can compute $f_i(val\_set)$}
+    }
+  }
+
+  \caption{Parellel PIF}
+\end{algorithm}
+
+
+\section{Traversal}
+
+\begin{algorithm}[H]
+  \fRecv{START()}{}{
+    \fSend{}{}{GO($i, token$)}{$p_i$}
+  }
+
+  \fNewLine
+
+  \fRecv{GO(pre, $token$)}{}{
+    \If{$parent_i = \perp$}{
+      $parent_i \gets pre$\;
+      $unreached_i \gets neighbors_i \backslash \{pre\};$
+    }
+    \eIf{$unreached_i \ne \emptyset$}{
+      \tcc{pop() will return an element in the set then remove it from the set.}
+      $next \gets pop(unreached_i)$\;
+      \fSend{}{}{GO($i, token$)}{$p_{next}$}
+    }{
+      \eIf{$i = parent_i$}{
+        terminate()\;
+      }{
+        \fSend{}{}{GO($i, token$)}{$p_{parent_i}$} 
+      }
+    }
+  }
+
+  \caption{Tarry's Traversal}
+\end{algorithm}
+
+\subsection{Lemma 1 Eventually every node is visited.}
+1. All the processes are connected.\\
+2. The root sends the token to all neighbors.\\
+3. Other processes forward the token through all the edges.\\
+4. Eventually every process receives the token.\\
+5. Eventually every node is visited.\\
+Q.E.D.
+
+
+\subsection{Lemma 2 No two nodes are visited simultaneously.}
+1. Only one node will receive START().\\
+2. Nodes will only forward the token to one node at a time.\\
+3. No two nodes are visited simultaneously.\\
+Q.E.D.
+
+\end{document}
