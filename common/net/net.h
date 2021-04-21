@@ -44,6 +44,7 @@ enum class IPType {
 class IP {
  public:
   IP(const char* ip, IPType type);
+  virtual ~IP() = default;
 
   const std::string& ip() const;
   IPType type() const;
@@ -62,6 +63,7 @@ class IP {
 class IPv4 : public IP {
  public:
   explicit IPv4(const char* ip, uint32_t n_mask = 32);
+  ~IPv4() = default;
 
   void set_mask(uint32_t mask);
 
@@ -82,6 +84,7 @@ class IPv4 : public IP {
 class IPv6 : public IP {
  public:
   explicit IPv6(const char* ip, uint32_t n_mask = 128);
+  ~IPv6() = default;
 
   void set_mask(uint8_t* mask);
 
