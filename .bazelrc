@@ -12,6 +12,7 @@ common --color=yes
 build --platform_suffix=-host
 build --show_timestamps
 #build --spawn_strategy=standalone
+build --build_tag_filters=-latex
 
 # C/C++
 build --cxxopt=-fdiagnostics-color=always
