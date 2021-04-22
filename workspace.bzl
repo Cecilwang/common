@@ -3,6 +3,8 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("//bazel:cmake_http_archive.bzl", "cmake_http_archive")
 
 def common_deps():
+    #################### C/C++ ####################
+
     http_archive(
         name = "rules_foreign_cc",
         strip_prefix = "rules_foreign_cc-0.2.0",
@@ -73,4 +75,23 @@ def common_deps():
         shallow_since = "1527146609 +0800",
         patch_args = ["-p1"],
         patches = ["//third_party/sofa-pbrpc:1.1.4.patch"],
+    )
+
+    #################### SCALA ####################
+
+    http_archive(
+        name = "io_bazel_rules_scala",
+        sha256 = "b7fa29db72408a972e6b6685d1bc17465b3108b620cb56d9b1700cf6f70f624a",
+        strip_prefix = "rules_scala-5df8033f752be64fbe2cedfd1bdbad56e2033b15",
+        type = "zip",
+        url = "https://github.com/bazelbuild/rules_scala/archive/5df8033f752be64fbe2cedfd1bdbad56e2033b15.zip",
+    )
+
+    #################### MAVEN ####################
+
+    http_archive(
+        name = "rules_jvm_external",
+        strip_prefix = "rules_jvm_external-4.0",
+        sha256 = "31701ad93dbfe544d597dbe62c9a1fdd76d81d8a9150c2bf1ecf928ecdf97169",
+        url = "https://github.com/bazelbuild/rules_jvm_external/archive/4.0.zip",
     )

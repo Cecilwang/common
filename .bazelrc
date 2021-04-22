@@ -1,26 +1,41 @@
 #################### Common ####################
 
+build --color=yes
+build --javabase="@bazel_tools//tools/jdk:remote_jdk11"
+
 # Speed Up
 startup --batch_cpu_scheduling
 startup --host_jvm_args="-XX:-UseParallelGC"
-common --experimental_multi_threaded_digest
+build --experimental_multi_threaded_digest
 
-common --color=yes
-
-#################### Build ####################
-
-build --platform_suffix=-host
+# Build
 build --show_timestamps
 #build --spawn_strategy=standalone
-build --build_tag_filters=-latex
 
-# C/C++
+# Test
+test --test_output=errors
+test --flaky_test_attempts=3
+
+# Coverage
+coverage --platform_suffix=-coverage
+coverage --instrument_test_targets
+coverage --nocache_test_results
+coverage --combined_report=lcov
+#coverage --coverage_report_generator="@bazel_tools//tools/test:coverage_report_generator"
+
+#################### C/C++ ####################
+
+# Build
+build --platform_suffix=-host
 build --cxxopt=-fdiagnostics-color=always
 build --cxxopt=-std=c++11
 build --host_cxxopt=-std=c++11
 build --copt=-O3
 build --per_file_copt=//common/.*\.cc@-Wall,-Werror
 build --per_file_copt=external/.*@-w
+
+# Release
+build:release --copt=-fvisibility=hidden
 
 # Instrinsic
 build:intrinsic_arm-neon --copt=-D__ARM_NEON --copt=-D__ARM_NEON__ --copt=-mfpu=neon --copt=-mfloat-abi=softfp
@@ -38,13 +53,7 @@ build:intrinsic_avx512 --copt=-mavx512bw
 build:intrinsic_avx512 --copt=-mavx512ifma
 build:intrinsic_avx512 --copt=-mavx512vbmi
 
-# Release
-build:release --copt=-fvisibility=hidden
-
-#################### Test ####################
-
-test --test_output=errors
-test --flaky_test_attempts=3
+# Test
 test --test_tag_filters=-cpplint
 
 # HeapCheck
@@ -58,12 +67,11 @@ test:cpplint --test_tag_filters=cpplint
 test:cpplint --build_tests_only
 test:cpplint --flaky_test_attempts=1
 
-#################### Coverage ####################
-
-coverage --platform_suffix=-coverage
-coverage --javabase="@bazel_tools//tools/jdk:remote_jdk11"
-coverage --instrument_test_targets
-coverage --nocache_test_results
+# Coverage
 coverage --test_tag_filters=-cpplint
-coverage --combined_report=lcov
-#coverage --coverage_report_generator="@bazel_tools//tools/test:coverage_report_generator"
+
+#################### SCALA ####################
+
+# Build
+build --strategy=Scalac=worker
+#build --worker_sandboxing
