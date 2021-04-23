@@ -44,12 +44,10 @@ load("@rules_jvm_external//:defs.bzl", "maven_install")
 
 maven_install(
     artifacts = [
-        #"titech.c.coord:scalaneko:0.21.0",
-        "titech.c.coord:scalaneko_2.12:0.20.0-SNAPSHOT",
+        "titech.c.coord:scalaneko_2.12:0.21.0",
     ],
     repositories = [
-        #"https://xdefago.github.io/ScalaNeko/sbt-repo/",
-        "https://github.com/xdefago/sbt-repo/raw/master",
+        "https://xdefago.github.io/ScalaNeko/sbt-repo/",
         "https://repo1.maven.org/maven2",
     ],
 )
