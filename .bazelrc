@@ -14,7 +14,7 @@ build --show_timestamps
 
 # Test
 test --test_output=errors
-test --flaky_test_attempts=3
+test --flaky_test_attempts=1
 
 # Coverage
 coverage --platform_suffix=-coverage

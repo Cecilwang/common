@@ -28,18 +28,6 @@ limitations under the License.
 namespace common {
 namespace net {
 
-class IP;
-
-const char* GetHostname();
-const std::vector<std::shared_ptr<IP>>& GetPublicIPs();
-std::shared_ptr<IP> GetDelegateIP(const std::vector<std::shared_ptr<IP>>& ips,
-                                  std::shared_ptr<IP> ip);
-std::shared_ptr<IP> GetDelegateIP(const std::vector<std::shared_ptr<IP>>& ips,
-                                  const char* ip);
-
-bool IsIPv4(const char* ip);
-bool IsIPv6(const char* ip);
-
 enum class IPType {
   kIPv4 = 0,
   kIPv6 = 1,
@@ -48,6 +36,9 @@ enum class IPType {
 
 class IP {
  public:
+  typedef std::shared_ptr<IP> Ptr;
+  typedef const std::shared_ptr<IP>& ConstPtr;
+
   IP(const char* ip, IPType type);
   virtual ~IP() = default;
 
@@ -110,18 +101,28 @@ class IPv6 : public IP {
   util::UInt128 subnetwork_;
 };
 
-std::shared_ptr<IP> CreateIP(const char* ip);
-std::shared_ptr<IP> CreateIP(const std::string& ip);
-std::shared_ptr<IP> CreateIP(const char* ip, uint32_t n_mask);
-std::shared_ptr<IP> CreateIP(const std::string& ip, uint32_t n_mask);
-std::shared_ptr<IP> CreateIP(ifaddrs* ifa);
+const char* GetHostname();
+
+bool IsIPv4(const char* ip);
+bool IsIPv6(const char* ip);
+
+IP::Ptr CreateIP(const char* ip);
+IP::Ptr CreateIP(const std::string& ip);
+IP::Ptr CreateIP(const char* ip, uint32_t n_mask);
+IP::Ptr CreateIP(const std::string& ip, uint32_t n_mask);
+IP::Ptr CreateIP(ifaddrs* ifa);
+
+const std::vector<IP::Ptr>& GetPublicIPs();
+
+IP::Ptr GetDelegateIP(const std::vector<IP::Ptr>& ips, IP::Ptr ip);
+IP::Ptr GetDelegateIP(const std::vector<IP::Ptr>& ips, const char* ip);
 
 class Address {
  public:
   explicit Address(const std::string& ip = "0.0.0.0", uint16_t port = 80);
-  Address(const std::shared_ptr<IP>& ip, uint16_t port);
+  Address(IP::ConstPtr ip, uint16_t port);
 
-  const std::shared_ptr<IP>& ip() const;
+  IP::ConstPtr ip() const;
   uint16_t port() const;
 
   bool operator==(const Address& other) const;
@@ -132,7 +133,7 @@ class Address {
   friend std::ostream& operator<<(std::ostream& os, const Address& self);
 
  private:
-  std::shared_ptr<IP> ip_;
+  IP::Ptr ip_;
   uint16_t port_;
 
   DISALLOW_COPY_AND_ASSIGN(Address);

@@ -13,13 +13,63 @@ limitations under the License.
 #include <iostream>
 #include <thread>  // NOLINT
 
-#include "google/protobuf/text_format.h"
 #include "gtest/gtest.h"
 
 #include "common/gossip/gossip.h"
+#include "common/util/time.h"
 
 namespace common {
 namespace gossip {
+
+TEST(TestBroadcastQueue, TestSimple) {
+  BroadcastQueue q(2);
+  auto n1 = std::make_shared<Node>(0, "n1", "", 0, rpc::State::ALIVE, "");
+  auto n2 = std::make_shared<Node>(0, "n2", "", 0, rpc::State::ALIVE, "");
+  auto n3 = std::make_shared<Node>(0, "n3", "", 0, rpc::State::ALIVE, "");
+
+  q.Push(n1);
+  q.Push(n2);
+
+  EXPECT_EQ(q.Pop(), n2);
+  EXPECT_EQ(q.Size(), 2);
+  EXPECT_EQ(q.Pop(), n1);
+  EXPECT_EQ(q.Size(), 2);
+
+  q.Push(n3);
+  EXPECT_EQ(q.Pop(), n3);
+  EXPECT_EQ(q.Size(), 3);
+  EXPECT_EQ(q.Pop(), n3);
+  EXPECT_EQ(q.Size(), 2);
+
+  q.Push(n1);
+  EXPECT_EQ(q.Pop(), n1);
+  EXPECT_EQ(q.Size(), 2);
+  EXPECT_EQ(q.Pop(), n1);
+  EXPECT_EQ(q.Size(), 1);
+  EXPECT_EQ(q.Pop(), n2);
+  EXPECT_EQ(q.Size(), 0);
+}
+
+TEST(TestBroadcastQueue, TestConcurrent) {
+  uint64_t ms = 1 * 1000;
+
+  BroadcastQueue q(1);
+  auto n1 = std::make_shared<Node>(0, "n1", "", 0, rpc::State::ALIVE, "");
+
+  std::thread t1([&]() {
+    auto ts = util::NowInMS();
+    EXPECT_EQ(q.Pop(), n1);
+    EXPECT_GE(util::NowInMS() - ts, ms - 100);
+  });
+
+  std::thread t2([&]() {
+    util::SleepForMS(ms);
+    q.Push(n1);
+  });
+
+  t1.join();
+  t2.join();
+}
 
 TEST(TestCluster, TestLog) {
   Cluster c;
@@ -49,12 +99,12 @@ TEST(TestCluster, TestPort) {
 
 TEST(TestCluster, TestAlive) {
   Cluster cluster(2333);
-  cluster.Start().Alive();
+  cluster.Alive().Start();
 }
 
 TEST(TestCluster, TestPing) {
   Cluster cluster(2333);
-  cluster.Start();
+  cluster.Alive().Start();
 
   rpc::GossipClientImpl client;
   std::thread t([&client] {

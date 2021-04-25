@@ -30,6 +30,7 @@ class Thread {
   Thread() = default;
   ~Thread();
 
+  virtual void Run() = 0;
   void Idle(uint64_t ms);
   void Stop();
 
@@ -50,7 +51,7 @@ class ThreadWrap : public Thread {
  public:
   explicit ThreadWrap(F&& f) : f_(std::move(f)) {}
 
-  void Run() {
+  void Run() override {
     if (!running_) {
       set_running(true);
       thread_ = std::thread([this] { f_(this); });
@@ -63,8 +64,8 @@ class ThreadWrap : public Thread {
 };
 
 template <class F>
-std::unique_ptr<ThreadWrap<F>> CreateThread(F&& f) {
-  return std::unique_ptr<ThreadWrap<F>>(new ThreadWrap<F>(std::forward<F>(f)));
+std::unique_ptr<Thread> CreateThread(F&& f) {
+  return std::unique_ptr<Thread>(new ThreadWrap<F>(std::forward<F>(f)));
 }
 
 template <class F>
@@ -78,7 +79,7 @@ class LoopThreadWrap : public Thread {
     return !cv_.wait_for(lock, interval_ms_, [this] { return !running_; });
   }
 
-  void Run() {
+  void Run() override {
     if (!running_) {
       set_running(true);
       thread_ = std::thread([this] {
@@ -96,9 +97,8 @@ class LoopThreadWrap : public Thread {
 };
 
 template <class F>
-std::unique_ptr<LoopThreadWrap<F>> CreateLoopThread(F&& f,
-                                                    uint64_t interval_ms) {
-  return std::unique_ptr<LoopThreadWrap<F>>(
+std::unique_ptr<Thread> CreateLoopThread(F&& f, uint64_t interval_ms) {
+  return std::unique_ptr<Thread>(
       new LoopThreadWrap<F>(std::forward<F>(f), interval_ms));
 }
 

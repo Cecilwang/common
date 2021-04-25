@@ -26,6 +26,88 @@ limitations under the License.
 namespace common {
 namespace net {
 
+IP::IP(const char* ip, IPType type) : ip_(ip), type_(type) {}
+
+const std::string& IP::ip() const { return ip_; }
+
+IPType IP::type() const { return type_; }
+
+bool IP::operator==(const IP& other) const { return ip_ == other.ip_; }
+bool IP::operator!=(const IP& other) const { return ip_ != other.ip_; }
+
+IP::operator std::string() const { return ToString(); }
+
+std::ostream& operator<<(std::ostream& os, const IP& self) {
+  return os << self.ToString();
+}
+
+//------------------------------------------------------------------------------
+
+IPv4::IPv4(const char* ip, uint32_t n_mask) : IP(ip, IPType::kIPv4) {
+  in_addr addr;
+  inet_pton(AF_INET, ip_.c_str(), &addr);
+  val_ = ntohl(addr.s_addr);
+  n_mask = std::min(n_mask, 32u);
+  mask_ = n_mask ? ~((1u << (32 - n_mask)) - 1) : 0;
+  subnetwork_ = val_ & mask_;
+}
+
+void IPv4::set_mask(uint32_t mask) {
+  mask_ = mask;
+  subnetwork_ = val_ & mask_;
+}
+
+bool IPv4::contain(const IP* other) const {
+  if (type_ != other->type()) {
+    return false;
+  }
+  const IPv4* ipv4 = dynamic_cast<const IPv4*>(other);
+  return subnetwork_ == ipv4->subnetwork_;
+}
+
+std::string IPv4::ToString(bool verbose) const {
+  std::ostringstream ss;
+  ss << ip_;
+  if (verbose) {
+    ss << "[subnetwork: " << subnetwork_ << "]";
+  }
+  return ss.str();
+}
+
+//------------------------------------------------------------------------------
+
+IPv6::IPv6(const char* ip, uint32_t n_mask) : IP(ip, IPType::kIPv6) {
+  in6_addr addr;
+  inet_pton(AF_INET6, ip_.c_str(), &addr);
+  val_ = util::UInt128(addr.s6_addr);
+  mask_.set1(n_mask);
+  subnetwork_ = val_ & mask_;
+}
+
+void IPv6::set_mask(uint8_t* mask) {
+  mask_ = util::UInt128(mask);
+  subnetwork_ = val_ & mask_;
+}
+
+bool IPv6::contain(const IP* other) const {
+  if (type_ != other->type()) {
+    return false;
+  }
+  const IPv6* ipv6 = dynamic_cast<const IPv6*>(other);
+  return subnetwork_ == ipv6->subnetwork_;
+}
+
+std::string IPv6::ToString(bool verbose) const {
+  std::ostringstream ss;
+  ss << ip_;
+  if (verbose) {
+    ss << "[subnetwork: " << subnetwork_.high << " " << subnetwork_.low << "]";
+  }
+  return ss.str();
+}
+
+//------------------------------------------------------------------------------
+
 #define IFAIsIPv4(src) (src->ifa_addr->sa_family == AF_INET)
 
 #define GetIPv4FromIFA(src, dest)                                      \
@@ -44,7 +126,7 @@ namespace net {
 #define GetIPv6MaskFromIFA(src) \
   (reinterpret_cast<sockaddr_in6*>(src->ifa_netmask)->sin6_addr.s6_addr)
 
-const std::vector<std::shared_ptr<IP>> kPrivateIPs({
+const std::vector<IP::Ptr> kPrivateIPs({
     // RFC6890
     CreateIP("0.0.0.0", 8),
     CreateIP("10.0.0.0", 8),
@@ -86,8 +168,67 @@ const char* GetHostname() {
   return hostname;
 }
 
-const std::vector<std::shared_ptr<IP>>& GetPublicIPs() {
-  static std::vector<std::shared_ptr<IP>> ips;
+bool IsIPv4(const char* ip) {
+  in_addr addr;
+  return inet_pton(AF_INET, ip, &addr) == 1;
+}
+
+bool IsIPv6(const char* ip) {
+  in6_addr addr;
+  return inet_pton(AF_INET6, ip, &addr) == 1;
+}
+
+IP::Ptr CreateIP(const char* ip) {
+  if (IsIPv4(ip)) {
+    return IP::Ptr(new IPv4(ip));
+  } else if (IsIPv6(ip)) {
+    return IP::Ptr(new IPv6(ip));
+  }
+  return nullptr;
+}
+
+IP::Ptr CreateIP(const std::string& ip) { return CreateIP(ip.c_str()); }
+
+IP::Ptr CreateIP(const char* ip, uint32_t n_mask) {
+  if (IsIPv4(ip) && n_mask <= 32) {
+    return IP::Ptr(new IPv4(ip, n_mask));
+  } else if (IsIPv6(ip) && n_mask <= 128) {
+    return IP::Ptr(new IPv6(ip, n_mask));
+  }
+  return nullptr;
+}
+
+IP::Ptr CreateIP(const std::string& ip, uint32_t n_mask) {
+  return CreateIP(ip.c_str(), n_mask);
+}
+
+IP::Ptr CreateIP(ifaddrs* ifa) {
+  if (ifa->ifa_addr == nullptr) {
+    return nullptr;
+  }
+  char ip[NI_MAXHOST];
+  if (IFAIsIPv4(ifa) && GetIPv4FromIFA(ifa, ip)) {
+    auto ret = new IPv4(ip);
+    if (ifa->ifa_netmask) {
+      ret->set_mask(GetIPv4MaskFromIFA(ifa));
+    }
+    return IP::Ptr(ret);
+  }
+  if (IFAIsIPv6(ifa) && GetIPv6FromIFA(ifa, ip)) {
+    if (char* end = strchr(ip, '%')) {
+      *end = '\0';
+    }
+    auto ret = new IPv6(ip);
+    if (ifa->ifa_netmask) {
+      ret->set_mask(GetIPv6MaskFromIFA(ifa));
+    }
+    return IP::Ptr(ret);
+  }
+  return nullptr;
+}
+
+const std::vector<IP::Ptr>& GetPublicIPs() {
+  static std::vector<IP::Ptr> ips;
   if (ips.empty()) {
     ifaddrs* ifaddr = nullptr;
     if (getifaddrs(&ifaddr) == -1) {
@@ -96,7 +237,7 @@ const std::vector<std::shared_ptr<IP>>& GetPublicIPs() {
     }
 
     for (ifaddrs* ifa = ifaddr; ifa != nullptr; ifa = ifa->ifa_next) {
-      if (std::shared_ptr<IP> ip = CreateIP(ifa)) {
+      if (IP::Ptr ip = CreateIP(ifa)) {
         for (const auto& x : kPrivateIPs) {
           if (x->contain(ip.get())) {
             ip = nullptr;
@@ -114,8 +255,7 @@ const std::vector<std::shared_ptr<IP>>& GetPublicIPs() {
   return ips;
 }
 
-std::shared_ptr<IP> GetDelegateIP(const std::vector<std::shared_ptr<IP>>& ips,
-                                  std::shared_ptr<IP> ip) {
+IP::Ptr GetDelegateIP(const std::vector<IP::Ptr>& ips, IP::Ptr ip) {
   bool any_ipv4 = ip->ip() == "0.0.0.0";
   bool any_ipv6 = ip->ip() == "::";
   for (const auto& x : ips) {
@@ -127,146 +267,8 @@ std::shared_ptr<IP> GetDelegateIP(const std::vector<std::shared_ptr<IP>>& ips,
   return nullptr;
 }
 
-std::shared_ptr<IP> GetDelegateIP(const std::vector<std::shared_ptr<IP>>& ips,
-                                  const char* ip) {
+IP::Ptr GetDelegateIP(const std::vector<IP::Ptr>& ips, const char* ip) {
   return GetDelegateIP(ips, CreateIP(ip));
-}
-
-bool IsIPv4(const char* ip) {
-  in_addr addr;
-  return inet_pton(AF_INET, ip, &addr) == 1;
-}
-
-bool IsIPv6(const char* ip) {
-  in6_addr addr;
-  return inet_pton(AF_INET6, ip, &addr) == 1;
-}
-
-IP::IP(const char* ip, IPType type) : ip_(ip), type_(type) {}
-
-const std::string& IP::ip() const { return ip_; }
-
-IPType IP::type() const { return type_; }
-
-bool IP::operator==(const IP& other) const { return ip_ == other.ip_; }
-bool IP::operator!=(const IP& other) const { return ip_ != other.ip_; }
-
-IP::operator std::string() const { return ToString(); }
-
-std::ostream& operator<<(std::ostream& os, const IP& self) {
-  return os << self.ToString();
-}
-
-IPv4::IPv4(const char* ip, uint32_t n_mask) : IP(ip, IPType::kIPv4) {
-  in_addr addr;
-  inet_pton(AF_INET, ip_.c_str(), &addr);
-  val_ = ntohl(addr.s_addr);
-  n_mask = std::min(n_mask, 32u);
-  mask_ = n_mask ? ~((1u << (32 - n_mask)) - 1) : 0;
-  subnetwork_ = val_ & mask_;
-}
-
-void IPv4::set_mask(uint32_t mask) {
-  mask_ = mask;
-  subnetwork_ = val_ & mask_;
-}
-
-bool IPv4::contain(const IP* other) const {
-  if (type_ != other->type()) {
-    return false;
-  }
-  const IPv4* ipv4 = dynamic_cast<const IPv4*>(other);
-  return subnetwork_ == ipv4->subnetwork_;
-}
-
-std::string IPv4::ToString(bool verbose) const {
-  std::ostringstream ss;
-  ss << ip_;
-  if (verbose) {
-    ss << "[subnetwork: " << subnetwork_ << "]";
-  }
-  return ss.str();
-}
-
-IPv6::IPv6(const char* ip, uint32_t n_mask) : IP(ip, IPType::kIPv6) {
-  in6_addr addr;
-  inet_pton(AF_INET6, ip_.c_str(), &addr);
-  val_ = util::UInt128(addr.s6_addr);
-  mask_.set1(n_mask);
-  subnetwork_ = val_ & mask_;
-}
-
-void IPv6::set_mask(uint8_t* mask) {
-  mask_ = util::UInt128(mask);
-  subnetwork_ = val_ & mask_;
-}
-
-bool IPv6::contain(const IP* other) const {
-  if (type_ != other->type()) {
-    return false;
-  }
-  const IPv6* ipv6 = dynamic_cast<const IPv6*>(other);
-  return subnetwork_ == ipv6->subnetwork_;
-}
-
-std::string IPv6::ToString(bool verbose) const {
-  std::ostringstream ss;
-  ss << ip_;
-  if (verbose) {
-    ss << "[subnetwork: " << subnetwork_.high << " " << subnetwork_.low << "]";
-  }
-  return ss.str();
-}
-
-std::shared_ptr<IP> CreateIP(const char* ip) {
-  if (IsIPv4(ip)) {
-    return std::shared_ptr<IP>(new IPv4(ip));
-  } else if (IsIPv6(ip)) {
-    return std::shared_ptr<IP>(new IPv6(ip));
-  }
-  return nullptr;
-}
-
-std::shared_ptr<IP> CreateIP(const std::string& ip) {
-  return CreateIP(ip.c_str());
-}
-
-std::shared_ptr<IP> CreateIP(const char* ip, uint32_t n_mask) {
-  if (IsIPv4(ip) && n_mask <= 32) {
-    return std::shared_ptr<IP>(new IPv4(ip, n_mask));
-  } else if (IsIPv6(ip) && n_mask <= 128) {
-    return std::shared_ptr<IP>(new IPv6(ip, n_mask));
-  }
-  return nullptr;
-}
-
-std::shared_ptr<IP> CreateIP(const std::string& ip, uint32_t n_mask) {
-  return CreateIP(ip.c_str(), n_mask);
-}
-
-std::shared_ptr<IP> CreateIP(ifaddrs* ifa) {
-  if (ifa->ifa_addr == nullptr) {
-    return nullptr;
-  }
-  char ip[NI_MAXHOST];
-  if (IFAIsIPv4(ifa) && GetIPv4FromIFA(ifa, ip)) {
-    auto ret = new IPv4(ip);
-    if (ifa->ifa_netmask) {
-      ret->set_mask(GetIPv4MaskFromIFA(ifa));
-    }
-    return std::shared_ptr<IP>(ret);
-  }
-  if (IFAIsIPv6(ifa) && GetIPv6FromIFA(ifa, ip)) {
-    if (char* end = strchr(ip, '%')) {
-      *end = '\0';
-    }
-    auto ret = new IPv6(ip);
-    if (ifa->ifa_netmask) {
-      ret->set_mask(GetIPv6MaskFromIFA(ifa));
-    }
-    return std::shared_ptr<IP>(ret);
-  }
-  return nullptr;
 }
 
 //------------------------------------------------------------------------------
@@ -274,10 +276,9 @@ std::shared_ptr<IP> CreateIP(ifaddrs* ifa) {
 Address::Address(const std::string& ip, uint16_t port)
     : ip_(CreateIP(ip)), port_(port) {}
 
-Address::Address(const std::shared_ptr<IP>& ip, uint16_t port)
-    : ip_(ip), port_(port) {}
+Address::Address(IP::ConstPtr ip, uint16_t port) : ip_(ip), port_(port) {}
 
-const std::shared_ptr<IP>& Address::ip() const { return ip_; }
+IP::ConstPtr Address::ip() const { return ip_; }
 uint16_t Address::port() const { return port_; }
 
 bool Address::operator==(const Address& other) const {

@@ -117,6 +117,8 @@ bool Node::Conflict(const rpc::AliveMsg* alive) const {
           metadata_ != alive->metadata());
 }
 
+void Node::set_version(uint32_t version) { version_ = version; }
+
 bool Node::Reset(const rpc::AliveMsg* alive) const {
   // Here, we can only recognize the reset by the content. However, of course,
   // sometimes the node will reset without any changes. In these cases, reset
@@ -138,6 +140,16 @@ uint16_t Node::port() const { return port_; }
 rpc::State Node::state() const { return state_; }
 
 const std::string& Node::metadata() const { return metadata_; }
+
+rpc::AliveMsg* Node::ToAliveMsg() const {
+  rpc::AliveMsg* alive = new rpc::AliveMsg();
+  alive->set_version(version_);
+  alive->set_name(name_);
+  alive->set_ip(ip_);
+  alive->set_port(port_);
+  alive->set_metadata(metadata_);
+  return alive;
+}
 
 std::string Node::ToString(bool verbose) const {
   std::ostringstream ss;
@@ -173,44 +185,64 @@ bool operator==(const Node& node, const rpc::AliveMsg& alive) {
 
 //------------------------------------------------------------------------------
 
-Cluster::Cluster(uint16_t port, int32_t n_worker)
-    : version_(0), address_("0.0.0.0", port), n_worker_(n_worker) {}
+BroadcastQueue::BroadcastQueue(uint32_t n_transmit)
+    : n_transmit_(n_transmit), queue_(ElementCmp) {}
+
+size_t BroadcastQueue::Size() {
+  std::lock_guard<std::mutex> lock(mutex_);
+  return queue_.size();
+}
+
+void BroadcastQueue::Push(Node::ConstPtr node) {
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    auto search = existence_.find(node);
+    if (search != existence_.end()) {  // drop outdated element
+      queue_.erase(queue_.find(search->second));
+    }
+
+    id_ = id_ == 0xFFFFFFFF ? 0 : id_ + 1;
+    auto e = std::make_shared<Element>(node, 0, id_);
+    queue_.insert(e);
+    existence_[node] = e;
+  }
+  cv_.notify_one();
+}
+
+Node::ConstPtr BroadcastQueue::Pop() {
+  std::unique_lock<std::mutex> lock(mutex_);
+  cv_.wait(lock, [this] { return !queue_.empty(); });
+
+  auto head = queue_.begin();
+  auto e = *head;
+  queue_.erase(head);  // We have to erase then insert to rebalance the tree.
+  if (++e->n_transmit < n_transmit_) {
+    queue_.insert(e);
+  } else {
+    existence_.erase(e->node);
+  }
+  return e->node;
+}
+
+BroadcastQueue::Element::Element(Node::ConstPtr node, uint32_t n_transmit,
+                                 uint32_t id)
+    : node(node), n_transmit(n_transmit), id(id) {}
+
+bool BroadcastQueue::ElementCmp(Element::ConstPtr a, Element::ConstPtr b) {
+  return a->n_transmit < b->n_transmit ||
+         (a->n_transmit == b->n_transmit && a->id > b->id);
+}
+
+//------------------------------------------------------------------------------
+
+Cluster::Cluster(uint16_t port, int32_t n_worker, uint32_t n_transmit)
+    : version_(0),
+      n_worker_(n_worker),
+      address_("0.0.0.0", port),
+      queue_(n_transmit) {}
 
 Cluster::~Cluster() { Stop(); }
-
-Cluster& Cluster::Start() {
-  if (server_) {
-    LOG(WARNING) << ToString() << " has listened on " << address_;
-    return *this;
-  }
-
-  sofa::pbrpc::RpcServerOptions option;
-  option.work_thread_num = n_worker_;
-  server_.reset(new sofa::pbrpc::RpcServer(option));
-
-  // sofa::pbrpc::RpcServer will take the ownership of the GossipServerImpl, and
-  // the GossipServerImpl will be deleted when sofa::pbrpc::RpcServer calls
-  // Stop().
-  if (!server_->RegisterService(new rpc::GossipServerImpl())) {
-    LOG(ERROR) << "Failed to register rpc services to cluster";
-    return *this;
-  }
-
-  if (!server_->Start(address_.ToString())) {
-    LOG(ERROR) << ToString() << " failed to listen on " << address_.ToString();
-    return *this;
-  }
-  LOG(INFO) << ToString() << " is listening on " << address_.ToString();
-  return *this;
-}
-
-Cluster& Cluster::Stop() {
-  if (server_) {
-    server_->Stop();
-    server_.reset(nullptr);
-  }
-  return *this;
-}
 
 Cluster& Cluster::Alive() {
   rpc::AliveMsg alive;
@@ -223,10 +255,95 @@ Cluster& Cluster::Alive() {
   return *this;
 }
 
+Cluster& Cluster::Start() {
+  StartServer() && StartRoutine();
+  return *this;
+}
+
+bool Cluster::StartServer() {
+  if (server_) {
+    LOG(WARNING) << ToString() << " has listened on " << address_;
+    return false;
+  }
+
+  sofa::pbrpc::RpcServerOptions option;
+  option.work_thread_num = n_worker_;
+  server_.reset(new sofa::pbrpc::RpcServer(option));
+
+  // sofa::pbrpc::RpcServer will take the ownership of the GossipServerImpl, and
+  // the GossipServerImpl will be deleted when sofa::pbrpc::RpcServer calls
+  // Stop().
+  if (!server_->RegisterService(new rpc::GossipServerImpl())) {
+    LOG(ERROR) << "Failed to register rpc services to cluster";
+    return false;
+  }
+
+  if (!server_->Start(address_.ToString())) {
+    LOG(ERROR) << ToString() << " failed to listen on " << address_.ToString();
+    return false;
+  }
+  LOG(INFO) << ToString() << " is listening on " << address_.ToString();
+  return true;
+}
+
+bool Cluster::StartRoutine() {
+  if (!probe_thread_) {
+    probe_thread_ =
+        util::CreateLoopThread([this]() { this->Probe(); }, probe_intvl_ms_);
+  }
+  if (!sync_thread_) {
+    sync_thread_ =
+        util::CreateLoopThread([this]() { this->Sync(); }, sync_intvl_ms_);
+  }
+  if (!gossip_thread_) {
+    gossip_thread_ =
+        util::CreateLoopThread([this]() { this->Gossip(); }, gossip_intvl_ms_);
+  }
+  return true;
+}
+
+Cluster& Cluster::Stop() {
+  StopServer();
+  StopRoutine();
+  return *this;
+}
+
+void Cluster::StopServer() {
+  if (server_) {
+    server_->Stop();
+    server_.reset(nullptr);
+  }
+}
+
+void Cluster::StopRoutine() {
+  if (probe_thread_) {
+    probe_thread_->Stop();
+  }
+  if (sync_thread_) {
+    sync_thread_->Stop();
+  }
+  if (gossip_thread_) {
+    gossip_thread_->Stop();
+  }
+}
+
+void Cluster::Probe() {}
+void Cluster::Sync() {}
+void Cluster::Gossip() {}
+
+void Cluster::Broadcast(Node::ConstPtr node) { queue_.Push(node); }
+
+void Cluster::Refute(Node::Ptr self, uint32_t version) {
+  version_ += version - version_ + 1;
+  self->set_version(version_);
+  // TODO(sxwang) Decrease Health
+  Broadcast(self);
+}
+
 void Cluster::RecvAlive(rpc::AliveMsg* alive) {
   std::lock_guard<std::mutex> lock(nodes_mutex_);
 
-  std::shared_ptr<Node> node = nullptr;
+  Node::Ptr node = nullptr;
   auto search = nodes_.find(alive->name());
   if (search == nodes_.end()) {  // New Node
     node = std::make_shared<Node>(alive);
@@ -238,13 +355,13 @@ void Cluster::RecvAlive(rpc::AliveMsg* alive) {
   if (strcmp(alive->name().c_str(), net::GetHostname()) == 0) {  // myself
     if (search == nodes_.end()) {  // internal boostrap
       LOG(INFO) << *this << " started itself: " << *node << ".";
-      // Broadcast(alive);
+      Broadcast(node);
     } else {                                    // external message
       if (*node > *alive || *node == *alive) {  // outdated message
         return;
       }
       // Refute will also make resetting work.
-      // Refute(alive);
+      Refute(node, alive->version());
     }
   } else {  // otherself
     // We only handle the reset and the new message and discard the conflict
@@ -254,8 +371,8 @@ void Cluster::RecvAlive(rpc::AliveMsg* alive) {
       *node = *alive;
       LOG(INFO) << log << " received(" << alive->DebugString() << ") -> "
                 << *node << ".";
-      // ClearTimer(node);
-      // Broadcast(alive);
+      // TODO(sxwang) ClearTimer(node);
+      Broadcast(node);
     }
   }
 }
