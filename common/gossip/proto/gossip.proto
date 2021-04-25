@@ -1,27 +1,24 @@
 syntax = "proto3";
 
-package common.gossip;
+package common.gossip.rpc;
 
 import "google/protobuf/empty.proto";
 
 option cc_generic_services = true;
 
-message Address {
-  string ip = 1;
-  uint32 port = 2;
+enum State {
+  ALIVE = 0;
+  SUSPECT = 1;
+  DEAD = 2;
+  LEFT = 3;
 }
 
 message Node {
   string name = 1;
-  Address addr = 2;
-  enum State {
-    ALIVE = 0;
-    SUSPECT = 1;
-    DEAD = 2;
-    LEFT = 3;
-  }
-  State state = 3;
-  bytes metadata = 4;
+  string ip = 2;
+  uint32 port = 3;
+  State state = 4;
+  bytes metadata = 5;
 }
 
 message PingReq {
@@ -31,7 +28,8 @@ message PingReq {
 
 message IndirectPingReq {
   PingReq ping = 1;
-  Address addr = 2;
+  string ip = 2;
+  uint32 port = 3;
 }
 
 message PingResp {
@@ -41,6 +39,14 @@ message PingResp {
     NACK = 1;
   }
   Type type = 2;
+}
+
+message AliveMsg {
+  uint32 version = 1;
+  string name = 2;
+  string ip = 3;
+  uint32 port = 4;
+  bytes metadata = 5;
 }
 
 message SuspectMsg {

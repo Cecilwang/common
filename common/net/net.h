@@ -17,10 +17,10 @@ limitations under the License.
 
 #include <iostream>
 #include <memory>
-#include <set>
 #include <sstream>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "common/util/macro.h"
 #include "common/util/type.h"
@@ -30,8 +30,13 @@ namespace net {
 
 class IP;
 
-std::string GetHostname();
-std::set<std::shared_ptr<IP>> GetPublicIPs();
+const char* GetHostname();
+const std::vector<std::shared_ptr<IP>>& GetPublicIPs();
+std::shared_ptr<IP> GetDelegateIP(const std::vector<std::shared_ptr<IP>>& ips,
+                                  std::shared_ptr<IP> ip);
+std::shared_ptr<IP> GetDelegateIP(const std::vector<std::shared_ptr<IP>>& ips,
+                                  const char* ip);
+
 bool IsIPv4(const char* ip);
 bool IsIPv6(const char* ip);
 
@@ -50,6 +55,9 @@ class IP {
   IPType type() const;
 
   virtual bool contain(const IP* other) const = 0;
+
+  bool operator==(const IP& other) const;
+  bool operator!=(const IP& other) const;
 
   virtual std::string ToString(bool verbose = false) const = 0;
   operator std::string() const;
@@ -111,8 +119,9 @@ std::shared_ptr<IP> CreateIP(ifaddrs* ifa);
 class Address {
  public:
   explicit Address(const std::string& ip = "0.0.0.0", uint16_t port = 80);
+  Address(const std::shared_ptr<IP>& ip, uint16_t port);
 
-  const std::string& ip() const;
+  const std::shared_ptr<IP>& ip() const;
   uint16_t port() const;
 
   bool operator==(const Address& other) const;
@@ -127,21 +136,6 @@ class Address {
   uint16_t port_;
 
   DISALLOW_COPY_AND_ASSIGN(Address);
-};
-
-class Node {
- public:
-  Node();
-
-  std::string ToString() const;
-  operator std::string() const;
-  friend std::ostream& operator<<(std::ostream& os, const Node& self);
-
- private:
-  std::string hostname_;
-  std::set<std::shared_ptr<IP>> ips_;
-
-  DISALLOW_COPY_AND_ASSIGN(Node);
 };
 
 }  // namespace net

@@ -92,18 +92,35 @@ TEST(TestAddress, TestSimple) {
   EXPECT_EQ(a1, a2);
   Address a3("0.0.0.0", 1);
   EXPECT_NE(a1, a3);
+  Address a4("0.0.0.1", 0);
+  EXPECT_NE(a1, a4);
   EXPECT_EQ(a1.ToString(), "0.0.0.0:0");
   EXPECT_EQ(std::string(a1), "0.0.0.0:0");
   EXPECT_EQ(static_cast<std::string>(a1), "0.0.0.0:0");
-  std::cout << a1 << std::endl;
   std::ostringstream ss;
   ss << a1;
   EXPECT_EQ(ss.str(), "0.0.0.0:0");
 }
 
-TEST(TestNode, TestSimple) {
-  Node n;
-  std::cout << n << std::endl;
+TEST(TestHostname, TestPrint) { std::cout << GetHostname() << std::endl; }
+
+TEST(TestPublicIPs, TestPrint) {
+  const auto& ips = GetPublicIPs();
+  for (const auto& x : ips) {
+    std::cout << x << std::endl;
+  }
+}
+
+TEST(TestNode, TestDelegateIP) {
+  auto ip1 = CreateIP("127.0.0.1");
+  auto ip2 = CreateIP("2001:0db8:85a3:08d3:1319:8a2e:0370:7344");
+  std::vector<std::shared_ptr<IP>> ips = {ip1, ip2};
+
+  EXPECT_EQ(GetDelegateIP(ips, "127.0.0.2"), nullptr);
+  EXPECT_EQ(GetDelegateIP(ips, ip1), ip1);
+  EXPECT_EQ(GetDelegateIP(ips, "0.0.0.0"), ip1);
+  EXPECT_EQ(GetDelegateIP(ips, ip2), ip2);
+  EXPECT_EQ(GetDelegateIP(ips, "::"), ip2);
 }
 
 }  // namespace net

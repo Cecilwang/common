@@ -47,11 +47,16 @@ TEST(TestCluster, TestPort) {
   c3.Start();
 }
 
+TEST(TestCluster, TestAlive) {
+  Cluster cluster(2333);
+  cluster.Start().Alive();
+}
+
 TEST(TestCluster, TestPing) {
   Cluster cluster(2333);
   cluster.Start();
 
-  GossipClientImpl client;
+  rpc::GossipClientImpl client;
   std::thread t([&client] {
     auto resp = client.Ping(net::Address("127.0.0.1", 2333), 1 * 1000);
     resp->PrintDebugString();

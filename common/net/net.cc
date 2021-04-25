@@ -44,59 +44,93 @@ namespace net {
 #define GetIPv6MaskFromIFA(src) \
   (reinterpret_cast<sockaddr_in6*>(src->ifa_netmask)->sin6_addr.s6_addr)
 
-const std::vector<std::shared_ptr<IP>> kRFC6890IPs({
-    CreateIP("0.0.0.0", 8),       CreateIP("10.0.0.0", 8),
-    CreateIP("100.64.0.0", 10),   CreateIP("127.0.0.0", 8),
-    CreateIP("169.254.0.0", 16),  CreateIP("172.16.0.0", 12),
-    CreateIP("192.0.0.0", 24),    CreateIP("192.0.0.0", 29),
-    CreateIP("192.0.2.0", 24),    CreateIP("192.88.99.0", 24),
-    CreateIP("192.168.0.0", 16),  CreateIP("198.18.0.0", 15),
-    CreateIP("198.51.100.0", 24), CreateIP("203.0.113.0", 24),
-    CreateIP("240.0.0.0", 4),     CreateIP("255.255.255.255", 32),
-    CreateIP("::1", 128),         CreateIP("::", 128),
-    CreateIP("64:ff9b::", 96),    CreateIP("::ffff:0:0", 96),
-    CreateIP("100::", 64),        CreateIP("2001::", 16),
-    CreateIP("2002::", 16),       CreateIP("fc00::", 7),
+const std::vector<std::shared_ptr<IP>> kPrivateIPs({
+    // RFC6890
+    CreateIP("0.0.0.0", 8),
+    CreateIP("10.0.0.0", 8),
+    CreateIP("100.64.0.0", 10),
+    CreateIP("127.0.0.0", 8),
+    CreateIP("169.254.0.0", 16),
+    CreateIP("172.16.0.0", 12),
+    CreateIP("192.0.0.0", 24),
+    CreateIP("192.0.0.0", 29),
+    CreateIP("192.0.2.0", 24),
+    CreateIP("192.88.99.0", 24),
+    CreateIP("192.168.0.0", 16),
+    CreateIP("198.18.0.0", 15),
+    CreateIP("198.51.100.0", 24),
+    CreateIP("203.0.113.0", 24),
+    CreateIP("240.0.0.0", 4),
+    CreateIP("255.255.255.255", 32),
+    CreateIP("::1", 128),
+    CreateIP("::", 128),
+    CreateIP("64:ff9b::", 96),
+    CreateIP("::ffff:0:0", 96),
+    CreateIP("100::", 64),
+    CreateIP("2001::", 16),
+    CreateIP("2002::", 16),
+    CreateIP("fc00::", 7),
     CreateIP("fe80::", 10),
+    // Docker
+    CreateIP("172.17.0.0", 16),
 });
 
-std::string GetHostname() {
-  char hostname[256];
-  if (gethostname(hostname, sizeof(hostname)) == 0) {
-    return std::string(hostname);
-  } else {
-    LOG(WARNING) << "Failed to gethostname, errno: " << errno;
-  }
-  return "localhost";
-}
-
-std::set<std::shared_ptr<IP>> GetPublicIPs() {
-  std::set<std::shared_ptr<IP>> ips;
-
-  ifaddrs* ifaddr = nullptr;
-  if (getifaddrs(&ifaddr) == -1) {
-    LOG(WARNING) << "Failed to getifaddrs, errno: " << errno;
-    return ips;
-  }
-
-  for (ifaddrs* ifa = ifaddr; ifa != nullptr; ifa = ifa->ifa_next) {
-    if (std::shared_ptr<IP> ip = CreateIP(ifa)) {
-      for (const auto& x : kRFC6890IPs) {
-        if (x->contain(ip.get())) {
-          ip = nullptr;
-          break;
-        }
-      }
-      if (ip != nullptr) {
-        ips.insert(ip);
-      }
+const char* GetHostname() {
+  static char hostname[256] = "";
+  if (strlen(hostname) == 0) {
+    if (gethostname(hostname, sizeof(hostname)) != 0) {
+      LOG(WARNING) << "Failed to gethostname, errno: " << errno;
+      strncpy(hostname, "localhost", strlen("localhost") + 1);
     }
   }
+  return hostname;
+}
 
-  freeifaddrs(ifaddr);
+const std::vector<std::shared_ptr<IP>>& GetPublicIPs() {
+  static std::vector<std::shared_ptr<IP>> ips;
+  if (ips.empty()) {
+    ifaddrs* ifaddr = nullptr;
+    if (getifaddrs(&ifaddr) == -1) {
+      LOG(WARNING) << "Failed to getifaddrs, errno: " << errno;
+      return ips;
+    }
 
+    for (ifaddrs* ifa = ifaddr; ifa != nullptr; ifa = ifa->ifa_next) {
+      if (std::shared_ptr<IP> ip = CreateIP(ifa)) {
+        for (const auto& x : kPrivateIPs) {
+          if (x->contain(ip.get())) {
+            ip = nullptr;
+            break;
+          }
+        }
+        if (ip != nullptr) {
+          ips.push_back(ip);
+        }
+      }
+    }
+
+    freeifaddrs(ifaddr);
+  }
   return ips;
-}  // namespace net
+}
+
+std::shared_ptr<IP> GetDelegateIP(const std::vector<std::shared_ptr<IP>>& ips,
+                                  std::shared_ptr<IP> ip) {
+  bool any_ipv4 = ip->ip() == "0.0.0.0";
+  bool any_ipv6 = ip->ip() == "::";
+  for (const auto& x : ips) {
+    if (ip->contain(x.get()) || (any_ipv4 && x->type() == IPType::kIPv4) ||
+        (any_ipv6 && x->type() == IPType::kIPv6)) {
+      return x;
+    }
+  }
+  return nullptr;
+}
+
+std::shared_ptr<IP> GetDelegateIP(const std::vector<std::shared_ptr<IP>>& ips,
+                                  const char* ip) {
+  return GetDelegateIP(ips, CreateIP(ip));
+}
 
 bool IsIPv4(const char* ip) {
   in_addr addr;
@@ -113,6 +147,9 @@ IP::IP(const char* ip, IPType type) : ip_(ip), type_(type) {}
 const std::string& IP::ip() const { return ip_; }
 
 IPType IP::type() const { return type_; }
+
+bool IP::operator==(const IP& other) const { return ip_ == other.ip_; }
+bool IP::operator!=(const IP& other) const { return ip_ != other.ip_; }
 
 IP::operator std::string() const { return ToString(); }
 
@@ -237,11 +274,14 @@ std::shared_ptr<IP> CreateIP(ifaddrs* ifa) {
 Address::Address(const std::string& ip, uint16_t port)
     : ip_(CreateIP(ip)), port_(port) {}
 
-const std::string& Address::ip() const { return ip_->ip(); }
+Address::Address(const std::shared_ptr<IP>& ip, uint16_t port)
+    : ip_(ip), port_(port) {}
+
+const std::shared_ptr<IP>& Address::ip() const { return ip_; }
 uint16_t Address::port() const { return port_; }
 
 bool Address::operator==(const Address& other) const {
-  return port_ == other.port_ && ip() == other.ip();
+  return port_ == other.port_ && ((*ip_) == (*(other.ip_)));
 }
 
 bool Address::operator!=(const Address& other) const {
@@ -257,28 +297,6 @@ std::string Address::ToString() const {
 Address::operator std::string() const { return ToString(); }
 
 std::ostream& operator<<(std::ostream& os, const Address& self) {
-  return os << self.ToString();
-}
-
-//------------------------------------------------------------------------------
-
-Node::Node() : hostname_(GetHostname()), ips_(GetPublicIPs()) {}
-
-std::string Node::ToString() const {
-  std::ostringstream ss;
-  ss << "Node(" << hostname_ << ":[";
-  bool first = true;
-  for (const auto& x : ips_) {
-    first ? ss << *x : ss << ", " << *x;
-    first = false;
-  }
-  ss << "])";
-  return ss.str();
-}
-
-Node::operator std::string() const { return ToString(); }
-
-std::ostream& operator<<(std::ostream& os, const Node& self) {
   return os << self.ToString();
 }
 

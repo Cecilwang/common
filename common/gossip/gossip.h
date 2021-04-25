@@ -13,8 +13,12 @@ limitations under the License.
 #ifndef COMMON_GOSSIP_GOSSIP_H_
 #define COMMON_GOSSIP_GOSSIP_H_
 
+#include <atomic>
 #include <memory>
+#include <mutex>  // NOLINT
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 
 #include "sofa/pbrpc/pbrpc.h"
 
@@ -25,6 +29,7 @@ limitations under the License.
 
 namespace common {
 namespace gossip {
+namespace rpc {
 
 class GossipServerImpl : public GossipServerAPI {
  public:
@@ -60,21 +65,69 @@ class GossipClientImpl {
   DISALLOW_COPY_AND_ASSIGN(GossipClientImpl);
 };
 
+}  // namespace rpc
+
+class Node {
+ public:
+  Node(uint32_t version, const std::string& name, const std::string& ip,
+       uint16_t port, rpc::State state, const std::string& metadata);
+  explicit Node(const rpc::AliveMsg* alive);
+
+  Node& operator=(const rpc::AliveMsg& alive);
+
+  bool Conflict(const rpc::AliveMsg* alive) const;
+  bool Reset(const rpc::AliveMsg* alive) const;
+
+  uint32_t version() const;
+  const std::string& name() const;
+  const std::string& ip() const;
+  uint16_t port() const;
+  rpc::State state() const;
+  const std::string& metadata() const;
+
+  std::string ToString(bool verbose = false) const;
+  operator std::string() const;
+  friend std::ostream& operator<<(std::ostream& os, const Node& self);
+
+ private:
+  uint32_t version_;
+  std::string name_;
+  std::string ip_;
+  uint16_t port_;
+  rpc::State state_;
+  std::string metadata_;
+
+  DISALLOW_COPY_AND_ASSIGN(Node);
+};
+
+bool operator>(const Node& self, const rpc::AliveMsg& alive);
+bool operator<=(const Node& self, const rpc::AliveMsg& alive);
+bool operator==(const Node& self, const rpc::AliveMsg& alive);
+
 class Cluster {
  public:
   explicit Cluster(uint16_t port = 2333, int32_t n_worker_ = 8);
   ~Cluster();
 
-  void Start();
-  void Stop();
+  Cluster& Start();
+  Cluster& Stop();
+  Cluster& Alive();
+
+  void RecvAlive(rpc::AliveMsg* alive);
 
   std::string ToString(bool verbose = false) const;
   operator std::string() const;
   friend std::ostream& operator<<(std::ostream& os, const Cluster& self);
 
  private:
-  net::Node self_;
+  std::atomic<uint32_t> version_;
+
   net::Address address_;
+
+  std::mutex nodes_mutex_;
+  std::unordered_map<std::string, std::shared_ptr<Node>> nodes_;
+
+  std::unordered_set<std::string> blacklist_;
 
   int32_t n_worker_;
   std::unique_ptr<sofa::pbrpc::RpcServer> server_ = nullptr;
