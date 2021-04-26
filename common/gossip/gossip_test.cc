@@ -72,46 +72,30 @@ TEST(TestBroadcastQueue, TestConcurrent) {
 }
 
 TEST(TestCluster, TestLog) {
-  Cluster c;
-  std::cout << c << std::endl;
-  std::cout << c.ToString(true) << std::endl;
+  Cluster c(2333, 8, 3, 100, 100, 100);
+  EXPECT_EQ(c.ToString(), "Cluster(0.0.0.0:2333)");
+  EXPECT_EQ(c.ToString(true),
+            "Cluster(version: 0 state: down, address: 0.0.0.0:2333)");
   c.Start();
-  std::cout << c.ToString(true) << std::endl;
+  EXPECT_EQ(c.ToString(true),
+            "Cluster(version: 0 state: up, address: 0.0.0.0:2333)");
   c.Start();
   c.Stop();
-  std::cout << c.ToString(true) << std::endl;
   c.Stop();
-}
-
-TEST(TestCluster, TestDestructors) {
-  Cluster c;
-  c.Start();
 }
 
 TEST(TestCluster, TestPort) {
-  Cluster c1;
+  Cluster c1(2333, 8, 3, 100, 100, 100);
   c1.Start();
-  Cluster c2;
+  Cluster c2(2333, 8, 3, 100, 100, 100);
   c2.Start();
-  Cluster c3(1111);
+  Cluster c3(1111, 8, 3, 100, 100, 100);
   c3.Start();
 }
 
-TEST(TestCluster, TestAlive) {
-  Cluster cluster(2333);
-  cluster.Alive().Start();
-}
-
 TEST(TestCluster, TestPing) {
-  Cluster cluster(2333);
-  cluster.Alive().Start();
-
-  rpc::GossipClientImpl client;
-  std::thread t([&client] {
-    auto resp = client.Ping(net::Address("127.0.0.1", 2333), 1 * 1000);
-    resp->PrintDebugString();
-  });
-  t.join();
+  Cluster c(2333, 8, 3, 100, 100, 100);
+  c.Alive().Start();
 }
 
 }  // namespace gossip

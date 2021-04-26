@@ -22,8 +22,14 @@ message Node {
 }
 
 message PingReq {
+  string dst = 1;
+  string src = 2;
+}
+
+message SuspectReq {
   uint32 version = 1;
-  string name = 2;
+  string dst = 2;
+  repeated string srcs = 3;
 }
 
 message IndirectPingReq {
@@ -49,12 +55,6 @@ message AliveMsg {
   bytes metadata = 5;
 }
 
-message SuspectMsg {
-  uint32 version = 1;
-  string name = 2;
-  repeated string from = 3;
-}
-
 message DeadMsg {
   uint32 version = 1;
   string name = 2;
@@ -70,6 +70,6 @@ service GossipServerAPI {
   rpc Ping(PingReq) returns (PingResp) {}
   rpc IndirectPing(IndirectPingReq) returns (PingResp) {}
   rpc Sync(SyncMsg) returns (SyncMsg) {}
-  rpc Suspect(SuspectMsg) returns (google.protobuf.Empty) {}
+  rpc Suspect(SuspectReq) returns (google.protobuf.Empty) {}
   rpc Dead(DeadMsg) returns (google.protobuf.Empty) {}
 }

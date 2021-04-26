@@ -12,6 +12,8 @@ limitations under the License.
 
 #include "common/gossip/gossip.h"
 
+#include <utility>
+
 #include "glog/logging.h"
 
 namespace common {
@@ -38,7 +40,7 @@ void GossipServerImpl::Sync(::google::protobuf::RpcController* cntl,
 }
 
 void GossipServerImpl::Suspect(::google::protobuf::RpcController* cntl,
-                               const SuspectMsg* req,
+                               const SuspectReq* req,
                                google::protobuf::Empty* resp,
                                ::google::protobuf::Closure* done) {
   done->Run();
@@ -52,33 +54,64 @@ void GossipServerImpl::Dead(::google::protobuf::RpcController* cntl,
 
 //------------------------------------------------------------------------------
 
+template <class REQ, class RESP>
+void CallFunc(GossipServerAPI_Stub*, sofa::pbrpc::RpcController*, const REQ*,
+              RESP*);
+
+template <>
+void CallFunc(GossipServerAPI_Stub* stub, sofa::pbrpc::RpcController* cntl,
+              const PingReq* req, PingResp* resp) {
+  stub->Ping(cntl, req, resp, nullptr);
+}
+
+template <>
+void CallFunc(GossipServerAPI_Stub* stub, sofa::pbrpc::RpcController* cntl,
+              const SuspectReq* req, ::google::protobuf::Empty* resp) {
+  stub->Suspect(cntl, req, resp, nullptr);
+}
+
 GossipClientImpl::GossipClientImpl()
     : client_(sofa::pbrpc::RpcClientOptions()) {}
 
-std::unique_ptr<PingResp> GossipClientImpl::Ping(const net::Address& address,
-                                                 uint64_t timeout) {
-  sofa::pbrpc::RpcChannel channel(&client_, address.ToString());
+template <class REQ, class RESP>
+bool GossipClientImpl::Send(const net::Address& addr, const REQ& req,
+                            RESP* resp, uint64_t timeout) {
+  sofa::pbrpc::RpcChannel channel(&client_, addr.ToString());
   GossipServerAPI_Stub stub(&channel);
 
   sofa::pbrpc::RpcController cntl;
   cntl.SetTimeout(timeout);
 
-  PingReq req;
-  std::unique_ptr<PingResp> resp(new PingResp());
-
-  stub.Ping(&cntl, &req, resp.get(), nullptr);
+  CallFunc(&stub, &cntl, &req, resp);
 
   if (cntl.Failed()) {
     LOG(ERROR) << "Failed to call Ping to " << cntl.RemoteAddress().c_str()
                << ": errcode[" << cntl.ErrorCode() << "], errMessage["
                << cntl.ErrorText() << "]";
-    return nullptr;
+    return false;
   }
-
-  return resp;
+  return true;
 }
 
 }  // namespace rpc
+
+//------------------------------------------------------------------------------
+
+int Health::score() {
+  std::lock_guard<std::mutex> lock(mutex_);
+  return score_;
+}
+
+Health& Health::operator+=(int val) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  score_ = std::min(std::max(1, score_ + val), upper_);
+  return *this;
+}
+
+int Health::operator*(int val) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  return score_ * val;
+}
 
 //------------------------------------------------------------------------------
 
@@ -86,16 +119,14 @@ Node::Node(uint32_t version, const std::string& name, const std::string& ip,
            uint16_t port, rpc::State state, const std::string& metadata)
     : version_(version),
       name_(name),
-      ip_(ip),
-      port_(port),
+      addr_(ip, port),
       state_(state),
       metadata_(metadata) {}
 
 Node::Node(const rpc::AliveMsg* alive)
     : version_(alive->version()),
       name_(alive->name()),
-      ip_(alive->ip()),
-      port_(alive->port()),
+      addr_(alive->ip(), alive->port()),
       state_(rpc::State::ALIVE),
       metadata_(alive->metadata()) {}
 
@@ -104,8 +135,8 @@ Node& Node::operator=(const rpc::AliveMsg& alive) {
     return *this;
   }
   version_ = alive.version();
-  ip_ = alive.ip();
-  port_ = alive.port();
+  addr_.set_ip(alive.ip());
+  addr_.set_port(alive.port());
   state_ = rpc::State::ALIVE;
   metadata_ = alive.metadata();
   return *this;
@@ -113,11 +144,9 @@ Node& Node::operator=(const rpc::AliveMsg& alive) {
 
 bool Node::Conflict(const rpc::AliveMsg* alive) const {
   return (name_ == alive->name()) &&
-         (ip_ != alive->ip() || port_ != alive->port() ||
+         (ip() != alive->ip() || port() != alive->port() ||
           metadata_ != alive->metadata());
 }
-
-void Node::set_version(uint32_t version) { version_ = version; }
 
 bool Node::Reset(const rpc::AliveMsg* alive) const {
   // Here, we can only recognize the reset by the content. However, of course,
@@ -129,33 +158,26 @@ bool Node::Reset(const rpc::AliveMsg* alive) const {
          Conflict(alive);
 }
 
+const net::Address& Node::ToAddress() const { return addr_; }
+
 uint32_t Node::version() const { return version_; }
+
+void Node::set_version(uint32_t version) { version_ = version; }
 
 const std::string& Node::name() const { return name_; }
 
-const std::string& Node::ip() const { return ip_; }
+const std::string& Node::ip() const { return addr_.ip()->ip(); }
 
-uint16_t Node::port() const { return port_; }
+uint16_t Node::port() const { return addr_.port(); }
 
 rpc::State Node::state() const { return state_; }
 
 const std::string& Node::metadata() const { return metadata_; }
 
-rpc::AliveMsg* Node::ToAliveMsg() const {
-  rpc::AliveMsg* alive = new rpc::AliveMsg();
-  alive->set_version(version_);
-  alive->set_name(name_);
-  alive->set_ip(ip_);
-  alive->set_port(port_);
-  alive->set_metadata(metadata_);
-  return alive;
-}
-
 std::string Node::ToString(bool verbose) const {
   std::ostringstream ss;
   if (verbose) {
-    ss << "Node(" << version_ << ", " << name_ << ", " << ip_ << ", " << port_
-       << ")";
+    ss << "Node(" << version_ << ", " << name_ << ", " << addr_ << ")";
   } else {
     ss << "Node(" << version_ << ", " << name_ << ")";
   }
@@ -188,11 +210,6 @@ bool operator==(const Node& node, const rpc::AliveMsg& alive) {
 BroadcastQueue::BroadcastQueue(uint32_t n_transmit)
     : n_transmit_(n_transmit), queue_(ElementCmp) {}
 
-size_t BroadcastQueue::Size() {
-  std::lock_guard<std::mutex> lock(mutex_);
-  return queue_.size();
-}
-
 void BroadcastQueue::Push(Node::ConstPtr node) {
   {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -202,8 +219,7 @@ void BroadcastQueue::Push(Node::ConstPtr node) {
       queue_.erase(queue_.find(search->second));
     }
 
-    id_ = id_ == 0xFFFFFFFF ? 0 : id_ + 1;
-    auto e = std::make_shared<Element>(node, 0, id_);
+    auto e = std::make_shared<Element>(node, 0, ++id_);
     queue_.insert(e);
     existence_[node] = e;
   }
@@ -225,6 +241,11 @@ Node::ConstPtr BroadcastQueue::Pop() {
   return e->node;
 }
 
+size_t BroadcastQueue::Size() {
+  std::lock_guard<std::mutex> lock(mutex_);
+  return queue_.size();
+}
+
 BroadcastQueue::Element::Element(Node::ConstPtr node, uint32_t n_transmit,
                                  uint32_t id)
     : node(node), n_transmit(n_transmit), id(id) {}
@@ -236,20 +257,30 @@ bool BroadcastQueue::ElementCmp(Element::ConstPtr a, Element::ConstPtr b) {
 
 //------------------------------------------------------------------------------
 
-Cluster::Cluster(uint16_t port, int32_t n_worker, uint32_t n_transmit)
+Cluster::Cluster(uint16_t port, int32_t n_worker, uint32_t n_transmit,
+                 uint64_t probe_inv_ms, uint64_t sync_inv_ms,
+                 uint64_t gossip_inv_ms)
     : version_(0),
+      probe_inv_ms_(probe_inv_ms),
+      sync_inv_ms_(sync_inv_ms),
+      gossip_inv_ms_(gossip_inv_ms),
+      addr_("0.0.0.0", port),
       n_worker_(n_worker),
-      address_("0.0.0.0", port),
       queue_(n_transmit) {}
 
 Cluster::~Cluster() { Stop(); }
 
-Cluster& Cluster::Alive() {
+Cluster& Cluster::Alive(const std::string& name) {
+  if (!name_.empty()) {
+    LOG(WARNING) << ToString() << " has been alive with " << name_;
+    return *this;
+  }
+  name_ = name.empty() ? net::GetHostname() : name;
   rpc::AliveMsg alive;
   alive.set_version(++version_);
-  alive.set_name(net::GetHostname());
-  alive.set_ip(net::GetDelegateIP(net::GetPublicIPs(), address_.ip())->ip());
-  alive.set_port(address_.port());
+  alive.set_name(name_);
+  alive.set_ip(net::GetDelegateIP(net::GetPublicIPs(), addr_.ip())->ip());
+  alive.set_port(addr_.port());
   alive.set_metadata("");
   RecvAlive(&alive);
   return *this;
@@ -262,7 +293,7 @@ Cluster& Cluster::Start() {
 
 bool Cluster::StartServer() {
   if (server_) {
-    LOG(WARNING) << ToString() << " has listened on " << address_;
+    LOG(WARNING) << ToString() << " has listened on " << addr_;
     return false;
   }
 
@@ -275,29 +306,30 @@ bool Cluster::StartServer() {
   // Stop().
   if (!server_->RegisterService(new rpc::GossipServerImpl())) {
     LOG(ERROR) << "Failed to register rpc services to cluster";
+    server_.reset(nullptr);
     return false;
   }
 
-  if (!server_->Start(address_.ToString())) {
-    LOG(ERROR) << ToString() << " failed to listen on " << address_.ToString();
+  if (!server_->Start(addr_.ToString())) {
+    LOG(ERROR) << ToString() << " failed to listen on " << addr_.ToString();
+    server_.reset(nullptr);
     return false;
   }
-  LOG(INFO) << ToString() << " is listening on " << address_.ToString();
+
+  LOG(INFO) << ToString() << " is listening on " << addr_.ToString();
   return true;
 }
 
 bool Cluster::StartRoutine() {
-  if (!probe_thread_) {
-    probe_thread_ =
-        util::CreateLoopThread([this]() { this->Probe(); }, probe_intvl_ms_);
+  if (!probe_t_) {
+    probe_t_ = util::CreateLoopThread([this] { Probe(); }, probe_inv_ms_, true);
   }
-  if (!sync_thread_) {
-    sync_thread_ =
-        util::CreateLoopThread([this]() { this->Sync(); }, sync_intvl_ms_);
+  if (!sync_t_) {
+    sync_t_ = util::CreateLoopThread([this] { Sync(); }, sync_inv_ms_, true);
   }
-  if (!gossip_thread_) {
-    gossip_thread_ =
-        util::CreateLoopThread([this]() { this->Gossip(); }, gossip_intvl_ms_);
+  if (!gossip_t_) {
+    gossip_t_ =
+        util::CreateLoopThread([this] { Gossip(); }, gossip_inv_ms_, true);
   }
   return true;
 }
@@ -312,48 +344,156 @@ void Cluster::StopServer() {
   if (server_) {
     server_->Stop();
     server_.reset(nullptr);
+    LOG(INFO) << *this << " stoped server.";
   }
 }
 
 void Cluster::StopRoutine() {
-  if (probe_thread_) {
-    probe_thread_->Stop();
+  if (probe_t_) {
+    probe_t_->Stop();
   }
-  if (sync_thread_) {
-    sync_thread_->Stop();
+  if (sync_t_) {
+    sync_t_->Stop();
   }
-  if (gossip_thread_) {
-    gossip_thread_->Stop();
+  if (gossip_t_) {
+    gossip_t_->Stop();
   }
 }
 
-void Cluster::Probe() {}
+void Cluster::Probe() {
+  // We don’t need to guarantee that nodes_v_ is the same in each iteration.
+  Node::Ptr node = nullptr;
+  for (size_t n_checked = 0; !node; ++n_checked) {
+    nodes_mutex_.lock();
+
+    size_t n = nodes_v_.size();
+    if (n_checked >= n) {  // Have checked all nodes in this round.
+      nodes_mutex_.unlock();
+      return;
+    }
+
+    if (probe_i_ < n) {  // Try to fetch a node
+      node = nodes_v_[probe_i_];
+      if (node->name() == name_ ||  // self
+          node->state() == rpc::State::DEAD ||
+          node->state() == rpc::State::LEFT) {
+        node = nullptr;  // Skip this one
+      }
+      nodes_mutex_.unlock();
+      ++probe_i_;
+    } else {  // at the end
+      nodes_mutex_.unlock();
+      ShuffleNodes();  // Kick off dead nodes then shuffle
+      probe_i_ = 0;
+    }
+  }
+
+  // TODO(sxwang)
+  SendProbe(node);
+}
+
 void Cluster::Sync() {}
+
 void Cluster::Gossip() {}
 
-void Cluster::Broadcast(Node::ConstPtr node) { queue_.Push(node); }
+void Cluster::SendProbe(Node::ConstPtr node) {
+  uint64_t timeout = health_ * probe_inv_ms_;
+  if ((node->state() == rpc::State::ALIVE && SendPing(node, timeout)) ||
+      (node->state() != rpc::State::ALIVE && SendSuspect(node, timeout))) {
+    health_ += -1;
+    return;
+  }
+  nodes_mutex_.lock();
+  auto nodes = GetRandomNodes(3, [this, &node](Node::ConstPtr other) {
+    return other->name() == name_ || other->name() == node->name() ||
+           other->state() != rpc::State::ALIVE;
+  });
+  nodes_mutex_.unlock();
+  for (const auto& x : nodes) {
+    int ret = SendIndirectPing(x, timeout);
+    if (ret == 0) {  // ack
+      health_ += -1;
+      break;
+    } else if (ret == -1) {  // failed
+      health_ += 1;
+    }  // nack
+  }
+  rpc::SuspectReq suspect;
+  suspect.set_version(node->version());
+  suspect.set_dst(node->name());
+  suspect.add_srcs(name_);
+  RecvSuspect(&suspect);
+}
 
-void Cluster::Refute(Node::Ptr self, uint32_t version) {
-  version_ += version - version_ + 1;
-  self->set_version(version_);
-  // TODO(sxwang) Decrease Health
-  Broadcast(self);
+bool Cluster::SendPing(Node::ConstPtr node, uint64_t timeout) {
+  rpc::PingReq req;
+  req.set_dst(node->name());
+  req.set_src(name_);
+  rpc::PingResp resp;
+  return client_.Send(node->ToAddress(), req, &resp, timeout);
+}
+
+bool Cluster::SendSuspect(Node::ConstPtr node, uint64_t timeout) {
+  rpc::SuspectReq req;
+  req.set_version(node->version());
+  req.set_dst(node->name());
+  req.add_srcs(name_);
+  ::google::protobuf::Empty resp;
+  return client_.Send(node->ToAddress(), req, &resp, timeout);
+}
+
+int Cluster::SendIndirectPing(Node::ConstPtr node, uint64_t timeout) {
+  return -1;
+}
+
+void Cluster::ShuffleNodes() {
+  std::lock_guard<std::mutex> lock(nodes_mutex_);
+  size_t n = nodes_v_.size();
+  for (size_t i = 0; i < n;) {
+    if (nodes_v_[i]->state() == rpc::State::DEAD /* && dead for enough time*/) {
+      nodes_m_.erase(nodes_v_[i]->name());
+      std::swap(nodes_v_[i], nodes_v_[n - 1]);
+      nodes_v_.pop_back();
+      --n;
+    } else {
+      ++i;
+    }
+  }
+  std::random_shuffle(nodes_v_.begin(), nodes_v_.end());
+}
+
+template <class F>
+std::unordered_set<Node::Ptr> Cluster::GetRandomNodes(size_t k, F&& f) {
+  std::unordered_set<Node::Ptr> ret;
+  std::lock_guard<std::mutex> lock(nodes_mutex_);
+  size_t n = nodes_v_.size();
+  for (size_t i = 0, j = 0; j < k && i < n; ++i) {
+    auto node = nodes_v_[util::Uniform(0, n - 1)];
+    if (!f(node) && ret.find(node) == ret.end()) {
+      ++j;
+      ret.insert(node);
+    }
+  }
+  return ret;
 }
 
 void Cluster::RecvAlive(rpc::AliveMsg* alive) {
   std::lock_guard<std::mutex> lock(nodes_mutex_);
 
   Node::Ptr node = nullptr;
-  auto search = nodes_.find(alive->name());
-  if (search == nodes_.end()) {  // New Node
+  auto search = nodes_m_.find(alive->name());
+  if (search == nodes_m_.end()) {  // New Node
     node = std::make_shared<Node>(alive);
-    nodes_[alive->name()] = node;
+    nodes_m_[alive->name()] = node;
+    nodes_v_.push_back(node);
+    size_t n = nodes_v_.size();
+    std::swap(nodes_v_[util::Uniform(0, n - 1)], nodes_v_[n - 1]);
   } else {
     node = search->second;
   }
 
-  if (strcmp(alive->name().c_str(), net::GetHostname()) == 0) {  // myself
-    if (search == nodes_.end()) {  // internal boostrap
+  if (alive->name() == name_) {      // myself
+    if (search == nodes_m_.end()) {  // internal boostrap
       LOG(INFO) << *this << " started itself: " << *node << ".";
       Broadcast(node);
     } else {                                    // external message
@@ -364,8 +504,7 @@ void Cluster::RecvAlive(rpc::AliveMsg* alive) {
       Refute(node, alive->version());
     }
   } else {  // otherself
-    // We only handle the reset and the new message and discard the conflict
-    // message.
+    // We only handle the reset/new message and discard the conflict message.
     if (node->Reset(alive) || *node <= *alive) {
       auto log = node->ToString();
       *node = *alive;
@@ -377,14 +516,25 @@ void Cluster::RecvAlive(rpc::AliveMsg* alive) {
   }
 }
 
+void Cluster::RecvSuspect(rpc::SuspectReq* suspect) {}
+
+void Cluster::Refute(Node::Ptr self, uint32_t version) {
+  version_ += version - version_ + 1;
+  self->set_version(version_);
+  health_ += 1;
+  Broadcast(self);
+}
+
+void Cluster::Broadcast(Node::ConstPtr node) { queue_.Push(node); }
+
 std::string Cluster::ToString(bool verbose) const {
   std::ostringstream ss;
   if (verbose) {
     ss << "Cluster(version: " << version_
        << " state: " << (server_ ? "up" : "down")
-       << ", address: " << address_.ToString() << ")";
+       << ", address: " << addr_.ToString() << ")";
   } else {
-    ss << "Cluster(" << address_.ToString() << ")";
+    ss << "Cluster(" << addr_.ToString() << ")";
   }
   return ss.str();
 }

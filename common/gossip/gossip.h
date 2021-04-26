@@ -21,6 +21,7 @@ limitations under the License.
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
 
 #include "sofa/pbrpc/pbrpc.h"
 
@@ -45,7 +46,7 @@ class GossipServerImpl : public GossipServerAPI {
                     ::google::protobuf::Closure* done) override;
   void Sync(::google::protobuf::RpcController* cntl, const SyncMsg* req,
             SyncMsg* resp, ::google::protobuf::Closure* done) override;
-  void Suspect(::google::protobuf::RpcController* cntl, const SuspectMsg* req,
+  void Suspect(::google::protobuf::RpcController* cntl, const SuspectReq* req,
                google::protobuf::Empty* resp,
                ::google::protobuf::Closure* done) override;
   void Dead(::google::protobuf::RpcController* cntl, const DeadMsg* req,
@@ -60,7 +61,9 @@ class GossipClientImpl {
  public:
   GossipClientImpl();
 
-  std::unique_ptr<PingResp> Ping(const net::Address& address, uint64_t timeout);
+  template <class REQ, class RESP>
+  bool Send(const net::Address& addr, const REQ& req, RESP* resp,
+            uint64_t timeout);
 
  private:
   sofa::pbrpc::RpcClient client_;
@@ -69,6 +72,18 @@ class GossipClientImpl {
 };
 
 }  // namespace rpc
+
+struct Health {
+  int score();
+
+  Health& operator+=(int val);
+  int operator*(int val);
+
+ private:
+  std::mutex mutex_;
+  int score_ = 1;
+  int upper_ = 8;
+};
 
 class Node {
  public:
@@ -84,16 +99,16 @@ class Node {
   bool Conflict(const rpc::AliveMsg* alive) const;
   bool Reset(const rpc::AliveMsg* alive) const;
 
-  void set_version(uint32_t version);
+  const net::Address& ToAddress() const;
 
   uint32_t version() const;
+  void set_version(uint32_t version);
   const std::string& name() const;
   const std::string& ip() const;
   uint16_t port() const;
   rpc::State state() const;
   const std::string& metadata() const;
 
-  rpc::AliveMsg* ToAliveMsg() const;
   std::string ToString(bool verbose = false) const;
   operator std::string() const;
   friend std::ostream& operator<<(std::ostream& os, const Node& self);
@@ -101,8 +116,7 @@ class Node {
  private:
   uint32_t version_;
   std::string name_;
-  std::string ip_;
-  uint16_t port_;
+  net::Address addr_;
   rpc::State state_;
   std::string metadata_;
 
@@ -117,10 +131,10 @@ class BroadcastQueue {
  public:
   explicit BroadcastQueue(uint32_t n_transmit);
 
-  size_t Size();
-
   void Push(Node::ConstPtr node);
   Node::ConstPtr Pop();
+
+  size_t Size();
 
  private:
   struct Element {
@@ -149,10 +163,12 @@ class BroadcastQueue {
 class Cluster {
  public:
   explicit Cluster(uint16_t port = 2333, int32_t n_worker_ = 8,
-                   uint32_t n_transmit = 3);
+                   uint32_t n_transmit = 3, uint64_t probe_inv_ms = 500,
+                   uint64_t sync_inv_ms = 30 * 1000,
+                   uint64_t gossip_inv_ms = 200);
   ~Cluster();
 
-  Cluster& Alive();
+  Cluster& Alive(const std::string& name = "");
 
   Cluster& Start();
   bool StartServer();
@@ -166,10 +182,21 @@ class Cluster {
   void Sync();
   void Gossip();
 
-  void Broadcast(Node::ConstPtr node);
+  void SendProbe(Node::ConstPtr node);
+  bool SendPing(Node::ConstPtr node, uint64_t timeout);
+  bool SendSuspect(Node::ConstPtr node, uint64_t timeout);
+  int SendIndirectPing(Node::ConstPtr node, uint64_t timeout);
+
+  void ShuffleNodes();
+  template <class F>
+  std::unordered_set<Node::Ptr> GetRandomNodes(size_t k, F&& f);
+
+  void RecvAlive(rpc::AliveMsg* alive);
+  void RecvSuspect(rpc::SuspectReq* suspect);
 
   void Refute(Node::Ptr node, uint32_t version);
-  void RecvAlive(rpc::AliveMsg* alive);
+
+  void Broadcast(Node::ConstPtr node);
 
   std::string ToString(bool verbose = false) const;
   operator std::string() const;
@@ -177,22 +204,29 @@ class Cluster {
 
  private:
   std::atomic<uint32_t> version_;
-
-  int32_t n_worker_;
-  net::Address address_;
-  std::unique_ptr<sofa::pbrpc::RpcServer> server_ = nullptr;
+  std::string name_;
+  Health health_;
 
   std::mutex nodes_mutex_;
-  std::unordered_map<std::string, Node::Ptr> nodes_;
-  std::unordered_set<std::string> blacklist_;
-  BroadcastQueue queue_;
+  std::unordered_map<std::string, Node::Ptr> nodes_m_;
+  std::vector<Node::Ptr> nodes_v_;
+  // std::unordered_set<std::string> blacklist_;
 
-  uint64_t probe_intvl_ms_ = 500;
-  uint64_t sync_intvl_ms_ = 30 * 1000;
-  uint64_t gossip_intvl_ms_ = 200;
-  std::unique_ptr<util::Thread> probe_thread_ = nullptr;
-  std::unique_ptr<util::Thread> sync_thread_ = nullptr;
-  std::unique_ptr<util::Thread> gossip_thread_ = nullptr;
+  size_t probe_i_ = 0;
+  uint64_t probe_inv_ms_ = 500;
+  std::unique_ptr<util::Thread> probe_t_ = nullptr;
+  uint64_t sync_inv_ms_ = 30 * 1000;
+  std::unique_ptr<util::Thread> sync_t_ = nullptr;
+  uint64_t gossip_inv_ms_ = 200;
+  std::unique_ptr<util::Thread> gossip_t_ = nullptr;
+
+  rpc::GossipClientImpl client_;
+
+  net::Address addr_;
+  int32_t n_worker_;
+  std::unique_ptr<sofa::pbrpc::RpcServer> server_ = nullptr;
+
+  BroadcastQueue queue_;
 
   DISALLOW_COPY_AND_ASSIGN(Cluster);
 };

@@ -14,6 +14,12 @@ cc_library(
 )
 
 cc_library(
+    name = "random",
+    srcs = ["random.cc"],
+    hdrs = ["random.h"],
+)
+
+cc_library(
     name = "time",
     srcs = ["time.cc"],
     hdrs = ["time.h"],
@@ -32,6 +38,7 @@ cc_library(
     hdrs = ["thread.h"],
     deps = [
         ":macro",
+        ":random",
         ":time",
     ],
 )
@@ -49,6 +56,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":generator",
+        ":random",
         ":string",
         ":thread",
         ":time",

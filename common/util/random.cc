@@ -10,32 +10,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "common/util/thread.h"
+#include "common/util/random.h"
 
 namespace common {
 namespace util {
 
-Thread::~Thread() { Stop(); }
+RNG::RNG(int seed) : generator_(seed) {}
 
-void Thread::Idle(uint64_t ms) { SleepForMS(ms); }
+void RNG::SetSeed(int seed) { generator_.seed(seed); }
 
-void Thread::Stop() {
-  if (running_) {
-    set_running(false);
-    cv_.notify_all();
-    thread_.join();
-  }
+size_t RNG::Uniform(size_t low, size_t high) {
+  std::uniform_int_distribution<size_t> distribution(low, high);
+  return distribution(generator_);
 }
 
-void Thread::set_running(bool running) {
-  std::lock_guard<std::mutex> lock(mutex_);
-  running_ = running;
-}
-
-void Thread::WaitUntilStop() {
-  std::unique_lock<std::mutex> lock(mutex_);
-  cv_.wait(lock, [this] { return !running_; });
-}
+size_t Uniform(size_t low, size_t high) { return kRNG.Uniform(low, high); }
 
 }  // namespace util
 }  // namespace common

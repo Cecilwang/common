@@ -21,6 +21,8 @@ limitations under the License.
 #include <utility>
 
 #include "common/util/macro.h"
+#include "common/util/random.h"
+#include "common/util/time.h"
 
 namespace common {
 namespace util {
@@ -97,7 +99,11 @@ class LoopThreadWrap : public Thread {
 };
 
 template <class F>
-std::unique_ptr<Thread> CreateLoopThread(F&& f, uint64_t interval_ms) {
+std::unique_ptr<Thread> CreateLoopThread(F&& f, uint64_t interval_ms,
+                                         bool delay = false) {
+  if (delay) {
+    SleepForMS(Uniform(0, interval_ms));
+  }
   return std::unique_ptr<Thread>(
       new LoopThreadWrap<F>(std::forward<F>(f), interval_ms));
 }

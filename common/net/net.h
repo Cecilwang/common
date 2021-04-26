@@ -122,7 +122,9 @@ class Address {
   explicit Address(const std::string& ip = "0.0.0.0", uint16_t port = 80);
   Address(IP::ConstPtr ip, uint16_t port);
 
+  void set_ip(const std::string& ip);
   IP::ConstPtr ip() const;
+  void set_port(uint16_t port);
   uint16_t port() const;
 
   bool operator==(const Address& other) const;

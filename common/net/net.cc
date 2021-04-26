@@ -278,7 +278,12 @@ Address::Address(const std::string& ip, uint16_t port)
 
 Address::Address(IP::ConstPtr ip, uint16_t port) : ip_(ip), port_(port) {}
 
+void Address::set_ip(const std::string& ip) { ip_ = CreateIP(ip); }
+
 IP::ConstPtr Address::ip() const { return ip_; }
+
+void Address::set_port(uint16_t port) { port_ = port; }
+
 uint16_t Address::port() const { return port_; }
 
 bool Address::operator==(const Address& other) const {
