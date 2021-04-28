@@ -30,7 +30,7 @@ namespace rpc {
 
 DefineSend(Ping, ::google::protobuf::Empty, ::google::protobuf::Empty);
 DefineSend(IndirectPing, PingReq, AckResp);
-DefineSend(Suspect, SuspectReq, ::google::protobuf::Empty);
+DefineSend(Suspect, SuspectMsg, ::google::protobuf::Empty);
 
 #undef DefineSend
 
@@ -93,7 +93,7 @@ void ServerImpl::IndirectPing(::google::protobuf::RpcController* cntl,
 }
 
 void ServerImpl::Suspect(::google::protobuf::RpcController* cntl,
-                         const SuspectReq* req, ::google::protobuf::Empty* resp,
+                         const SuspectMsg* req, ::google::protobuf::Empty* resp,
                          ::google::protobuf::Closure* done) {
   brpc::ClosureGuard done_guard(done);
 }
@@ -156,6 +156,15 @@ Node& Node::operator=(const rpc::AliveMsg& alive) {
   addr_.set_port(alive.port());
   state_ = rpc::State::ALIVE;
   metadata_ = alive.metadata();
+  return *this;
+}
+
+Node& Node::operator=(const rpc::SuspectMsg& suspect) {
+  if (name_ != alive.name()) {
+    return *this;
+  }
+  version_ = suspect.version();
+  state_ = rpc::State::SUSPECT;
   return *this;
 }
 
@@ -424,7 +433,7 @@ void Cluster::SendProbe(Node::ConstPtr node) {
     }  // nack
   }
   // All nack
-  rpc::SuspectReq suspect;
+  rpc::SuspectMsg suspect;
   suspect.set_version(node->version());
   suspect.set_dst(node->name());
   suspect.add_srcs(name_);
@@ -451,7 +460,7 @@ int Cluster::SendIndirectPing(Node::ConstPtr broker, Node::ConstPtr target,
 }
 
 bool Cluster::SendSuspect(Node::ConstPtr node, uint64_t timeout) {
-  rpc::SuspectReq req;
+  rpc::SuspectMsg req;
   req.set_version(node->version());
   req.set_dst(node->name());
   req.add_srcs(name_);
@@ -529,7 +538,21 @@ void Cluster::RecvAlive(rpc::AliveMsg* alive) {
   }
 }
 
-void Cluster::RecvSuspect(rpc::SuspectReq* suspect) {}
+void Cluster::RecvSuspect(rpc::SuspectMsg* suspect) {
+  std::lock_guard<std::mutex> lock(nodes_mutex_);
+
+  auto search = nodes_m_.find(suspect->dst());
+  if (search == nodes_m_.end()) {
+    return;
+  }
+
+  auto node = search->second;
+  if (suspect->version() < node->version()) {
+    return;
+  }
+
+  *node = *suspect;
+}
 
 void Cluster::Refute(Node::Ptr self, uint32_t version) {
   version_ += version - version_ + 1;

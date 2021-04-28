@@ -59,7 +59,7 @@ class ServerImpl : public ServerAPI {
             ::google::protobuf::Closure* done) override;
   void IndirectPing(::google::protobuf::RpcController* cntl, const PingReq* req,
                     AckResp* resp, ::google::protobuf::Closure* done) override;
-  void Suspect(::google::protobuf::RpcController* cntl, const SuspectReq* req,
+  void Suspect(::google::protobuf::RpcController* cntl, const SuspectMsg* req,
                google::protobuf::Empty* _,
                ::google::protobuf::Closure* done) override;
   void Sync(::google::protobuf::RpcController* cntl, const SyncMsg* req,
@@ -97,6 +97,7 @@ class Node {
   explicit Node(const rpc::AliveMsg* alive);
 
   Node& operator=(const rpc::AliveMsg& alive);
+  Node& operator=(const rpc::SuspectMsg& suspect);
 
   bool Conflict(const rpc::AliveMsg* alive) const;
   bool Reset(const rpc::AliveMsg* alive) const;
@@ -192,7 +193,7 @@ class Cluster {
   std::unordered_set<Node::Ptr> GetRandomNodes(size_t k, F&& f);
 
   void RecvAlive(rpc::AliveMsg* alive);
-  void RecvSuspect(rpc::SuspectReq* suspect);
+  void RecvSuspect(rpc::SuspectMsg* suspect);
 
   void Refute(Node::Ptr node, uint32_t version);
 
