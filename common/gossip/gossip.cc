@@ -28,9 +28,9 @@ namespace rpc {
     stub->FUNC(cntl, req, resp, nullptr);                         \
   }
 
-DefineSend(Ping, ::google::protobuf::Empty, ::google::protobuf::Empty);
+DefineSend(Ping, Empty, Empty);
 DefineSend(IndirectPing, PingReq, AckResp);
-DefineSend(Suspect, SuspectMsg, ::google::protobuf::Empty);
+DefineSend(Suspect, SuspectMsg, Empty);
 
 #undef DefineSend
 
@@ -70,20 +70,17 @@ ServerImpl& ServerImpl::Get() {
   return instance;
 }
 
-void ServerImpl::Ping(::google::protobuf::RpcController* cntl,
-                      const ::google::protobuf::Empty* req,
-                      ::google::protobuf::Empty* resp,
-                      ::google::protobuf::Closure* done) {
+void ServerImpl::Ping(RpcController* cntl, const Empty* req, Empty* resp,
+                      Closure* done) {
   brpc::ClosureGuard done_guard(done);
 }
 
-void ServerImpl::IndirectPing(::google::protobuf::RpcController* cntl,
-                              const PingReq* req, AckResp* resp,
-                              ::google::protobuf::Closure* done) {
+void ServerImpl::IndirectPing(RpcController* cntl, const PingReq* req,
+                              AckResp* resp, Closure* done) {
   brpc::ClosureGuard done_guard(done);
 
-  ::google::protobuf::Empty forward_req;
-  ::google::protobuf::Empty forward_resp;
+  Empty forward_req;
+  Empty forward_resp;
 
   if (Client::Send(req->ip(), req->port(), forward_req, &forward_resp)) {
     resp->set_type(AckResp_Type_ACK);
@@ -92,21 +89,18 @@ void ServerImpl::IndirectPing(::google::protobuf::RpcController* cntl,
   }
 }
 
-void ServerImpl::Suspect(::google::protobuf::RpcController* cntl,
-                         const SuspectMsg* req, ::google::protobuf::Empty* resp,
-                         ::google::protobuf::Closure* done) {
+void ServerImpl::Suspect(RpcController* cntl, const SuspectMsg* req,
+                         Empty* resp, Closure* done) {
   brpc::ClosureGuard done_guard(done);
 }
 
-void ServerImpl::Sync(::google::protobuf::RpcController* cntl,
-                      const SyncMsg* req, SyncMsg* resp,
-                      ::google::protobuf::Closure* done) {
+void ServerImpl::Sync(RpcController* cntl, const SyncMsg* req, SyncMsg* resp,
+                      Closure* done) {
   brpc::ClosureGuard done_guard(done);
 }
 
-void ServerImpl::Dead(::google::protobuf::RpcController* cntl,
-                      const DeadMsg* req, google::protobuf::Empty* resp,
-                      ::google::protobuf::Closure* done) {
+void ServerImpl::Dead(RpcController* cntl, const DeadMsg* req, Empty* resp,
+                      Closure* done) {
   brpc::ClosureGuard done_guard(done);
 }
 
@@ -160,7 +154,7 @@ Node& Node::operator=(const rpc::AliveMsg& alive) {
 }
 
 Node& Node::operator=(const rpc::SuspectMsg& suspect) {
-  if (name_ != alive.name()) {
+  if (name_ != suspect.dst()) {
     return *this;
   }
   version_ = suspect.version();
@@ -441,8 +435,8 @@ void Cluster::SendProbe(Node::ConstPtr node) {
 }
 
 bool Cluster::SendPing(Node::ConstPtr node, uint64_t timeout) {
-  ::google::protobuf::Empty req;
-  ::google::protobuf::Empty resp;
+  rpc::Empty req;
+  rpc::Empty resp;
   return rpc::Client::Send(node->ip(), node->port(), req, &resp, timeout, 0);
 }
 
@@ -464,7 +458,7 @@ bool Cluster::SendSuspect(Node::ConstPtr node, uint64_t timeout) {
   req.set_version(node->version());
   req.set_dst(node->name());
   req.add_srcs(name_);
-  ::google::protobuf::Empty resp;
+  rpc::Empty resp;
   return rpc::Client::Send(node->ip(), node->port(), req, &resp, timeout, 0);
 }
 

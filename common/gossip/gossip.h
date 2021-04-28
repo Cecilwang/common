@@ -36,6 +36,10 @@ namespace common {
 namespace gossip {
 namespace rpc {
 
+using RpcController = ::google::protobuf::RpcController;
+using Closure = ::google::protobuf::Closure;
+using Empty = ::google::protobuf::Empty;
+
 class Client {
  public:
   template <class REQ, class RESP>
@@ -54,19 +58,16 @@ class ServerImpl : public ServerAPI {
  public:
   static ServerImpl& Get();
 
-  void Ping(::google::protobuf::RpcController* cntl,
-            const ::google::protobuf::Empty* req, ::google::protobuf::Empty* _,
-            ::google::protobuf::Closure* done) override;
-  void IndirectPing(::google::protobuf::RpcController* cntl, const PingReq* req,
-                    AckResp* resp, ::google::protobuf::Closure* done) override;
-  void Suspect(::google::protobuf::RpcController* cntl, const SuspectMsg* req,
-               google::protobuf::Empty* _,
-               ::google::protobuf::Closure* done) override;
-  void Sync(::google::protobuf::RpcController* cntl, const SyncMsg* req,
-            SyncMsg* resp, ::google::protobuf::Closure* done) override;
-  void Dead(::google::protobuf::RpcController* cntl, const DeadMsg* req,
-            google::protobuf::Empty* resp,
-            ::google::protobuf::Closure* done) override;
+  void Ping(RpcController* cntl, const Empty* req, Empty* _,
+            Closure* done) override;
+  void IndirectPing(RpcController* cntl, const PingReq* req, AckResp* resp,
+                    Closure* done) override;
+  void Suspect(RpcController* cntl, const SuspectMsg* req, Empty* _,
+               Closure* done) override;
+  void Sync(RpcController* cntl, const SyncMsg* req, SyncMsg* resp,
+            Closure* done) override;
+  void Dead(RpcController* cntl, const DeadMsg* req, Empty* resp,
+            Closure* done) override;
 
  private:
   ServerImpl() = default;

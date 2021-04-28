@@ -111,7 +111,7 @@ std::unique_ptr<Thread> CreateLoopThread(F&& f, uint64_t interval_ms,
 
 class Timer : public Thread {
  public:
-  Timer(uint64_t timeout_ms) : timeout_ms_(timeout_ms) {}
+  explicit Timer(uint64_t timeout_ms) : timeout_ms_(timeout_ms) {}
 
   void Run() override;
   virtual void _Run() = 0;
