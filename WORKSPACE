@@ -6,10 +6,6 @@ common_deps()
 
 ################### CC ###################
 
-load("//third_party/cpplint:cpplint_deps.bzl", "cpplint_deps")
-
-cpplint_deps()
-
 load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
 
 protobuf_deps()

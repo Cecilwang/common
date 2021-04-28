@@ -17,10 +17,10 @@ scala_import(
     runtime_deps = [
         "@maven//:ch_qos_logback_logback_core",
         "@maven//:com_typesafe_config",
+        "@maven//:org_scala_graph_graph_core_2_12",
         # I'm not sure the following deps are necessary or not.
         # Maybe they will be added by scala_binary automated.
         # Just uncomment them on demand.
-        #"@maven//:org_scala_graph_graph_core_2_12",
         #"@maven//:org_scala_lang_scala_library",
         #"@maven//:org_scala_lang_scala_reflect",
         #"@maven//:org_scalactic_scalactic_2_12",

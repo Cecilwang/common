@@ -23,7 +23,8 @@ limitations under the License.
 #include <unordered_set>
 #include <vector>
 
-#include "sofa/pbrpc/pbrpc.h"
+#include "brpc/channel.h"
+#include "brpc/server.h"
 
 #include "common/net/net.h"
 #include "common/util/macro.h"
@@ -59,15 +60,13 @@ class GossipServerImpl : public GossipServerAPI {
 
 class GossipClientImpl {
  public:
-  GossipClientImpl();
+  GossipClientImpl() = default;
 
   template <class REQ, class RESP>
-  bool Send(const net::Address& addr, const REQ& req, RESP* resp,
-            uint64_t timeout);
+  bool Send(const std::string& ip, uint16_t port, const REQ& req, RESP* resp,
+            uint64_t timeout_ms = 500, int32_t n_retry = 3);
 
  private:
-  sofa::pbrpc::RpcClient client_;
-
   DISALLOW_COPY_AND_ASSIGN(GossipClientImpl);
 };
 
@@ -98,8 +97,6 @@ class Node {
 
   bool Conflict(const rpc::AliveMsg* alive) const;
   bool Reset(const rpc::AliveMsg* alive) const;
-
-  const net::Address& ToAddress() const;
 
   uint32_t version() const;
   void set_version(uint32_t version);
@@ -162,8 +159,8 @@ class BroadcastQueue {
 
 class Cluster {
  public:
-  explicit Cluster(uint16_t port = 2333, int32_t n_worker_ = 8,
-                   uint32_t n_transmit = 3, uint64_t probe_inv_ms = 500,
+  explicit Cluster(uint16_t port = 2333, uint32_t n_transmit = 3,
+                   uint64_t probe_inv_ms = 500,
                    uint64_t sync_inv_ms = 30 * 1000,
                    uint64_t gossip_inv_ms = 200);
   ~Cluster();
@@ -223,8 +220,7 @@ class Cluster {
   rpc::GossipClientImpl client_;
 
   net::Address addr_;
-  int32_t n_worker_;
-  std::unique_ptr<sofa::pbrpc::RpcServer> server_ = nullptr;
+  brpc::Server server_;
 
   BroadcastQueue queue_;
 

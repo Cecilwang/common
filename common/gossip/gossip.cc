@@ -23,71 +23,77 @@ namespace rpc {
 void GossipServerImpl::Ping(::google::protobuf::RpcController* cntl,
                             const PingReq* req, PingResp* resp,
                             ::google::protobuf::Closure* done) {
+  brpc::ClosureGuard done_guard(done);
   resp->set_type(PingResp_Type_ACK);
-  done->Run();
 }
 
 void GossipServerImpl::IndirectPing(::google::protobuf::RpcController* cntl,
                                     const IndirectPingReq* req, PingResp* resp,
                                     ::google::protobuf::Closure* done) {
-  done->Run();
+  brpc::ClosureGuard done_guard(done);
 }
 
 void GossipServerImpl::Sync(::google::protobuf::RpcController* cntl,
                             const SyncMsg* req, SyncMsg* resp,
                             ::google::protobuf::Closure* done) {
-  done->Run();
+  brpc::ClosureGuard done_guard(done);
 }
 
 void GossipServerImpl::Suspect(::google::protobuf::RpcController* cntl,
                                const SuspectReq* req,
                                google::protobuf::Empty* resp,
                                ::google::protobuf::Closure* done) {
-  done->Run();
+  brpc::ClosureGuard done_guard(done);
 }
 
 void GossipServerImpl::Dead(::google::protobuf::RpcController* cntl,
                             const DeadMsg* req, google::protobuf::Empty* resp,
                             ::google::protobuf::Closure* done) {
-  done->Run();
+  brpc::ClosureGuard done_guard(done);
 }
 
 //------------------------------------------------------------------------------
 
 template <class REQ, class RESP>
-void CallFunc(GossipServerAPI_Stub*, sofa::pbrpc::RpcController*, const REQ*,
-              RESP*);
+void CallFunc(GossipServerAPI_Stub*, brpc::Controller*, const REQ*, RESP*);
 
 template <>
-void CallFunc(GossipServerAPI_Stub* stub, sofa::pbrpc::RpcController* cntl,
+void CallFunc(GossipServerAPI_Stub* stub, brpc::Controller* cntl,
               const PingReq* req, PingResp* resp) {
   stub->Ping(cntl, req, resp, nullptr);
 }
 
 template <>
-void CallFunc(GossipServerAPI_Stub* stub, sofa::pbrpc::RpcController* cntl,
+void CallFunc(GossipServerAPI_Stub* stub, brpc::Controller* cntl,
               const SuspectReq* req, ::google::protobuf::Empty* resp) {
   stub->Suspect(cntl, req, resp, nullptr);
 }
 
-GossipClientImpl::GossipClientImpl()
-    : client_(sofa::pbrpc::RpcClientOptions()) {}
-
 template <class REQ, class RESP>
-bool GossipClientImpl::Send(const net::Address& addr, const REQ& req,
-                            RESP* resp, uint64_t timeout) {
-  sofa::pbrpc::RpcChannel channel(&client_, addr.ToString());
-  GossipServerAPI_Stub stub(&channel);
+bool GossipClientImpl::Send(const std::string& ip, uint16_t port,
+                            const REQ& req, RESP* resp, uint64_t timeout_ms,
+                            int32_t n_retry) {
+  brpc::ChannelOptions options;
+  options.timeout_ms = timeout_ms;
+  options.max_retry = n_retry;
 
-  sofa::pbrpc::RpcController cntl;
-  cntl.SetTimeout(timeout);
+  brpc::Channel channel;
+  if (channel.Init(ip.c_str(), port, &options) != 0) {
+    LOG(ERROR) << "Fail to initialize channel";
+    return false;
+  }
+
+  brpc::Controller cntl;
+  // cntl.set_log_id(log_id ++);
+
+  GossipServerAPI_Stub stub(&channel);
 
   CallFunc(&stub, &cntl, &req, resp);
 
   if (cntl.Failed()) {
-    LOG(ERROR) << "Failed to call Ping to " << cntl.RemoteAddress().c_str()
-               << ": errcode[" << cntl.ErrorCode() << "], errMessage["
-               << cntl.ErrorText() << "]";
+    LOG(ERROR) << "Failed to send to " << cntl.remote_side() << ": errcode["
+               << cntl.ErrorCode() << "], errMessage[" << cntl.ErrorText()
+               << "]";
     return false;
   }
   return true;
@@ -157,8 +163,6 @@ bool Node::Reset(const rpc::AliveMsg* alive) const {
   return (state_ == rpc::State::DEAD || state_ == rpc::State::LEFT) &&
          Conflict(alive);
 }
-
-const net::Address& Node::ToAddress() const { return addr_; }
 
 uint32_t Node::version() const { return version_; }
 
@@ -257,15 +261,13 @@ bool BroadcastQueue::ElementCmp(Element::ConstPtr a, Element::ConstPtr b) {
 
 //------------------------------------------------------------------------------
 
-Cluster::Cluster(uint16_t port, int32_t n_worker, uint32_t n_transmit,
-                 uint64_t probe_inv_ms, uint64_t sync_inv_ms,
-                 uint64_t gossip_inv_ms)
+Cluster::Cluster(uint16_t port, uint32_t n_transmit, uint64_t probe_inv_ms,
+                 uint64_t sync_inv_ms, uint64_t gossip_inv_ms)
     : version_(0),
       probe_inv_ms_(probe_inv_ms),
       sync_inv_ms_(sync_inv_ms),
       gossip_inv_ms_(gossip_inv_ms),
       addr_("0.0.0.0", port),
-      n_worker_(n_worker),
       queue_(n_transmit) {}
 
 Cluster::~Cluster() { Stop(); }
@@ -292,27 +294,19 @@ Cluster& Cluster::Start() {
 }
 
 bool Cluster::StartServer() {
-  if (server_) {
+  if (server_.IsRunning()) {
     LOG(WARNING) << ToString() << " has listened on " << addr_;
     return false;
   }
 
-  sofa::pbrpc::RpcServerOptions option;
-  option.work_thread_num = n_worker_;
-  server_.reset(new sofa::pbrpc::RpcServer(option));
-
-  // sofa::pbrpc::RpcServer will take the ownership of the GossipServerImpl, and
-  // the GossipServerImpl will be deleted when sofa::pbrpc::RpcServer calls
-  // Stop().
-  if (!server_->RegisterService(new rpc::GossipServerImpl())) {
-    LOG(ERROR) << "Failed to register rpc services to cluster";
-    server_.reset(nullptr);
+  if (server_.AddService(new rpc::GossipServerImpl(),
+                         brpc::SERVER_OWNS_SERVICE) != 0) {
+    LOG(ERROR) << "Failed to add service to cluster";
     return false;
   }
 
-  if (!server_->Start(addr_.ToString())) {
+  if (server_.Start(addr_.ToString().c_str(), nullptr) != 0) {
     LOG(ERROR) << ToString() << " failed to listen on " << addr_.ToString();
-    server_.reset(nullptr);
     return false;
   }
 
@@ -341,9 +335,10 @@ Cluster& Cluster::Stop() {
 }
 
 void Cluster::StopServer() {
-  if (server_) {
-    server_->Stop();
-    server_.reset(nullptr);
+  if (server_.IsRunning()) {
+    server_.Stop(0);
+    server_.Join();
+    server_.ClearServices();
     LOG(INFO) << *this << " stoped server.";
   }
 }
@@ -430,7 +425,7 @@ bool Cluster::SendPing(Node::ConstPtr node, uint64_t timeout) {
   req.set_dst(node->name());
   req.set_src(name_);
   rpc::PingResp resp;
-  return client_.Send(node->ToAddress(), req, &resp, timeout);
+  return client_.Send(node->ip(), node->port(), req, &resp, timeout, 0);
 }
 
 bool Cluster::SendSuspect(Node::ConstPtr node, uint64_t timeout) {
@@ -439,7 +434,7 @@ bool Cluster::SendSuspect(Node::ConstPtr node, uint64_t timeout) {
   req.set_dst(node->name());
   req.add_srcs(name_);
   ::google::protobuf::Empty resp;
-  return client_.Send(node->ToAddress(), req, &resp, timeout);
+  return client_.Send(node->ip(), node->port(), req, &resp, timeout, 0);
 }
 
 int Cluster::SendIndirectPing(Node::ConstPtr node, uint64_t timeout) {
@@ -531,7 +526,7 @@ std::string Cluster::ToString(bool verbose) const {
   std::ostringstream ss;
   if (verbose) {
     ss << "Cluster(version: " << version_
-       << " state: " << (server_ ? "up" : "down")
+       << " state: " << (server_.IsRunning() ? "up" : "down")
        << ", address: " << addr_.ToString() << ")";
   } else {
     ss << "Cluster(" << addr_.ToString() << ")";

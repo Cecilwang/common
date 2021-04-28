@@ -13,8 +13,10 @@ limitations under the License.
 #ifndef COMMON_UTIL_MACRO_H_
 #define COMMON_UTIL_MACRO_H_
 
+#ifndef DISALLOW_COPY_AND_ASSIGN
 #define DISALLOW_COPY_AND_ASSIGN(type) \
   type(const type&);                   \
   void operator=(const type&)
+#endif
 
 #endif  // COMMON_UTIL_MACRO_H_

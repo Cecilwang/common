@@ -1,0 +1,97 @@
+diff --git a/BUILD.bazel b/BUILD.bazel
+index 11db84d0..a84643d7 100644
+--- a/BUILD.bazel
++++ b/BUILD.bazel
+@@ -19,12 +19,6 @@ exports_files(["LICENSE"])
+ 
+ load(":bazel/brpc.bzl", "brpc_proto_library")
+ 
+-config_setting(
+-    name = "with_glog",
+-    define_values = {"with_glog": "true"},
+-    visibility = ["//visibility:public"],
+-)
+-
+ config_setting(
+     name = "with_mesalink",
+     define_values = {"with_mesalink": "true"},
+@@ -64,10 +58,8 @@ COPTS = [
+     "-D__STDC_LIMIT_MACROS",
+     "-D__STDC_CONSTANT_MACROS",
+     "-DGFLAGS_NS=google",
++    "-DBRPC_WITH_GLOG=1",
+ ] + select({
+-    ":with_glog": ["-DBRPC_WITH_GLOG=1"],
+-    "//conditions:default": ["-DBRPC_WITH_GLOG=0"],
+-}) + select({
+     ":with_mesalink": ["-DUSE_MESALINK"],
+     "//conditions:default": [""],
+ }) + select({
+@@ -120,11 +112,7 @@ genrule(
+ #ifdef BRPC_WITH_GLOG
+ #undef BRPC_WITH_GLOG
+ #endif
+-#define BRPC_WITH_GLOG """ + select({
+-    ":with_glog": "1",
+-    "//conditions:default": "0",
+-}) +
+-"""
++#define BRPC_WITH_GLOG 1
+ #endif  // BUTIL_CONFIG_H
+ EOF
+     """
+@@ -312,10 +300,8 @@ objc_library(
+     ],
+     deps = [
+         "@com_github_gflags_gflags//:gflags",
+-    ] + select({
+-        ":with_glog": ["@com_github_google_glog//:glog"],
+-        "//conditions:default": [],
+-    }),
++        "@com_github_google_glog//:glog",
++    ],
+     includes = ["src/"],
+     enable_modules = True,
+     tags = ["manual"],
+@@ -338,15 +324,11 @@ cc_library(
+         "@com_google_protobuf//:protobuf",
+         "@com_github_gflags_gflags//:gflags",
+         "@zlib//:zlib",
++        "@openssl",
++        "@com_github_google_glog//:glog",
+     ] + select({
+-        ":with_glog": ["@com_github_google_glog//:glog"],
+-        "//conditions:default": [],
+-    }) + select({
+         ":darwin": [":macos_lib"],
+         "//conditions:default": [],
+-    }) + select({
+-        ":darwin": ["//external:ssl_macos"],
+-        "//conditions:default": ["//external:ssl"],
+     }),
+     includes = [
+         "src/",
+diff --git a/src/butil/logging.cc b/src/butil/logging.cc
+index 6c047282..0ce5e3e5 100644
+--- a/src/butil/logging.cc
++++ b/src/butil/logging.cc
+@@ -114,6 +114,8 @@ int BAIDU_WEAK bthread_setspecific(bthread_key_t key, void* data);
+ void* BAIDU_WEAK bthread_getspecific(bthread_key_t key);
+ }
+ 
++extern int32_t FLAGS_minloglevel;
++
+ namespace logging {
+ 
+ DEFINE_bool(crash_on_fatal_log, false,
+@@ -131,9 +133,7 @@ DEFINE_string(vmodule, "", "per-module verbose level."
+ 
+ DEFINE_bool(log_pid, false, "Log process id");
+ 
+-DEFINE_int32(minloglevel, 0, "Any log at or above this level will be "
+-             "displayed. Anything below this level will be silently ignored. "
+-             "0=INFO 1=NOTICE 2=WARNING 3=ERROR 4=FATAL");
++int32_t& FLAGS_minloglevel = ::FLAGS_minloglevel;
+ 
+ DEFINE_bool(log_hostname, false, "Add host after pid in each log so"
+             " that we know where logs came from when using aggregation tools"

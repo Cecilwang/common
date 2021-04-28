@@ -23,7 +23,7 @@ cc_library(
         ":gossip_cc_proto",
         "//common/net",
         "//common/util",
-        "@sofa-pbrpc",
+        "@brpc",
     ],
 )
 
