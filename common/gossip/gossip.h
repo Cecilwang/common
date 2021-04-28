@@ -36,38 +36,41 @@ namespace common {
 namespace gossip {
 namespace rpc {
 
-class GossipServerImpl : public GossipServerAPI {
+class Client {
  public:
-  GossipServerImpl() = default;
+  template <class REQ, class RESP>
+  static void Send(ServerAPI_Stub* stub, brpc::Controller* cntl, const REQ* req,
+                   RESP* resp);
 
-  void Ping(::google::protobuf::RpcController* cntl, const PingReq* req,
-            PingResp* resp, ::google::protobuf::Closure* done) override;
-  void IndirectPing(::google::protobuf::RpcController* cntl,
-                    const IndirectPingReq* req, PingResp* resp,
-                    ::google::protobuf::Closure* done) override;
+  template <class REQ, class RESP>
+  static bool Send(const std::string& ip, uint16_t port, const REQ& req,
+                   RESP* resp, uint64_t timeout_ms = 500, int32_t n_retry = 3);
+
+ private:
+  Client() = delete;
+};
+
+class ServerImpl : public ServerAPI {
+ public:
+  static ServerImpl& Get();
+
+  void Ping(::google::protobuf::RpcController* cntl,
+            const ::google::protobuf::Empty* req, ::google::protobuf::Empty* _,
+            ::google::protobuf::Closure* done) override;
+  void IndirectPing(::google::protobuf::RpcController* cntl, const PingReq* req,
+                    AckResp* resp, ::google::protobuf::Closure* done) override;
+  void Suspect(::google::protobuf::RpcController* cntl, const SuspectReq* req,
+               google::protobuf::Empty* _,
+               ::google::protobuf::Closure* done) override;
   void Sync(::google::protobuf::RpcController* cntl, const SyncMsg* req,
             SyncMsg* resp, ::google::protobuf::Closure* done) override;
-  void Suspect(::google::protobuf::RpcController* cntl, const SuspectReq* req,
-               google::protobuf::Empty* resp,
-               ::google::protobuf::Closure* done) override;
   void Dead(::google::protobuf::RpcController* cntl, const DeadMsg* req,
             google::protobuf::Empty* resp,
             ::google::protobuf::Closure* done) override;
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(GossipServerImpl);
-};
-
-class GossipClientImpl {
- public:
-  GossipClientImpl() = default;
-
-  template <class REQ, class RESP>
-  bool Send(const std::string& ip, uint16_t port, const REQ& req, RESP* resp,
-            uint64_t timeout_ms = 500, int32_t n_retry = 3);
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(GossipClientImpl);
+  ServerImpl() = default;
+  DISALLOW_COPY_AND_ASSIGN(ServerImpl);
 };
 
 }  // namespace rpc
@@ -182,8 +185,8 @@ class Cluster {
   void SendProbe(Node::ConstPtr node);
   bool SendPing(Node::ConstPtr node, uint64_t timeout);
   bool SendSuspect(Node::ConstPtr node, uint64_t timeout);
-  int SendIndirectPing(Node::ConstPtr node, uint64_t timeout);
-
+  int SendIndirectPing(Node::ConstPtr broker, Node::ConstPtr target,
+                       uint64_t timeout);
   void ShuffleNodes();
   template <class F>
   std::unordered_set<Node::Ptr> GetRandomNodes(size_t k, F&& f);
@@ -216,8 +219,6 @@ class Cluster {
   std::unique_ptr<util::Thread> sync_t_ = nullptr;
   uint64_t gossip_inv_ms_ = 200;
   std::unique_ptr<util::Thread> gossip_t_ = nullptr;
-
-  rpc::GossipClientImpl client_;
 
   net::Address addr_;
   brpc::Server server_;

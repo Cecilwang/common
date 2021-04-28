@@ -12,6 +12,7 @@ limitations under the License.
 
 #include "common/gossip/gossip.h"
 
+#include <algorithm>
 #include <utility>
 
 #include "glog/logging.h"
@@ -20,59 +21,22 @@ namespace common {
 namespace gossip {
 namespace rpc {
 
-void GossipServerImpl::Ping(::google::protobuf::RpcController* cntl,
-                            const PingReq* req, PingResp* resp,
-                            ::google::protobuf::Closure* done) {
-  brpc::ClosureGuard done_guard(done);
-  resp->set_type(PingResp_Type_ACK);
-}
+#define DefineSend(FUNC, REQ, RESP)                               \
+  template <>                                                     \
+  void Client::Send(ServerAPI_Stub* stub, brpc::Controller* cntl, \
+                    const REQ* req, RESP* resp) {                 \
+    stub->FUNC(cntl, req, resp, nullptr);                         \
+  }
 
-void GossipServerImpl::IndirectPing(::google::protobuf::RpcController* cntl,
-                                    const IndirectPingReq* req, PingResp* resp,
-                                    ::google::protobuf::Closure* done) {
-  brpc::ClosureGuard done_guard(done);
-}
+DefineSend(Ping, ::google::protobuf::Empty, ::google::protobuf::Empty);
+DefineSend(IndirectPing, PingReq, AckResp);
+DefineSend(Suspect, SuspectReq, ::google::protobuf::Empty);
 
-void GossipServerImpl::Sync(::google::protobuf::RpcController* cntl,
-                            const SyncMsg* req, SyncMsg* resp,
-                            ::google::protobuf::Closure* done) {
-  brpc::ClosureGuard done_guard(done);
-}
-
-void GossipServerImpl::Suspect(::google::protobuf::RpcController* cntl,
-                               const SuspectReq* req,
-                               google::protobuf::Empty* resp,
-                               ::google::protobuf::Closure* done) {
-  brpc::ClosureGuard done_guard(done);
-}
-
-void GossipServerImpl::Dead(::google::protobuf::RpcController* cntl,
-                            const DeadMsg* req, google::protobuf::Empty* resp,
-                            ::google::protobuf::Closure* done) {
-  brpc::ClosureGuard done_guard(done);
-}
-
-//------------------------------------------------------------------------------
+#undef DefineSend
 
 template <class REQ, class RESP>
-void CallFunc(GossipServerAPI_Stub*, brpc::Controller*, const REQ*, RESP*);
-
-template <>
-void CallFunc(GossipServerAPI_Stub* stub, brpc::Controller* cntl,
-              const PingReq* req, PingResp* resp) {
-  stub->Ping(cntl, req, resp, nullptr);
-}
-
-template <>
-void CallFunc(GossipServerAPI_Stub* stub, brpc::Controller* cntl,
-              const SuspectReq* req, ::google::protobuf::Empty* resp) {
-  stub->Suspect(cntl, req, resp, nullptr);
-}
-
-template <class REQ, class RESP>
-bool GossipClientImpl::Send(const std::string& ip, uint16_t port,
-                            const REQ& req, RESP* resp, uint64_t timeout_ms,
-                            int32_t n_retry) {
+bool Client::Send(const std::string& ip, uint16_t port, const REQ& req,
+                  RESP* resp, uint64_t timeout_ms, int32_t n_retry) {
   brpc::ChannelOptions options;
   options.timeout_ms = timeout_ms;
   options.max_retry = n_retry;
@@ -86,9 +50,9 @@ bool GossipClientImpl::Send(const std::string& ip, uint16_t port,
   brpc::Controller cntl;
   // cntl.set_log_id(log_id ++);
 
-  GossipServerAPI_Stub stub(&channel);
+  ServerAPI_Stub stub(&channel);
 
-  CallFunc(&stub, &cntl, &req, resp);
+  Send(&stub, &cntl, &req, resp);
 
   if (cntl.Failed()) {
     LOG(ERROR) << "Failed to send to " << cntl.remote_side() << ": errcode["
@@ -97,6 +61,53 @@ bool GossipClientImpl::Send(const std::string& ip, uint16_t port,
     return false;
   }
   return true;
+}
+
+//------------------------------------------------------------------------------
+
+ServerImpl& ServerImpl::Get() {
+  static ServerImpl instance;
+  return instance;
+}
+
+void ServerImpl::Ping(::google::protobuf::RpcController* cntl,
+                      const ::google::protobuf::Empty* req,
+                      ::google::protobuf::Empty* resp,
+                      ::google::protobuf::Closure* done) {
+  brpc::ClosureGuard done_guard(done);
+}
+
+void ServerImpl::IndirectPing(::google::protobuf::RpcController* cntl,
+                              const PingReq* req, AckResp* resp,
+                              ::google::protobuf::Closure* done) {
+  brpc::ClosureGuard done_guard(done);
+
+  ::google::protobuf::Empty forward_req;
+  ::google::protobuf::Empty forward_resp;
+
+  if (Client::Send(req->ip(), req->port(), forward_req, &forward_resp)) {
+    resp->set_type(AckResp_Type_ACK);
+  } else {
+    resp->set_type(AckResp_Type_NACK);
+  }
+}
+
+void ServerImpl::Suspect(::google::protobuf::RpcController* cntl,
+                         const SuspectReq* req, ::google::protobuf::Empty* resp,
+                         ::google::protobuf::Closure* done) {
+  brpc::ClosureGuard done_guard(done);
+}
+
+void ServerImpl::Sync(::google::protobuf::RpcController* cntl,
+                      const SyncMsg* req, SyncMsg* resp,
+                      ::google::protobuf::Closure* done) {
+  brpc::ClosureGuard done_guard(done);
+}
+
+void ServerImpl::Dead(::google::protobuf::RpcController* cntl,
+                      const DeadMsg* req, google::protobuf::Empty* resp,
+                      ::google::protobuf::Closure* done) {
+  brpc::ClosureGuard done_guard(done);
 }
 
 }  // namespace rpc
@@ -299,14 +310,15 @@ bool Cluster::StartServer() {
     return false;
   }
 
-  if (server_.AddService(new rpc::GossipServerImpl(),
-                         brpc::SERVER_OWNS_SERVICE) != 0) {
+  if (server_.AddService(&(rpc::ServerImpl::Get()),
+                         brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
     LOG(ERROR) << "Failed to add service to cluster";
     return false;
   }
 
   if (server_.Start(addr_.ToString().c_str(), nullptr) != 0) {
     LOG(ERROR) << ToString() << " failed to listen on " << addr_.ToString();
+    server_.ClearServices();
     return false;
   }
 
@@ -382,8 +394,6 @@ void Cluster::Probe() {
       probe_i_ = 0;
     }
   }
-
-  // TODO(sxwang)
   SendProbe(node);
 }
 
@@ -405,14 +415,15 @@ void Cluster::SendProbe(Node::ConstPtr node) {
   });
   nodes_mutex_.unlock();
   for (const auto& x : nodes) {
-    int ret = SendIndirectPing(x, timeout);
+    int ret = SendIndirectPing(x, node, timeout);
     if (ret == 0) {  // ack
       health_ += -1;
-      break;
+      return;
     } else if (ret == -1) {  // failed
       health_ += 1;
     }  // nack
   }
+  // All nack
   rpc::SuspectReq suspect;
   suspect.set_version(node->version());
   suspect.set_dst(node->name());
@@ -421,11 +432,22 @@ void Cluster::SendProbe(Node::ConstPtr node) {
 }
 
 bool Cluster::SendPing(Node::ConstPtr node, uint64_t timeout) {
+  ::google::protobuf::Empty req;
+  ::google::protobuf::Empty resp;
+  return rpc::Client::Send(node->ip(), node->port(), req, &resp, timeout, 0);
+}
+
+int Cluster::SendIndirectPing(Node::ConstPtr broker, Node::ConstPtr target,
+                              uint64_t timeout) {
   rpc::PingReq req;
-  req.set_dst(node->name());
-  req.set_src(name_);
-  rpc::PingResp resp;
-  return client_.Send(node->ip(), node->port(), req, &resp, timeout, 0);
+  req.set_ip(target->ip());
+  req.set_port(target->port());
+  rpc::AckResp resp;
+  if (rpc::Client::Send(broker->ip(), broker->port(), req, &resp, timeout, 0)) {
+    return resp.type() == rpc::AckResp_Type_ACK ? 0 : 1;
+  } else {
+    return -1;
+  }
 }
 
 bool Cluster::SendSuspect(Node::ConstPtr node, uint64_t timeout) {
@@ -434,11 +456,7 @@ bool Cluster::SendSuspect(Node::ConstPtr node, uint64_t timeout) {
   req.set_dst(node->name());
   req.add_srcs(name_);
   ::google::protobuf::Empty resp;
-  return client_.Send(node->ip(), node->port(), req, &resp, timeout, 0);
-}
-
-int Cluster::SendIndirectPing(Node::ConstPtr node, uint64_t timeout) {
-  return -1;
+  return rpc::Client::Send(node->ip(), node->port(), req, &resp, timeout, 0);
 }
 
 void Cluster::ShuffleNodes() {
