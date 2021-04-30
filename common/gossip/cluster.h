@@ -27,6 +27,8 @@ limitations under the License.
 #include "common/util/macro.h"
 #include "common/util/thread.h"
 
+#include "common/gossip/proto/gossip.pb.h"
+
 #include "common/gossip/node.h"
 #include "common/gossip/rpc.h"
 

@@ -10,7 +10,6 @@ enum State {
   ALIVE = 0;
   SUSPECT = 1;
   DEAD = 2;
-  LEFT = 3;
 }
 
 message Node {
@@ -34,6 +33,14 @@ message AckResp {
   Type type = 2;
 }
 
+message AliveMsg {
+  uint32 version = 1;
+  string name = 2;
+  string ip = 3;
+  uint32 port = 4;
+  bytes metadata = 5;
+}
+
 message SuspectMsg {
   uint32 version = 1;
   string dst = 2;
@@ -44,14 +51,15 @@ message DeadMsg {
   uint32 version = 1;
   string dst = 2;
   string src = 3;
+  bool force = 4;
 }
 
-message AliveMsg {
-  uint32 version = 1;
-  string name = 2;
-  string ip = 3;
-  uint32 port = 4;
-  bytes metadata = 5;
+message GenericMsg {
+  oneof msg {
+    AliveMsg alive = 1;
+    SuspectMsg suspect = 2;
+    DeadMsg dead = 3;
+  }
 }
 
 message SyncMsg {

@@ -97,6 +97,17 @@ Node& Node::operator=(const rpc::SuspectMsg& suspect) {
   return *this;
 }
 
+Node& Node::operator=(const rpc::DeadMsg& dead) {
+  if (name_ != suspect.dst()) {
+    return *this;
+  }
+  version_ = dead.version();
+  state_ = rpc::State::DEAD;
+  // Force to cancel suspect timer.
+  suspect_timer_ = nullptr;
+  return *this;
+}
+
 bool Node::Conflict(const rpc::AliveMsg* alive) const {
   return (name_ == alive->name()) &&
          (ip() != alive->ip() || port() != alive->port() ||

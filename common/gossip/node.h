@@ -68,6 +68,7 @@ class Node {
 
   Node& operator=(const rpc::AliveMsg& alive);
   Node& operator=(const rpc::SuspectMsg& suspect);
+  Node& operator=(const rpc::DeadMsg& dead);
 
   bool Conflict(const rpc::AliveMsg* alive) const;
   bool Reset(const rpc::AliveMsg* alive) const;

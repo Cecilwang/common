@@ -180,8 +180,7 @@ void Cluster::Probe() {
     if (probe_i_ < n) {  // Try to fetch a node
       node = nodes_v_[probe_i_];
       if (node->name() == name_ ||  // self
-          node->state() == rpc::State::DEAD ||
-          node->state() == rpc::State::LEFT) {
+          node->state() == rpc::State::DEAD) {
         node = nullptr;  // Skip this one
       }
       nodes_mutex_.unlock();
@@ -272,7 +271,7 @@ void Cluster::RecvAlive(rpc::AliveMsg* alive) {
     node = search->second;
   }
 
-  if (alive->name() == name_) {      // myself
+  if (alive->name() == name_) {      // me
     if (search == nodes_m_.end()) {  // internal boostrap
       LOG(INFO) << *this << " started itself: " << *node << ".";
       Broadcast(node);
@@ -283,7 +282,7 @@ void Cluster::RecvAlive(rpc::AliveMsg* alive) {
       // Refute will also make resetting work.
       Refute(node, alive->version());
     }
-  } else {  // otherself
+  } else {  // others
     // We only handle the reset/new message and discard the conflict message.
     if (node->Reset(alive) || *node <= *alive) {
       auto log = node->ToString();
@@ -318,7 +317,7 @@ void Cluster::RecvSuspect(rpc::SuspectMsg* suspect) {
     return;
   }
 
-  if (node->name() == name_) {  // myself
+  if (node->name() == name_) {  // me
     Refute(node, suspect->version());
     return;
   }
@@ -327,8 +326,8 @@ void Cluster::RecvSuspect(rpc::SuspectMsg* suspect) {
   *node = *suspect;
 
   // Allow the following numbers are arbitrary
-  // 2+2 -> (suspecteee + myself) + 2 other nodes;
-  // 1+2 -> myself + 2 other nodes
+  // 2+2 -> (suspect + me) + 2 other nodes;
+  // 1+2 -> me + 2 other nodes
   size_t n = nodes_m_.size() <= 2 + 2 ? 0 : 1 + 2;
   uint64_t min_ms = 4 * std::max(1.0, log10(nodes_m_.size())) * probe_inv_ms_;
   uint64_t max_ms = 6 * min_ms;
@@ -341,6 +340,7 @@ void Cluster::RecvSuspect(rpc::SuspectMsg* suspect) {
                                            dead.set_version(node->version());
                                            dead.set_dst(node->name());
                                            dead.set_src(name_);
+                                           dead.set_force(false);
                                            RecvDead(&dead);
                                          },
                                          n == 0 ? min_ms : max_ms),
@@ -349,7 +349,31 @@ void Cluster::RecvSuspect(rpc::SuspectMsg* suspect) {
   Broadcast(node);
 }
 
-void Cluster::RecvDead(rpc::DeadMsg* dead) {}
+void Cluster::RecvDead(rpc::DeadMsg* dead) {
+  std::lock_guard<std::mutex> lock(nodes_mutex_);
+
+  auto search = nodes_m_.find(dead->dst());
+  if (search == nodes_m_.end()) {
+    return;
+  }
+
+  auto node = search->second;
+
+  if (dead->version() < node->version() ||  // Outdated message
+      node->state() == rpc::State::DEAD) {  // dead
+    return;
+  }
+
+  if (node->name() == name_ && dead->src() != name_) {  // rumor about me
+    Refute(node, dead->version());
+    return;
+  }
+
+  // ALIVE/SUSPECT->DEAD include I'm shutting down.
+  *node = *dead;
+
+  Broadcast(node);
+}
 
 void Cluster::Refute(Node::Ptr self, uint32_t version) {
   version_ += version - version_ + 1;
