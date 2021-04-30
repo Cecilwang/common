@@ -10,8 +10,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef COMMON_GOSSIP_GOSSIP_H_
-#define COMMON_GOSSIP_GOSSIP_H_
+#ifndef COMMON_GOSSIP_CLUSTER_H_
+#define COMMON_GOSSIP_CLUSTER_H_
 
 #include <atomic>
 #include <condition_variable>  // NOLINT
@@ -23,133 +23,15 @@ limitations under the License.
 #include <unordered_set>
 #include <vector>
 
-#include "brpc/channel.h"
-#include "brpc/server.h"
-
 #include "common/net/net.h"
 #include "common/util/macro.h"
 #include "common/util/thread.h"
 
-#include "common/gossip/proto/gossip.pb.h"
+#include "common/gossip/node.h"
+#include "common/gossip/rpc.h"
 
 namespace common {
 namespace gossip {
-namespace rpc {
-
-using RpcController = ::google::protobuf::RpcController;
-using Closure = ::google::protobuf::Closure;
-using Empty = ::google::protobuf::Empty;
-
-class Client {
- public:
-  template <class REQ, class RESP>
-  static void Send(ServerAPI_Stub* stub, brpc::Controller* cntl, const REQ* req,
-                   RESP* resp);
-
-  template <class REQ, class RESP>
-  static bool Send(const std::string& ip, uint16_t port, const REQ& req,
-                   RESP* resp, uint64_t timeout_ms = 500, int32_t n_retry = 3);
-
- private:
-  Client() = delete;
-};
-
-class ServerImpl : public ServerAPI {
- public:
-  static ServerImpl& Get();
-
-  void Ping(RpcController* cntl, const Empty* req, Empty* _,
-            Closure* done) override;
-  void IndirectPing(RpcController* cntl, const PingReq* req, AckResp* resp,
-                    Closure* done) override;
-  void Suspect(RpcController* cntl, const SuspectMsg* req, Empty* _,
-               Closure* done) override;
-  void Sync(RpcController* cntl, const SyncMsg* req, SyncMsg* resp,
-            Closure* done) override;
-  void Dead(RpcController* cntl, const DeadMsg* req, Empty* resp,
-            Closure* done) override;
-
- private:
-  ServerImpl() = default;
-  DISALLOW_COPY_AND_ASSIGN(ServerImpl);
-};
-
-}  // namespace rpc
-
-struct Health {
-  int score();
-
-  Health& operator+=(int val);
-  int operator*(int val);
-
- private:
-  std::mutex mutex_;
-  int score_ = 1;
-  int upper_ = 8;
-};
-
-class SuspectTimer {
- public:
-  typedef std::shared_ptr<SuspectTimer> Ptr;
-
-  SuspectTimer(std::unique_ptr<util::Timer> timer, size_t n, uint64_t min_ms,
-               uint64_t max_ms, const std::string& suspector);
-  bool AddSuspector(const std::string& suspector);
-
- private:
-  std::unique_ptr<util::Timer> timer_ = nullptr;
-  size_t n_;
-  uint64_t min_ms_;
-  uint64_t max_ms_;
-  std::unordered_set<std::string> suspectors_;
-
-  DISALLOW_COPY_AND_ASSIGN(SuspectTimer);
-};
-
-class Node {
- public:
-  typedef std::shared_ptr<Node> Ptr;
-  typedef const std::shared_ptr<Node>& ConstPtr;
-
-  Node(uint32_t version, const std::string& name, const std::string& ip,
-       uint16_t port, rpc::State state, const std::string& metadata);
-  explicit Node(const rpc::AliveMsg* alive);
-
-  Node& operator=(const rpc::AliveMsg& alive);
-  Node& operator=(const rpc::SuspectMsg& suspect);
-
-  bool Conflict(const rpc::AliveMsg* alive) const;
-  bool Reset(const rpc::AliveMsg* alive) const;
-
-  uint32_t version() const;
-  void set_version(uint32_t version);
-  const std::string& name() const;
-  const std::string& ip() const;
-  uint16_t port() const;
-  rpc::State state() const;
-  const std::string& metadata() const;
-  SuspectTimer::Ptr suspect_timer();
-  void set_suspect_timer(SuspectTimer::Ptr suspect_timer);
-
-  std::string ToString(bool verbose = false) const;
-  operator std::string() const;
-  friend std::ostream& operator<<(std::ostream& os, const Node& self);
-
- private:
-  uint32_t version_;
-  std::string name_;
-  net::Address addr_;
-  rpc::State state_;
-  std::string metadata_;
-
-  std::shared_ptr<SuspectTimer> suspect_timer_ = nullptr;
-
-  DISALLOW_COPY_AND_ASSIGN(Node);
-};
-
-bool operator>(const Node& self, const rpc::AliveMsg& alive);
-bool operator<=(const Node& self, const rpc::AliveMsg& alive);
-bool operator==(const Node& self, const rpc::AliveMsg& alive);
 
 class BroadcastQueue {
  public:
@@ -211,9 +93,6 @@ class Cluster {
   bool SendSuspect(Node::ConstPtr node, uint64_t timeout);
   int SendIndirectPing(Node::ConstPtr broker, Node::ConstPtr target,
                        uint64_t timeout);
-  void ShuffleNodes();
-  template <class F>
-  std::unordered_set<Node::Ptr> GetRandomNodes(size_t k, F&& f);
 
   void RecvAlive(rpc::AliveMsg* alive);
   void RecvSuspect(rpc::SuspectMsg* suspect);
@@ -222,6 +101,10 @@ class Cluster {
   void Refute(Node::Ptr node, uint32_t version);
 
   void Broadcast(Node::ConstPtr node);
+
+  void ShuffleNodes();
+  template <class F>
+  std::unordered_set<Node::Ptr> GetRandomNodes(size_t k, F&& f);
 
   std::string ToString(bool verbose = false) const;
   operator std::string() const;
@@ -256,4 +139,4 @@ class Cluster {
 }  // namespace gossip
 }  // namespace common
 
-#endif  // COMMON_GOSSIP_GOSSIP_H_
+#endif  // COMMON_GOSSIP_CLUSTER_H_

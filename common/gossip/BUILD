@@ -15,15 +15,37 @@ cc_proto_library(
 )
 
 cc_library(
-    name = "gossip",
-    srcs = ["gossip.cc"],
-    hdrs = ["gossip.h"],
-    visibility = ["//visibility:public"],
+    name = "rpc",
+    srcs = ["rpc.cc"],
+    hdrs = ["rpc.h"],
+    deps = [
+        ":gossip_cc_proto",
+        "//common/util",
+        "@brpc",
+    ],
+)
+
+cc_library(
+    name = "node",
+    srcs = ["node.cc"],
+    hdrs = ["node.h"],
     deps = [
         ":gossip_cc_proto",
         "//common/net",
         "//common/util",
-        "@brpc",
+    ],
+)
+
+cc_library(
+    name = "cluster",
+    srcs = ["cluster.cc"],
+    hdrs = ["cluster.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":node",
+        ":rpc",
+        "//common/net",
+        "//common/util",
     ],
 )
 
@@ -33,7 +55,7 @@ cc_test(
         "gossip_test.cc",
     ],
     deps = [
-        ":gossip",
+        ":cluster",
         "@com_google_googletest//:gtest_main",
     ],
 )

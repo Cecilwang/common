@@ -15,7 +15,7 @@ limitations under the License.
 
 #include "gtest/gtest.h"
 
-#include "common/gossip/gossip.h"
+#include "common/gossip/cluster.h"
 #include "common/util/time.h"
 
 namespace common {
