@@ -23,6 +23,9 @@ limitations under the License.
 #include <unordered_set>
 #include <vector>
 
+#include "brpc/channel.h"
+#include "brpc/server.h"
+
 #include "common/net/net.h"
 #include "common/util/macro.h"
 #include "common/util/thread.h"
@@ -30,10 +33,48 @@ limitations under the License.
 #include "common/gossip/proto/gossip.pb.h"
 
 #include "common/gossip/node.h"
-#include "common/gossip/rpc.h"
 
 namespace common {
 namespace gossip {
+
+class Cluster;
+
+namespace rpc {
+
+using RpcController = ::google::protobuf::RpcController;
+using Closure = ::google::protobuf::Closure;
+
+class Client {
+ public:
+  template <class REQ, class RESP>
+  static void Send(ServerAPI_Stub* stub, brpc::Controller* cntl, const REQ* req,
+                   RESP* resp);
+
+  template <class REQ, class RESP>
+  static bool Send(const net::Address& addr, const REQ& req, RESP* resp,
+                   uint64_t timeout_ms = 500, int32_t n_retry = 1);
+
+ private:
+  Client() = delete;
+};
+
+class ServerImpl : public ServerAPI {
+ public:
+  explicit ServerImpl(Cluster* cluster);
+
+  void Sync(RpcController* cntl, const NodeMsg* req, NodeMsg* resp,
+            Closure* done) override;
+
+  void Forward(RpcController* cntl, const ForwardMsg* req, NodeMsg* resp,
+               Closure* done) override;
+
+ private:
+  Cluster* cluster_ = nullptr;
+
+  DISALLOW_COPY_AND_ASSIGN(ServerImpl);
+};
+
+}  // namespace rpc
 
 class BroadcastQueue {
  public:
@@ -87,20 +128,17 @@ class Cluster {
   void StopRoutine();
 
   void Probe();
+  void Probe(Node::ConstPtr node);
   void Sync();
   void Gossip();
 
-  void SendProbe(Node::ConstPtr node);
-  bool SendPing(Node::ConstPtr node, uint64_t timeout);
-  bool SendSuspect(Node::ConstPtr node, uint64_t timeout);
-  int SendIndirectPing(Node::ConstPtr broker, Node::ConstPtr target,
-                       uint64_t timeout);
+  // Use Recv to dispatch the request and do not use others directly.
+  void Recv(const rpc::NodeMsg* req, rpc::NodeMsg* resp);
+  void RecvAlive(const rpc::NodeMsg* alive, rpc::NodeMsg* resp);
+  void RecvSuspect(const rpc::NodeMsg* suspect, rpc::NodeMsg* resp);
+  void RecvDead(const rpc::NodeMsg* dead, rpc::NodeMsg* resp);
 
-  void RecvAlive(rpc::AliveMsg* alive);
-  void RecvSuspect(rpc::SuspectMsg* suspect);
-  void RecvDead(rpc::DeadMsg* dead);
-
-  void Refute(Node::Ptr node, uint32_t version);
+  void Refute(Node::Ptr node, uint32_t version, rpc::NodeMsg* resp);
 
   void Broadcast(Node::ConstPtr node);
 

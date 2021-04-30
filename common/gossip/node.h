@@ -64,20 +64,25 @@ class Node {
 
   Node(uint32_t version, const std::string& name, const std::string& ip,
        uint16_t port, rpc::State state, const std::string& metadata);
-  explicit Node(const rpc::AliveMsg* alive);
+  explicit Node(const rpc::NodeMsg* msg);
 
-  Node& operator=(const rpc::AliveMsg& alive);
-  Node& operator=(const rpc::SuspectMsg& suspect);
-  Node& operator=(const rpc::DeadMsg& dead);
+  Node& operator=(const rpc::NodeMsg& msg);
+  void ToNodeMsg(const std::string& from, rpc::State state,
+                 rpc::NodeMsg* msg) const;
+  rpc::NodeMsg ToNodeMsg(const std::string& from,
+                         rpc::State state = rpc::State::UNKNOWN) const;
+  rpc::ForwardMsg ToForwardMsg(const std::string& from,
+                               rpc::State state = rpc::State::UNKNOWN) const;
 
-  bool Conflict(const rpc::AliveMsg* alive) const;
-  bool Reset(const rpc::AliveMsg* alive) const;
+  bool Conflict(const rpc::NodeMsg* msg) const;
+  bool Reset(const rpc::NodeMsg* msg) const;
 
   uint32_t version() const;
   void set_version(uint32_t version);
   const std::string& name() const;
   const std::string& ip() const;
   uint16_t port() const;
+  const net::Address& addr() const;
   rpc::State state() const;
   const std::string& metadata() const;
   SuspectTimer::Ptr suspect_timer();
@@ -99,9 +104,9 @@ class Node {
   DISALLOW_COPY_AND_ASSIGN(Node);
 };
 
-bool operator>(const Node& self, const rpc::AliveMsg& alive);
-bool operator<=(const Node& self, const rpc::AliveMsg& alive);
-bool operator==(const Node& self, const rpc::AliveMsg& alive);
+bool operator>(const Node& self, const rpc::NodeMsg& alive);
+bool operator<=(const Node& self, const rpc::NodeMsg& alive);
+bool operator==(const Node& self, const rpc::NodeMsg& alive);
 
 }  // namespace gossip
 }  // namespace common

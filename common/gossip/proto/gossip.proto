@@ -7,70 +7,29 @@ import "google/protobuf/empty.proto";
 option cc_generic_services = true;
 
 enum State {
-  ALIVE = 0;
-  SUSPECT = 1;
-  DEAD = 2;
+  UNKNOWN = 0;
+  ALIVE = 1;
+  SUSPECT = 2;
+  DEAD = 3;
 }
 
-message Node {
-  string name = 1;
-  string ip = 2;
-  uint32 port = 3;
-  State state = 4;
-  bytes metadata = 5;
-}
-
-message PingReq {
-  string ip = 1;
-  uint32 port = 2;
-}
-
-message AckResp {
-  enum Type {
-    ACK = 0;
-    NACK = 1;
-  }
-  Type type = 2;
-}
-
-message AliveMsg {
+message NodeMsg {
   uint32 version = 1;
   string name = 2;
   string ip = 3;
   uint32 port = 4;
-  bytes metadata = 5;
+  State state = 5;
+  bytes metadata = 6;
+  string from = 7;
 }
 
-message SuspectMsg {
-  uint32 version = 1;
-  string dst = 2;
-  string src = 3;
-}
-
-message DeadMsg {
-  uint32 version = 1;
-  string dst = 2;
-  string src = 3;
-  bool force = 4;
-}
-
-message GenericMsg {
-  oneof msg {
-    AliveMsg alive = 1;
-    SuspectMsg suspect = 2;
-    DeadMsg dead = 3;
-  }
-}
-
-message SyncMsg {
-  uint32 version = 1;
-  repeated Node nodes = 2;
+message ForwardMsg {
+  string ip = 1;
+  uint32 port = 2;
+  NodeMsg node = 3;
 }
 
 service ServerAPI {
-  rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty) {}
-  rpc IndirectPing(PingReq) returns (AckResp) {}
-  rpc Suspect(SuspectMsg) returns (google.protobuf.Empty) {}
-  rpc Dead(DeadMsg) returns (google.protobuf.Empty) {}
-  rpc Sync(SyncMsg) returns (SyncMsg) {}
+  rpc Sync(NodeMsg) returns (NodeMsg) {}
+  rpc Forward(ForwardMsg) returns (NodeMsg) {}
 }

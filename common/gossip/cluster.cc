@@ -19,6 +19,73 @@ limitations under the License.
 
 namespace common {
 namespace gossip {
+namespace rpc {
+
+#define DefineSend(FUNC, REQ, RESP)                               \
+  template <>                                                     \
+  void Client::Send(ServerAPI_Stub* stub, brpc::Controller* cntl, \
+                    const REQ* req, RESP* resp) {                 \
+    stub->FUNC(cntl, req, resp, nullptr);                         \
+  }
+
+DefineSend(Sync, NodeMsg, NodeMsg);
+DefineSend(Forward, ForwardMsg, NodeMsg);
+
+#undef DefineSend
+
+template <class REQ, class RESP>
+bool Client::Send(const net::Address& addr, const REQ& req, RESP* resp,
+                  uint64_t timeout_ms, int32_t n_retry) {
+  brpc::ChannelOptions options;
+  options.timeout_ms = timeout_ms;
+  options.max_retry = n_retry;
+
+  brpc::Channel channel;
+  if (channel.Init(addr.ip()->ip().c_str(), addr.port(), &options) != 0) {
+    LOG(ERROR) << "Fail to initialize channel";
+    return false;
+  }
+
+  brpc::Controller cntl;
+  // cntl.set_log_id(log_id ++);
+
+  ServerAPI_Stub stub(&channel);
+
+  Send(&stub, &cntl, &req, resp);
+
+  if (cntl.Failed()) {
+    LOG(ERROR) << "Failed to send to " << cntl.remote_side() << ": errcode["
+               << cntl.ErrorCode() << "], errMessage[" << cntl.ErrorText()
+               << "]";
+    return false;
+  }
+  return true;
+}
+
+//------------------------------------------------------------------------------
+
+ServerImpl::ServerImpl(Cluster* cluster) : cluster_(cluster) {}
+
+void ServerImpl::Sync(RpcController* cntl, const NodeMsg* req, NodeMsg* resp,
+                      Closure* done) {
+  brpc::ClosureGuard done_guard(done);
+  cluster_->Recv(req, resp);
+}
+
+void ServerImpl::Forward(RpcController* cntl, const ForwardMsg* req,
+                         NodeMsg* resp, Closure* done) {
+  brpc::ClosureGuard done_guard(done);
+  net::Address addr(req->ip(), req->port());
+  if (!Client::Send(addr, req->node(), resp)) {  // failed
+    resp->set_state(State::UNKNOWN);
+  }
+  // TODO(sxwang): Of course, we can take some measures based on the current
+  // situation, but now we don't.
+}
+
+}  // namespace rpc
+
+//------------------------------------------------------------------------------
 
 BroadcastQueue::BroadcastQueue(uint32_t n_transmit)
     : n_transmit_(n_transmit), queue_(ElementCmp) {}
@@ -86,14 +153,15 @@ Cluster& Cluster::Alive(const std::string& name) {
     LOG(WARNING) << ToString() << " has been alive with " << name_;
     return *this;
   }
+  // TODO(sxwang) use MAC address instead of hostname.
   name_ = name.empty() ? net::GetHostname() : name;
-  rpc::AliveMsg alive;
-  alive.set_version(++version_);
-  alive.set_name(name_);
-  alive.set_ip(net::GetDelegateIP(net::GetPublicIPs(), addr_.ip())->ip());
-  alive.set_port(addr_.port());
-  alive.set_metadata("");
-  RecvAlive(&alive);
+  rpc::NodeMsg msg;
+  msg.set_version(++version_);
+  msg.set_name(name_);
+  msg.set_ip(net::GetDelegateIP(net::GetPublicIPs(), addr_.ip())->ip());
+  msg.set_port(addr_.port());
+  msg.set_state(rpc::State::ALIVE);
+  msg.set_metadata("");
   return *this;
 }
 
@@ -108,8 +176,8 @@ bool Cluster::StartServer() {
     return false;
   }
 
-  if (server_.AddService(&(rpc::ServerImpl::Get()),
-                         brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+  if (server_.AddService(new rpc::ServerImpl(this),
+                         brpc::SERVER_OWNS_SERVICE) != 0) {
     LOG(ERROR) << "Failed to add service to cluster";
     return false;
   }
@@ -191,72 +259,77 @@ void Cluster::Probe() {
       probe_i_ = 0;
     }
   }
-  SendProbe(node);
+  Probe(node);
 }
 
-void Cluster::Sync() {}
+void Cluster::Probe(Node::ConstPtr node) {
+  uint64_t timeout_ms = health_ * probe_inv_ms_;
 
-void Cluster::Gossip() {}
-
-void Cluster::SendProbe(Node::ConstPtr node) {
-  uint64_t timeout = health_ * probe_inv_ms_;
-  if ((node->state() == rpc::State::ALIVE && SendPing(node, timeout)) ||
-      (node->state() != rpc::State::ALIVE && SendSuspect(node, timeout))) {
+  rpc::NodeMsg req = node->ToNodeMsg(name_);
+  rpc::NodeMsg resp;
+  if (rpc::Client::Send(node->addr(), req, &resp, timeout_ms)) {
+    if (resp.state() != rpc::State::ALIVE) {
+      LOG(WARNING) << *this << " ping received invalid ack. resp: "
+                   << resp.DebugString();
+      return;
+    }
     health_ += -1;
+    Recv(&resp, nullptr);
     return;
   }
+
   nodes_mutex_.lock();
   auto nodes = GetRandomNodes(3, [this, &node](Node::ConstPtr other) {
     return other->name() == name_ || other->name() == node->name() ||
            other->state() != rpc::State::ALIVE;
   });
   nodes_mutex_.unlock();
+
   for (const auto& x : nodes) {
-    int ret = SendIndirectPing(x, node, timeout);
-    if (ret == 0) {  // ack
-      health_ += -1;
-      return;
-    } else if (ret == -1) {  // failed
-      health_ += 1;
-    }  // nack
+    auto req = node->ToForwardMsg(name_);
+    if (rpc::Client::Send(x->addr(), req, &resp, timeout_ms)) {
+      if (resp.state() == rpc::State::ALIVE) {  // ack
+        health_ += -1;
+        Recv(&resp, nullptr);
+        return;
+      } else if (resp.state() != rpc::State::UNKNOWN) {
+        LOG(WARNING) << *this << " indirect ping received invalid ack. resp: "
+                     << resp.DebugString();
+      }
+    } else {
+      health_ += 1;  // failed to connect;
+    }
   }
-  // All nack
-  rpc::SuspectMsg suspect;
-  suspect.set_version(node->version());
-  suspect.set_dst(node->name());
-  suspect.set_src(name_);
-  RecvSuspect(&suspect);
+
+  // All nack or failed
+  auto msg = node->ToNodeMsg(name_, rpc::State::SUSPECT);
+  Recv(&msg, nullptr);
 }
 
-bool Cluster::SendPing(Node::ConstPtr node, uint64_t timeout) {
-  rpc::Empty req;
-  rpc::Empty resp;
-  return rpc::Client::Send(node->ip(), node->port(), req, &resp, timeout, 0);
-}
+void Cluster::Sync() {}
 
-int Cluster::SendIndirectPing(Node::ConstPtr broker, Node::ConstPtr target,
-                              uint64_t timeout) {
-  rpc::PingReq req;
-  req.set_ip(target->ip());
-  req.set_port(target->port());
-  rpc::AckResp resp;
-  if (rpc::Client::Send(broker->ip(), broker->port(), req, &resp, timeout, 0)) {
-    return resp.type() == rpc::AckResp_Type_ACK ? 0 : 1;
-  } else {
-    return -1;
+void Cluster::Gossip() {}
+
+void Cluster::Recv(const rpc::NodeMsg* req, rpc::NodeMsg* resp) {
+  rpc::NodeMsg unused;
+  resp = resp == nullptr ? &unused : resp;
+  switch (req->state()) {
+    case rpc::State::ALIVE:
+      RecvAlive(req, resp);
+      break;
+    case rpc::State::SUSPECT:
+      RecvSuspect(req, resp);
+      break;
+    case rpc::State::DEAD:
+      RecvDead(req, resp);
+      break;
+    default:
+      LOG(WARNING) << *this << " discard an UNKNOWN NodeMsg.";
+      break;
   }
 }
 
-bool Cluster::SendSuspect(Node::ConstPtr node, uint64_t timeout) {
-  rpc::SuspectMsg req;
-  req.set_version(node->version());
-  req.set_dst(node->name());
-  req.set_src(name_);
-  rpc::Empty resp;
-  return rpc::Client::Send(node->ip(), node->port(), req, &resp, timeout, 0);
-}
-
-void Cluster::RecvAlive(rpc::AliveMsg* alive) {
+void Cluster::RecvAlive(const rpc::NodeMsg* alive, rpc::NodeMsg* resp) {
   std::lock_guard<std::mutex> lock(nodes_mutex_);
 
   Node::Ptr node = nullptr;
@@ -280,37 +353,36 @@ void Cluster::RecvAlive(rpc::AliveMsg* alive) {
         return;
       }
       // Refute will also make resetting work.
-      Refute(node, alive->version());
+      Refute(node, alive->version(), resp);
     }
   } else {  // others
     // We only handle the reset/new message and discard the conflict message.
     if (node->Reset(alive) || *node <= *alive) {
-      auto log = node->ToString();
       *node = *alive;
-      LOG(INFO) << log << " received(" << alive->DebugString() << ") -> "
-                << *node << ".";
+      LOG(INFO) << node->ToString() << " received(" << alive->DebugString()
+                << ") -> " << *node << ".";
       Broadcast(node);
     }
   }
 }
 
-void Cluster::RecvSuspect(rpc::SuspectMsg* suspect) {
+void Cluster::RecvSuspect(const rpc::NodeMsg* suspect, rpc::NodeMsg* resp) {
   std::lock_guard<std::mutex> lock(nodes_mutex_);
 
-  auto search = nodes_m_.find(suspect->dst());
+  auto search = nodes_m_.find(suspect->name());
   if (search == nodes_m_.end()) {
     return;
   }
 
   auto node = search->second;
 
-  if (suspect->version() < node->version()) {  // Outdated message
+  if (*node > *suspect) {  // Outdated message
     return;
   }
 
   if (node->state() != rpc::State::ALIVE) {
     if (node->state() == rpc::State::SUSPECT &&  // received new suspector
-        node->suspect_timer()->AddSuspector(suspect->src())) {
+        node->suspect_timer()->AddSuspector(suspect->from())) {
       Broadcast(node);
     }
     // nothing need to do
@@ -318,7 +390,7 @@ void Cluster::RecvSuspect(rpc::SuspectMsg* suspect) {
   }
 
   if (node->name() == name_) {  // me
-    Refute(node, suspect->version());
+    Refute(node, suspect->version(), resp);
     return;
   }
 
@@ -332,40 +404,36 @@ void Cluster::RecvSuspect(rpc::SuspectMsg* suspect) {
   uint64_t min_ms = 4 * std::max(1.0, log10(nodes_m_.size())) * probe_inv_ms_;
   uint64_t max_ms = 6 * min_ms;
   // Setup suspect timer
-  node->set_suspect_timer(
-      std::make_shared<SuspectTimer>(util::CreateTimer(
-                                         [this, &node] {
-                                           // timeout reached, SUSPECT->DEAD
-                                           rpc::DeadMsg dead;
-                                           dead.set_version(node->version());
-                                           dead.set_dst(node->name());
-                                           dead.set_src(name_);
-                                           dead.set_force(false);
-                                           RecvDead(&dead);
-                                         },
-                                         n == 0 ? min_ms : max_ms),
-                                     n, min_ms, max_ms, name_));
+  node->set_suspect_timer(std::make_shared<SuspectTimer>(
+      util::CreateTimer(
+          [this, &node] {
+            // timeout reached, SUSPECT->DEAD
+            auto msg = node->ToNodeMsg(name_, rpc::State::DEAD);
+            Recv(&msg, nullptr);
+          },
+          n == 0 ? min_ms : max_ms),
+      n, min_ms, max_ms, name_));
 
   Broadcast(node);
 }
 
-void Cluster::RecvDead(rpc::DeadMsg* dead) {
+void Cluster::RecvDead(const rpc::NodeMsg* dead, rpc::NodeMsg* resp) {
   std::lock_guard<std::mutex> lock(nodes_mutex_);
 
-  auto search = nodes_m_.find(dead->dst());
+  auto search = nodes_m_.find(dead->name());
   if (search == nodes_m_.end()) {
     return;
   }
 
   auto node = search->second;
 
-  if (dead->version() < node->version() ||  // Outdated message
+  if (*node > *dead ||                      // Outdated message
       node->state() == rpc::State::DEAD) {  // dead
     return;
   }
 
-  if (node->name() == name_ && dead->src() != name_) {  // rumor about me
-    Refute(node, dead->version());
+  if (dead->name() == name_ && dead->from() != name_) {  // rumor about me
+    Refute(node, dead->version(), resp);
     return;
   }
 
@@ -375,11 +443,13 @@ void Cluster::RecvDead(rpc::DeadMsg* dead) {
   Broadcast(node);
 }
 
-void Cluster::Refute(Node::Ptr self, uint32_t version) {
+void Cluster::Refute(Node::Ptr node, uint32_t version, rpc::NodeMsg* resp) {
   version_ += version - version_ + 1;
-  self->set_version(version_);
   health_ += 1;
-  Broadcast(self);
+  node->set_version(version_);
+  // Send the refute to the sender directly
+  node->ToNodeMsg(name_, rpc::State::UNKNOWN, resp);
+  Broadcast(node);
 }
 
 void Cluster::Broadcast(Node::ConstPtr node) { queue_.Push(node); }

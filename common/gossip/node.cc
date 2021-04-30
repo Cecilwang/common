@@ -64,64 +64,71 @@ Node::Node(uint32_t version, const std::string& name, const std::string& ip,
       state_(state),
       metadata_(metadata) {}
 
-Node::Node(const rpc::AliveMsg* alive)
-    : version_(alive->version()),
-      name_(alive->name()),
-      addr_(alive->ip(), alive->port()),
-      state_(rpc::State::ALIVE),
-      metadata_(alive->metadata()) {}
+Node::Node(const rpc::NodeMsg* msg)
+    : version_(msg->version()),
+      name_(msg->name()),
+      addr_(msg->ip(), msg->port()),
+      state_(msg->state()),
+      metadata_(msg->metadata()) {}
 
-Node& Node::operator=(const rpc::AliveMsg& alive) {
-  if (name_ != alive.name()) {
+Node& Node::operator=(const rpc::NodeMsg& msg) {
+  if (name_ != msg.name() || msg.state() == rpc::State::UNKNOWN) {
     return *this;
   }
 
-  version_ = alive.version();
-  addr_.set_ip(alive.ip());
-  addr_.set_port(alive.port());
-  state_ = rpc::State::ALIVE;
-  metadata_ = alive.metadata();
-
+  version_ = msg.version();
+  state_ = msg.state();
   // Force to cancel suspect timer.
   suspect_timer_ = nullptr;
 
-  return *this;
-}
-
-Node& Node::operator=(const rpc::SuspectMsg& suspect) {
-  if (name_ != suspect.dst()) {
-    return *this;
+  if (state_ == rpc::State::ALIVE) {
+    addr_.set_ip(msg.ip());
+    addr_.set_port(msg.port());
+    metadata_ = msg.metadata();
   }
-  version_ = suspect.version();
-  state_ = rpc::State::SUSPECT;
+
   return *this;
 }
 
-Node& Node::operator=(const rpc::DeadMsg& dead) {
-  if (name_ != suspect.dst()) {
-    return *this;
-  }
-  version_ = dead.version();
-  state_ = rpc::State::DEAD;
-  // Force to cancel suspect timer.
-  suspect_timer_ = nullptr;
-  return *this;
+void Node::ToNodeMsg(const std::string& from, rpc::State state,
+                     rpc::NodeMsg* msg) const {
+  msg->set_version(version_);
+  msg->set_name(name_);
+  msg->set_ip(ip());
+  msg->set_port(port());
+  msg->set_state(state == rpc::State::UNKNOWN ? state_ : state);
+  msg->set_metadata(metadata_);
+  msg->set_from(from);
 }
 
-bool Node::Conflict(const rpc::AliveMsg* alive) const {
-  return (name_ == alive->name()) &&
-         (ip() != alive->ip() || port() != alive->port() ||
-          metadata_ != alive->metadata());
+rpc::NodeMsg Node::ToNodeMsg(const std::string& from, rpc::State state) const {
+  rpc::NodeMsg msg;
+  ToNodeMsg(from, state, &msg);
+  return msg;
 }
 
-bool Node::Reset(const rpc::AliveMsg* alive) const {
-  // Here, we can only recognize the reset by the content. However, of course,
-  // sometimes the node will reset without any changes. In these cases, reset
-  // node will refute others outdated message in the future. Even if the delay
-  // is uncertain, synchronization will eventually occur.
-  // is uncertain, the synchronize will happen eventually.
-  return (state_ == rpc::State::DEAD || state_ == rpc::State::LEFT) &&
-         Conflict(alive);
+rpc::ForwardMsg Node::ToForwardMsg(const std::string& from,
+                                   rpc::State state) const {
+  rpc::ForwardMsg msg;
+  msg.set_ip(ip());
+  msg.set_port(port());
+  ToNodeMsg(from, state, msg.mutable_node());
+  return msg;
+}
+
+bool Node::Conflict(const rpc::NodeMsg* msg) const {
+  return (name_ == msg->name()) &&
+         (ip() != msg->ip() || port() != msg->port() ||
+          metadata_ != msg->metadata());
+}
+
+bool Node::Reset(const rpc::NodeMsg* msg) const {
+  // Here, we can only use properties to recognize the reset. However, of
+  // course, sometimes the node will reset without any changes. In these cases,
+  // reset node will refute others outdated message in the future. Even if the
+  // delay is uncertain, synchronization will eventually occur.
+  return msg->state() == rpc::State::ALIVE && state_ == rpc::State::DEAD &&
+         Conflict(msg);
 }
 
 uint32_t Node::version() const { return version_; }
@@ -133,6 +140,8 @@ const std::string& Node::name() const { return name_; }
 const std::string& Node::ip() const { return addr_.ip()->ip(); }
 
 uint16_t Node::port() const { return addr_.port(); }
+
+const net::Address& Node::addr() const { return addr_; }
 
 rpc::State Node::state() const { return state_; }
 
@@ -160,19 +169,18 @@ std::ostream& operator<<(std::ostream& os, const Node& self) {
   return os << self.ToString();
 }
 
-bool operator>(const Node& node, const rpc::AliveMsg& alive) {
-  return node.name() == alive.name() && node.version() > alive.version();
+bool operator>(const Node& node, const rpc::NodeMsg& msg) {
+  return node.name() == msg.name() && node.version() > msg.version();
 }
 
-bool operator<=(const Node& node, const rpc::AliveMsg& alive) {
-  return node.name() == alive.name() && node.version() <= alive.version();
+bool operator<=(const Node& node, const rpc::NodeMsg& msg) {
+  return node.name() == msg.name() && node.version() <= msg.version();
 }
 
-bool operator==(const Node& node, const rpc::AliveMsg& alive) {
-  return node.version() == alive.version() && node.name() == alive.name() &&
-         node.ip() == alive.ip() && node.port() == alive.port() &&
-         node.state() == rpc::State::ALIVE &&
-         node.metadata() == alive.metadata();
+bool operator==(const Node& node, const rpc::NodeMsg& msg) {
+  return node.version() == msg.version() && node.name() == msg.name() &&
+         node.ip() == msg.ip() && node.port() == msg.port() &&
+         node.state() == msg.state() && node.metadata() == msg.metadata();
 }
 
 }  // namespace gossip

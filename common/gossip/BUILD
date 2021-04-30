@@ -15,17 +15,6 @@ cc_proto_library(
 )
 
 cc_library(
-    name = "rpc",
-    srcs = ["rpc.cc"],
-    hdrs = ["rpc.h"],
-    deps = [
-        ":gossip_cc_proto",
-        "//common/util",
-        "@brpc",
-    ],
-)
-
-cc_library(
     name = "node",
     srcs = ["node.cc"],
     hdrs = ["node.h"],
@@ -42,10 +31,11 @@ cc_library(
     hdrs = ["cluster.h"],
     visibility = ["//visibility:public"],
     deps = [
+        ":gossip_cc_proto",
         ":node",
-        ":rpc",
         "//common/net",
         "//common/util",
+        "@brpc",
     ],
 )
 
