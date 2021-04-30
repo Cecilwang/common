@@ -88,6 +88,24 @@ struct Health {
   int upper_ = 8;
 };
 
+class SuspectTimer {
+ public:
+  typedef std::shared_ptr<SuspectTimer> Ptr;
+
+  SuspectTimer(std::unique_ptr<util::Timer> timer, size_t n, uint64_t min_ms,
+               uint64_t max_ms, const std::string& suspector);
+  bool AddSuspector(const std::string& suspector);
+
+ private:
+  std::unique_ptr<util::Timer> timer_ = nullptr;
+  size_t n_;
+  uint64_t min_ms_;
+  uint64_t max_ms_;
+  std::unordered_set<std::string> suspectors_;
+
+  DISALLOW_COPY_AND_ASSIGN(SuspectTimer);
+};
+
 class Node {
  public:
   typedef std::shared_ptr<Node> Ptr;
@@ -110,6 +128,8 @@ class Node {
   uint16_t port() const;
   rpc::State state() const;
   const std::string& metadata() const;
+  SuspectTimer::Ptr suspect_timer();
+  void set_suspect_timer(SuspectTimer::Ptr suspect_timer);
 
   std::string ToString(bool verbose = false) const;
   operator std::string() const;
@@ -121,6 +141,8 @@ class Node {
   net::Address addr_;
   rpc::State state_;
   std::string metadata_;
+
+  std::shared_ptr<SuspectTimer> suspect_timer_ = nullptr;
 
   DISALLOW_COPY_AND_ASSIGN(Node);
 };
@@ -195,6 +217,7 @@ class Cluster {
 
   void RecvAlive(rpc::AliveMsg* alive);
   void RecvSuspect(rpc::SuspectMsg* suspect);
+  void RecvDead(rpc::DeadMsg* dead);
 
   void Refute(Node::Ptr node, uint32_t version);
 

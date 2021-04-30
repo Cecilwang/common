@@ -126,6 +126,26 @@ int Health::operator*(int val) {
 
 //------------------------------------------------------------------------------
 
+SuspectTimer::SuspectTimer(std::unique_ptr<util::Timer> timer, size_t n,
+                           uint64_t min_ms, uint64_t max_ms,
+                           const std::string& suspector)
+    : timer_(std::move(timer)), n_(n), min_ms_(min_ms), max_ms_(max_ms) {
+  suspectors_.insert(suspector);
+}
+
+bool SuspectTimer::AddSuspector(const std::string& suspector) {
+  if (suspectors_.size() >= n_ ||
+      suspectors_.find(suspector) != suspectors_.end()) {
+    return false;
+  }
+  suspectors_.insert(suspector);
+  size_t m = suspectors_.size();
+  timer_->set_timeout_ms(max_ms_ - log(m) / log(n_) * (max_ms_ - min_ms_));
+  return true;
+}
+
+//------------------------------------------------------------------------------
+
 Node::Node(uint32_t version, const std::string& name, const std::string& ip,
            uint16_t port, rpc::State state, const std::string& metadata)
     : version_(version),
@@ -145,11 +165,16 @@ Node& Node::operator=(const rpc::AliveMsg& alive) {
   if (name_ != alive.name()) {
     return *this;
   }
+
   version_ = alive.version();
   addr_.set_ip(alive.ip());
   addr_.set_port(alive.port());
   state_ = rpc::State::ALIVE;
   metadata_ = alive.metadata();
+
+  // Force to cancel suspect timer.
+  suspect_timer_ = nullptr;
+
   return *this;
 }
 
@@ -191,6 +216,12 @@ uint16_t Node::port() const { return addr_.port(); }
 rpc::State Node::state() const { return state_; }
 
 const std::string& Node::metadata() const { return metadata_; }
+
+SuspectTimer::Ptr Node::suspect_timer() { return suspect_timer_; }
+
+void Node::set_suspect_timer(SuspectTimer::Ptr suspect_timer) {
+  suspect_timer_ = suspect_timer;
+}
 
 std::string Node::ToString(bool verbose) const {
   std::ostringstream ss;
@@ -430,7 +461,7 @@ void Cluster::SendProbe(Node::ConstPtr node) {
   rpc::SuspectMsg suspect;
   suspect.set_version(node->version());
   suspect.set_dst(node->name());
-  suspect.add_srcs(name_);
+  suspect.set_src(name_);
   RecvSuspect(&suspect);
 }
 
@@ -457,7 +488,7 @@ bool Cluster::SendSuspect(Node::ConstPtr node, uint64_t timeout) {
   rpc::SuspectMsg req;
   req.set_version(node->version());
   req.set_dst(node->name());
-  req.add_srcs(name_);
+  req.set_src(name_);
   rpc::Empty resp;
   return rpc::Client::Send(node->ip(), node->port(), req, &resp, timeout, 0);
 }
@@ -526,7 +557,6 @@ void Cluster::RecvAlive(rpc::AliveMsg* alive) {
       *node = *alive;
       LOG(INFO) << log << " received(" << alive->DebugString() << ") -> "
                 << *node << ".";
-      // TODO(sxwang) ClearTimer(node);
       Broadcast(node);
     }
   }
@@ -541,12 +571,52 @@ void Cluster::RecvSuspect(rpc::SuspectMsg* suspect) {
   }
 
   auto node = search->second;
-  if (suspect->version() < node->version()) {
+
+  if (suspect->version() < node->version()) {  // Outdated message
     return;
   }
 
+  if (node->state() != rpc::State::ALIVE) {
+    if (node->state() == rpc::State::SUSPECT &&  // received new suspector
+        node->suspect_timer()->AddSuspector(suspect->src())) {
+      Broadcast(node);
+    }
+    // nothing need to do
+    return;
+  }
+
+  if (node->name() == name_) {  // myself
+    Refute(node, suspect->version());
+    return;
+  }
+
+  // ALIVE->DEAD
   *node = *suspect;
+
+  // Allow the following numbers are arbitrary
+  // 2+2 -> (suspecteee + myself) + 2 other nodes;
+  // 1+2 -> myself + 2 other nodes
+  size_t n = nodes_m_.size() <= 2 + 2 ? 0 : 1 + 2;
+  uint64_t min_ms = 4 * std::max(1.0, log10(nodes_m_.size())) * probe_inv_ms_;
+  uint64_t max_ms = 6 * min_ms;
+  // Setup suspect timer
+  node->set_suspect_timer(
+      std::make_shared<SuspectTimer>(util::CreateTimer(
+                                         [this, &node] {
+                                           // timeout reached, SUSPECT->DEAD
+                                           rpc::DeadMsg dead;
+                                           dead.set_version(node->version());
+                                           dead.set_dst(node->name());
+                                           dead.set_src(name_);
+                                           RecvDead(&dead);
+                                         },
+                                         n == 0 ? min_ms : max_ms),
+                                     n, min_ms, max_ms, name_));
+
+  Broadcast(node);
 }
+
+void Cluster::RecvDead(rpc::DeadMsg* dead) {}
 
 void Cluster::Refute(Node::Ptr self, uint32_t version) {
   version_ += version - version_ + 1;
