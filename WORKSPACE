@@ -18,7 +18,7 @@ rules_foreign_cc_dependencies()
 
 load("@io_bazel_rules_scala//:scala_config.bzl", "scala_config")
 
-scala_config(scala_version = "2.12.11")
+scala_config(scala_version = "2.13.5")
 
 load("@io_bazel_rules_scala//scala:scala.bzl", "scala_repositories")
 
@@ -40,7 +40,7 @@ load("@rules_jvm_external//:defs.bzl", "maven_install")
 
 maven_install(
     artifacts = [
-        "titech.c.coord:scalaneko_2.12:0.22.0",
+        "titech.c.coord:scalaneko_2.13:0.22.0",
     ],
     repositories = [
         "https://xdefago.github.io/ScalaNeko/sbt-repo/",
