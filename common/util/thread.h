@@ -34,10 +34,15 @@ class Thread {
   ~Thread();
 
   virtual void Run() = 0;
+  virtual void _Run() = 0;
+
   void Idle(uint64_t ms);
   void Stop();
-
   void WaitUntilStop();
+
+  virtual bool running();
+  std::condition_variable& cv();
+  std::mutex& mutex();
 
  protected:
   bool running_ = false;
@@ -48,6 +53,8 @@ class Thread {
   DISALLOW_COPY_AND_ASSIGN(Thread);
 };
 
+//------------------------------------------------------------------------------
+
 template <class F>
 class ThreadWrap : public Thread {
  public:
@@ -57,9 +64,11 @@ class ThreadWrap : public Thread {
     std::lock_guard<std::mutex> lock(mutex_);
     if (!running_) {
       running_ = true;
-      thread_ = std::thread([this] { f_(this); });
+      thread_ = std::thread([this] { _Run(); });
     }
   }
+
+  void _Run() override { f_(this); }
 
  private:
   F f_;
@@ -71,16 +80,13 @@ std::unique_ptr<Thread> CreateThread(F&& f) {
   return std::unique_ptr<Thread>(new ThreadWrap<F>(std::forward<F>(f)));
 }
 
+//------------------------------------------------------------------------------
+
 template <class F>
 class LoopThreadWrap : public Thread {
  public:
-  LoopThreadWrap(F&& f, uint64_t interval_ms)
-      : f_(std::move(f)), interval_ms_(interval_ms) {}
-
-  bool running() {
-    std::unique_lock<std::mutex> lock(mutex_);
-    return !cv_.wait_for(lock, interval_ms_, [this] { return !running_; });
-  }
+  LoopThreadWrap(F&& f, uint64_t intvl_ms)
+      : f_(std::move(f)), intvl_ms_(intvl_ms) {}
 
   void Run() override {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -88,34 +94,42 @@ class LoopThreadWrap : public Thread {
       running_ = true;
       thread_ = std::thread([this] {
         for (; running();) {
-          f_();
+          _Run();
         }
       });
     }
   }
 
+  void _Run() override { f_(); }
+
+  bool running() override {
+    std::unique_lock<std::mutex> lock(mutex_);
+    return !cv_.wait_for(lock, intvl_ms_, [this] { return !running_; });
+  }
+
  private:
   F f_;
-  std::chrono::milliseconds interval_ms_;
+  std::chrono::milliseconds intvl_ms_;
   DISALLOW_COPY_AND_ASSIGN(LoopThreadWrap);
 };
 
 template <class F>
-std::unique_ptr<Thread> CreateLoopThread(F&& f, uint64_t interval_ms,
+std::unique_ptr<Thread> CreateLoopThread(F&& f, uint64_t intvl_ms,
                                          bool delay = false) {
   if (delay) {
-    SleepForMS(Uniform(0, interval_ms));
+    SleepForMS(Uniform(0, intvl_ms));
   }
   return std::unique_ptr<Thread>(
-      new LoopThreadWrap<F>(std::forward<F>(f), interval_ms));
+      new LoopThreadWrap<F>(std::forward<F>(f), intvl_ms));
 }
+
+//------------------------------------------------------------------------------
 
 class Timer : public Thread {
  public:
   explicit Timer(uint64_t timeout_ms) : timeout_ms_(timeout_ms) {}
 
   void Run() override;
-  virtual void _Run() = 0;
 
   uint64_t timeout_ms() const;
   uint64_t end_ms() const;
@@ -131,6 +145,8 @@ class Timer : public Thread {
 
   DISALLOW_COPY_AND_ASSIGN(Timer);
 };
+
+//------------------------------------------------------------------------------
 
 template <class F>
 class TimerWrap : public Timer {

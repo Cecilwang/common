@@ -29,7 +29,12 @@ message ForwardMsg {
   NodeMsg node = 3;
 }
 
+message SyncMsg {
+  repeated NodeMsg nodes = 1;
+}
+
 service ServerAPI {
-  rpc Sync(NodeMsg) returns (NodeMsg) {}
+  rpc Ping(NodeMsg) returns (NodeMsg) {}
   rpc Forward(ForwardMsg) returns (NodeMsg) {}
+  rpc Sync(SyncMsg) returns (SyncMsg) {}
 }

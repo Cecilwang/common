@@ -36,8 +36,9 @@ namespace rpc {
     stub->FUNC(cntl, req, resp, nullptr);                         \
   }
 
-DefineSend(Sync, NodeMsg, NodeMsg);
+DefineSend(Ping, NodeMsg, NodeMsg);
 DefineSend(Forward, ForwardMsg, NodeMsg);
+DefineSend(Sync, SyncMsg, SyncMsg);
 
 #undef DefineSend
 
@@ -74,7 +75,7 @@ bool Client::Send(const net::Address& addr, const REQ& req, RESP* resp,
 
 ServerImpl::ServerImpl(Cluster* cluster) : cluster_(cluster) {}
 
-void ServerImpl::Sync(RpcController* cntl, const NodeMsg* req, NodeMsg* resp,
+void ServerImpl::Ping(RpcController* cntl, const NodeMsg* req, NodeMsg* resp,
                       Closure* done) {
   brpc::ClosureGuard done_guard(done);
   cluster_->Recv(req, resp);
@@ -89,6 +90,20 @@ void ServerImpl::Forward(RpcController* cntl, const ForwardMsg* req,
   }
   // TODO(sxwang): Of course, we can take some measures based on the current
   // situation, but now we don't.
+}
+
+void ServerImpl::Sync(RpcController* cntl, const SyncMsg* req, SyncMsg* resp,
+                      Closure* done) {
+  brpc::ClosureGuard done_guard(done);
+  // TODO(sxwang): It's much better to avoid flood
+
+  // TODO(sxwang): Need other acitons to handle clutser_->Stop()
+
+  SyncMsg req_back = *req;
+  std::thread t([=] { cluster_->RecvSync(&req_back); });
+  t.detach();
+
+  cluster_->GenSyncMsg(resp);
 }
 
 }  // namespace rpc
@@ -131,21 +146,36 @@ Node::ConstPtr BroadcastQueue::Pop() {
     LOG(INFO) << "BroadcastQueue popped " << *e->node << " " << e->n_transmit
               << "->" << n_transmit_;
   }
+
   return e->node;
 }
 
 size_t BroadcastQueue::Size() {
-  std::lock_guard<std::mutex> lock(mutex_);
-  return queue_.size();
+  std::unique_lock<std::mutex> lock(mutex_);
+  size_t ret = queue_.size();
+  lock.unlock();
+  cv_.notify_one();
+  return ret;
 }
 
-std::ostream& operator<<(std::ostream& os, BroadcastQueue& self) {
-  std::lock_guard<std::mutex> lock(self.mutex_);
-  os << "BroadcastQueue transmits in " << self.n_transmit_ << " times.";
-  for (const auto& e : self.queue_) {
-    os << "\n\t" << e->node->ToString(true) << " " << e->n_transmit << " times";
+std::string BroadcastQueue::ToString() {
+  std::unique_lock<std::mutex> lock(mutex_);
+
+  std::ostringstream ss;
+  ss << "BroadcastQueue transmits in " << n_transmit_ << " times.";
+  for (const auto& e : queue_) {
+    ss << "\n\t" << e->node->ToString(true) << " " << e->n_transmit << " times";
   }
-  return os;
+
+  lock.unlock();
+  cv_.notify_one();
+  return ss.str();
+}
+
+BroadcastQueue::operator std::string() { return ToString(); }
+
+std::ostream& operator<<(std::ostream& os, BroadcastQueue& self) {
+  return os << self.ToString();
 }
 
 BroadcastQueue::Element::Element(Node::ConstPtr node, uint32_t n_transmit,
@@ -220,7 +250,7 @@ bool Cluster::StartRoutine() {
     probe_t_ = util::CreateLoopThread([this] { Probe(); }, probe_inv_ms_, true);
   }
   if (!sync_t_) {
-    sync_t_ = util::CreateLoopThread([this] { Sync(); }, sync_inv_ms_, true);
+    sync_t_ = util::CreateThread([this](util::Thread* p) { Sync(p); });
   }
   if (!gossip_t_) {
     gossip_t_ =
@@ -339,9 +369,53 @@ void Cluster::Probe(Node::ConstPtr node) {
   Recv(&msg, nullptr);
 }
 
-void Cluster::Sync() {}
+void Cluster::Sync(util::Thread* p) {
+  util::SleepForMS(util::Uniform(0, sync_inv_ms_));
+  while (true) {
+    Sync();
 
-void Cluster::Gossip() {}
+    size_t n = std::max(static_cast<size_t>(32), nodes_v_.size());
+    uint64_t timeout = sync_inv_ms_ * (ceil(log(n) - log(32)) + 1.0);
+    auto timeout_ms = std::chrono::milliseconds(timeout);
+    std::unique_lock<std::mutex> lock(p->mutex());
+    if (p->cv().wait_for(lock, timeout_ms, [p] { return !p->running(); })) {
+      break;
+    }
+  }
+}
+
+void Cluster::Sync() {
+  // Use the filter to randomly select up to 1 elements
+  auto nodes = GetRandomNodes(1, [this](Node::ConstPtr x) {
+    return x->state() != rpc::State::ALIVE || x->name() == name_;
+  });
+
+  if (nodes.size() == 0) {
+    return;
+  }
+
+  Node::ConstPtr node = *(nodes.begin());
+  rpc::SyncMsg req = GenSyncMsg();
+  rpc::SyncMsg resp;
+  rpc::Client::Send(node->addr(), req, &resp, 10 * 1000);
+  RecvSync(&resp);
+}
+
+void Cluster::Gossip() {
+  // Use the filter to randomly select up to 3 elements where 3 is arbitrary
+  auto nodes = GetRandomNodes(3, [this](Node::ConstPtr x) {
+    return x->name() == name_ ||  //
+           (x->state() == rpc::State::DEAD && x->elapsed_ms() >= 1 * 60 * 1000);
+  });
+
+  rpc::NodeMsg resp;
+  for (const auto& dst : nodes) {
+    for (int i = 0; i < 3; ++i) {
+      auto req = GenNodeMsg(queue_.Pop());
+      rpc::Client::Send(dst->addr(), req, &resp);
+    }
+  }
+}
 
 void Cluster::Recv(const rpc::NodeMsg* req, rpc::NodeMsg* resp) {
   rpc::NodeMsg unused;
@@ -478,6 +552,12 @@ void Cluster::RecvDead(const rpc::NodeMsg* dead, rpc::NodeMsg* resp) {
   Broadcast(node);
 }
 
+void Cluster::RecvSync(const rpc::SyncMsg* req) {
+  for (const auto& x : req->nodes()) {
+    Recv(&x, nullptr);
+  }
+}
+
 void Cluster::Refute(Node::Ptr node, uint32_t version, rpc::NodeMsg* resp) {
   version_ += version - version_ + 1;
   health_ += 1;
@@ -521,13 +601,31 @@ rpc::ForwardMsg Cluster::GenForwardMsg(Node::ConstPtr node,
   return msg;
 }
 
+void Cluster::GenSyncMsg(rpc::SyncMsg* msg) {
+  std::lock_guard<std::mutex> lock(nodes_mutex_);
+  for (const auto& x : nodes_v_) {
+    auto node_msg = msg->add_nodes();
+    GenNodeMsg(x, node_msg);
+    if (node_msg->state() == rpc::State::DEAD) {
+      node_msg->set_state(rpc::State::SUSPECT);
+    }
+  }
+  LOG(INFO) << *this << " generated SyncMsg.";
+}
+
+rpc::SyncMsg Cluster::GenSyncMsg() {
+  rpc::SyncMsg msg;
+  GenSyncMsg(&msg);
+  return msg;
+}
+
 void Cluster::ShuffleNodes() {
   std::string log;
   std::lock_guard<std::mutex> lock(nodes_mutex_);
   size_t n = nodes_v_.size();
   for (size_t i = 0; i < n;) {
     if (nodes_v_[i]->state() == rpc::State::DEAD &&
-        nodes_v_[i]->elapsed_ms() >= 5 * 60 * 1000) {
+        nodes_v_[i]->elapsed_ms() >= 1 * 60 * 1000) {
       AppendLog(&log, nodes_v_[i]->ToString(true));
       nodes_m_.erase(nodes_v_[i]->name());
       std::swap(nodes_v_[i], nodes_v_[n - 1]);

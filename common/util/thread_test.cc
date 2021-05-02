@@ -20,6 +20,11 @@ limitations under the License.
 namespace common {
 namespace util {
 
+TEST(TestThread, TestDetach) {
+  std::thread t([] { SleepForMS(10 * 1000); });
+  t.detach();
+}
+
 TEST(TestThread, TestSimple) {
   auto t = CreateThread([](Thread* p) { std::cout << "Running" << std::endl; });
   t->Run();
@@ -39,13 +44,13 @@ TEST(TestThread, TestIdle) {
 
 TEST(TestLoopThread, TestSimple) {
   uint64_t ms = 1 * 1000 + 100;
-  uint64_t interval_ms = 200;
+  uint64_t intvl_ms = 200;
   int count = 0;
-  auto t = CreateLoopThread([&count] { ++count; }, interval_ms);
+  auto t = CreateLoopThread([&count] { ++count; }, intvl_ms);
   t->Run();
   t->Idle(ms);
   t->Stop();
-  EXPECT_EQ(count, ms / interval_ms);
+  EXPECT_EQ(count, ms / intvl_ms);
 }
 
 TEST(TestTimer, TestExcute) {

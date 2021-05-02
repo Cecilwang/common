@@ -62,11 +62,14 @@ class ServerImpl : public ServerAPI {
  public:
   explicit ServerImpl(Cluster* cluster);
 
-  void Sync(RpcController* cntl, const NodeMsg* req, NodeMsg* resp,
+  void Ping(RpcController* cntl, const NodeMsg* req, NodeMsg* resp,
             Closure* done) override;
 
   void Forward(RpcController* cntl, const ForwardMsg* req, NodeMsg* resp,
                Closure* done) override;
+
+  void Sync(RpcController* cntl, const SyncMsg* req, SyncMsg* resp,
+            Closure* done) override;
 
  private:
   Cluster* cluster_ = nullptr;
@@ -85,6 +88,8 @@ class BroadcastQueue {
 
   size_t Size();
 
+  std::string ToString();
+  operator std::string();
   friend std::ostream& operator<<(std::ostream& os, BroadcastQueue& self);
 
  private:
@@ -131,6 +136,7 @@ class Cluster {
 
   void Probe();
   void Probe(Node::ConstPtr node);
+  void Sync(util::Thread* p);
   void Sync();
   void Gossip();
 
@@ -139,6 +145,8 @@ class Cluster {
   void RecvAlive(const rpc::NodeMsg* alive, rpc::NodeMsg* resp);
   void RecvSuspect(const rpc::NodeMsg* suspect, rpc::NodeMsg* resp);
   void RecvDead(const rpc::NodeMsg* dead, rpc::NodeMsg* resp);
+
+  void RecvSync(const rpc::SyncMsg* req);
 
   void Refute(Node::Ptr node, uint32_t version, rpc::NodeMsg* resp);
 
@@ -149,6 +157,8 @@ class Cluster {
   rpc::NodeMsg GenNodeMsg(Node::ConstPtr node, rpc::State state) const;
   rpc::ForwardMsg GenForwardMsg(Node::ConstPtr node) const;
   rpc::ForwardMsg GenForwardMsg(Node::ConstPtr node, rpc::State state) const;
+  void GenSyncMsg(rpc::SyncMsg* msg);
+  rpc::SyncMsg GenSyncMsg();
 
   void ShuffleNodes();
   template <class F>

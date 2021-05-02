@@ -36,14 +36,22 @@ void Thread::WaitUntilStop() {
   cv_.wait(lock, [this] { return !running_; });
 }
 
+bool Thread::running() { return running_; }
+
+std::condition_variable& Thread::cv() { return cv_; }
+
+std::mutex& Thread::mutex() { return mutex_; }
+
+//------------------------------------------------------------------------------
+
 void Timer::Run() {
   std::lock_guard<std::mutex> lock(mutex_);
   if (!running_) {
     running_ = true;
     start_ = std::chrono::system_clock::now();
     thread_ = std::thread([this] {
-      std::unique_lock<std::mutex> lock(mutex_);
       while (true) {
+        std::unique_lock<std::mutex> lock(mutex_);
         if (cv_.wait_until(lock, start_ + timeout_ms_,
                            [this] { return !running_ || breath_; })) {
           if (!running_) {  // cancel
