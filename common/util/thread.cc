@@ -60,6 +60,14 @@ void Timer::Run() {
   }
 }
 
+// TODO(sxwang): It's much better to lock;
+uint64_t Timer::timeout_ms() const { return timeout_ms_.count(); }
+
+// TODO(sxwang): It's much better to lock;
+uint64_t Timer::end_ms() const {
+  return util::TimePointToMS(start_ + timeout_ms_);
+}
+
 void Timer::set_timeout_ms(uint64_t timeout_ms) {
   {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -67,6 +75,19 @@ void Timer::set_timeout_ms(uint64_t timeout_ms) {
     timeout_ms_ = std::chrono::milliseconds(timeout_ms);
   }
   cv_.notify_all();
+}
+
+// TODO(sxwang): It's much better to lock;
+std::ostream& operator<<(std::ostream& os, const Timer& self) {
+  auto now = util::NowInMS();
+  auto end = self.end_ms();
+  os << now << "->" << end << ":";
+  if (end <= now) {
+    os << "end";
+  } else {
+    os << end - now << "ms";
+  }
+  return os;
 }
 
 }  // namespace util

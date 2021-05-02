@@ -14,8 +14,8 @@ enum State {
 }
 
 message NodeMsg {
-  uint32 version = 1;
-  string name = 2;
+  string name = 1;
+  uint32 version = 2;
   string ip = 3;
   uint32 port = 4;
   State state = 5;

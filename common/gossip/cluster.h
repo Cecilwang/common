@@ -47,14 +47,14 @@ using Closure = ::google::protobuf::Closure;
 class Client {
  public:
   template <class REQ, class RESP>
-  static void Send(ServerAPI_Stub* stub, brpc::Controller* cntl, const REQ* req,
-                   RESP* resp);
-
-  template <class REQ, class RESP>
   static bool Send(const net::Address& addr, const REQ& req, RESP* resp,
                    uint64_t timeout_ms = 500, int32_t n_retry = 1);
 
  private:
+  template <class REQ, class RESP>
+  static void Send(ServerAPI_Stub* stub, brpc::Controller* cntl, const REQ* req,
+                   RESP* resp);
+
   Client() = delete;
 };
 
@@ -84,6 +84,8 @@ class BroadcastQueue {
   Node::ConstPtr Pop();
 
   size_t Size();
+
+  friend std::ostream& operator<<(std::ostream& os, BroadcastQueue& self);
 
  private:
   struct Element {
@@ -142,9 +144,15 @@ class Cluster {
 
   void Broadcast(Node::ConstPtr node);
 
+  void GenNodeMsg(Node::ConstPtr src, rpc::NodeMsg* dst) const;
+  rpc::NodeMsg GenNodeMsg(Node::ConstPtr node) const;
+  rpc::NodeMsg GenNodeMsg(Node::ConstPtr node, rpc::State state) const;
+  rpc::ForwardMsg GenForwardMsg(Node::ConstPtr node) const;
+  rpc::ForwardMsg GenForwardMsg(Node::ConstPtr node, rpc::State state) const;
+
   void ShuffleNodes();
   template <class F>
-  std::unordered_set<Node::Ptr> GetRandomNodes(size_t k, F&& f);
+  std::unordered_set<Node::Ptr> GetRandomNodes(size_t maxn, F&& f);
 
   std::string ToString(bool verbose = false) const;
   operator std::string() const;

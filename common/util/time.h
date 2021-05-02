@@ -15,8 +15,17 @@ limitations under the License.
 
 #include "common/util/type.h"
 
+#include <chrono>  // NOLINT
+
 namespace common {
 namespace util {
+
+template <class T>
+uint64_t TimePointToMS(const T& tp) {
+  return std::chrono::duration_cast<std::chrono::milliseconds>(
+             tp.time_since_epoch())
+      .count();
+}
 
 uint64_t NowInMS();
 void SleepForMS(uint64_t ms);

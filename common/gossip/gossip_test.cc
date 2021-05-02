@@ -23,9 +23,9 @@ namespace gossip {
 
 TEST(TestBroadcastQueue, TestSimple) {
   BroadcastQueue q(2);
-  auto n1 = std::make_shared<Node>(0, "n1", "", 0, rpc::State::ALIVE, "");
-  auto n2 = std::make_shared<Node>(0, "n2", "", 0, rpc::State::ALIVE, "");
-  auto n3 = std::make_shared<Node>(0, "n3", "", 0, rpc::State::ALIVE, "");
+  auto n1 = std::make_shared<Node>("1", 0, "0.0.0.0", 0, rpc::State::ALIVE, "");
+  auto n2 = std::make_shared<Node>("2", 0, "0.0.0.0", 0, rpc::State::ALIVE, "");
+  auto n3 = std::make_shared<Node>("3", 0, "0.0.0.0", 0, rpc::State::ALIVE, "");
 
   q.Push(n1);
   q.Push(n2);
@@ -42,6 +42,7 @@ TEST(TestBroadcastQueue, TestSimple) {
   EXPECT_EQ(q.Size(), 2);
 
   q.Push(n1);
+  LOG(INFO) << q;
   EXPECT_EQ(q.Pop(), n1);
   EXPECT_EQ(q.Size(), 2);
   EXPECT_EQ(q.Pop(), n1);
@@ -54,7 +55,7 @@ TEST(TestBroadcastQueue, TestConcurrent) {
   uint64_t ms = 1 * 1000;
 
   BroadcastQueue q(1);
-  auto n1 = std::make_shared<Node>(0, "n1", "", 0, rpc::State::ALIVE, "");
+  auto n1 = std::make_shared<Node>("1", 0, "0.0.0.0", 0, rpc::State::ALIVE, "");
 
   std::thread t1([&]() {
     auto ts = util::NowInMS();

@@ -47,6 +47,10 @@ class SuspectTimer {
                uint64_t max_ms, const std::string& suspector);
   bool AddSuspector(const std::string& suspector);
 
+  std::string ToString() const;
+  operator std::string() const;
+  friend std::ostream& operator<<(std::ostream& os, const SuspectTimer& self);
+
  private:
   std::unique_ptr<util::Timer> timer_ = nullptr;
   size_t n_;
@@ -57,34 +61,38 @@ class SuspectTimer {
   DISALLOW_COPY_AND_ASSIGN(SuspectTimer);
 };
 
+// Node is not thread safe.
 class Node {
  public:
   typedef std::shared_ptr<Node> Ptr;
   typedef const std::shared_ptr<Node>& ConstPtr;
 
-  Node(uint32_t version, const std::string& name, const std::string& ip,
+  Node(const std::string& name, uint32_t version, const std::string& ip,
        uint16_t port, rpc::State state, const std::string& metadata);
   explicit Node(const rpc::NodeMsg* msg);
 
   Node& operator=(const rpc::NodeMsg& msg);
-  void ToNodeMsg(const std::string& from, rpc::State state,
-                 rpc::NodeMsg* msg) const;
-  rpc::NodeMsg ToNodeMsg(const std::string& from,
-                         rpc::State state = rpc::State::UNKNOWN) const;
-  rpc::ForwardMsg ToForwardMsg(const std::string& from,
-                               rpc::State state = rpc::State::UNKNOWN) const;
+  void ToNodeMsg(rpc::NodeMsg* msg) const;
 
-  bool Conflict(const rpc::NodeMsg* msg) const;
+  bool operator>(const rpc::NodeMsg& msg);
+  bool operator>=(const rpc::NodeMsg& msg);
+  bool operator<(const rpc::NodeMsg& msg);
+  bool operator<=(const rpc::NodeMsg& msg);
+  bool operator==(const rpc::NodeMsg& msg);
+  bool operator!=(const rpc::NodeMsg& msg);
+
   bool Reset(const rpc::NodeMsg* msg) const;
 
+  const std::string& name() const;
   uint32_t version() const;
   void set_version(uint32_t version);
-  const std::string& name() const;
   const std::string& ip() const;
   uint16_t port() const;
   const net::Address& addr() const;
   rpc::State state() const;
   const std::string& metadata() const;
+  uint64_t timestamp_ms() const;
+  uint64_t elapsed_ms() const;
   SuspectTimer::Ptr suspect_timer();
   void set_suspect_timer(SuspectTimer::Ptr suspect_timer);
 
@@ -93,20 +101,18 @@ class Node {
   friend std::ostream& operator<<(std::ostream& os, const Node& self);
 
  private:
-  uint32_t version_;
   std::string name_;
+  uint32_t version_;
   net::Address addr_;
   rpc::State state_;
   std::string metadata_;
+
+  uint64_t timestamp_ms_;
 
   std::shared_ptr<SuspectTimer> suspect_timer_ = nullptr;
 
   DISALLOW_COPY_AND_ASSIGN(Node);
 };
-
-bool operator>(const Node& self, const rpc::NodeMsg& alive);
-bool operator<=(const Node& self, const rpc::NodeMsg& alive);
-bool operator==(const Node& self, const rpc::NodeMsg& alive);
 
 }  // namespace gossip
 }  // namespace common

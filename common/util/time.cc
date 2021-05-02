@@ -12,17 +12,12 @@ limitations under the License.
 
 #include "common/util/time.h"
 
-#include <chrono>  // NOLINT
 #include <thread>  // NOLINT
 
 namespace common {
 namespace util {
 
-uint64_t NowInMS() {
-  return std::chrono::duration_cast<std::chrono::milliseconds>(
-             std::chrono::system_clock::now().time_since_epoch())
-      .count();
-}
+uint64_t NowInMS() { return TimePointToMS(std::chrono::system_clock::now()); }
 
 void SleepForMS(uint64_t ms) {
   std::this_thread::sleep_for(std::chrono::milliseconds(ms));

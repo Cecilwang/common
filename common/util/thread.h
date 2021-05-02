@@ -16,7 +16,8 @@ limitations under the License.
 #include <chrono>              // NOLINT
 #include <condition_variable>  // NOLINT
 #include <memory>
-#include <mutex>   // NOLINT
+#include <mutex>  // NOLINT
+#include <ostream>
 #include <thread>  // NOLINT
 #include <utility>
 
@@ -116,7 +117,11 @@ class Timer : public Thread {
   void Run() override;
   virtual void _Run() = 0;
 
+  uint64_t timeout_ms() const;
+  uint64_t end_ms() const;
   void set_timeout_ms(uint64_t timeout_ms);
+
+  friend std::ostream& operator<<(std::ostream& os, const Timer& self);
 
  protected:
   std::chrono::milliseconds timeout_ms_;

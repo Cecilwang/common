@@ -15,6 +15,10 @@ limitations under the License.
 #include <algorithm>
 #include <utility>
 
+#include "glog/logging.h"
+
+#include "common/util/time.h"
+
 namespace common {
 namespace gossip {
 
@@ -54,88 +58,124 @@ bool SuspectTimer::AddSuspector(const std::string& suspector) {
   return true;
 }
 
+std::string SuspectTimer::ToString() const {
+  std::ostringstream ss;
+  ss << "SuspectTimer: " << suspectors_.size() << "->" << n_ << ", " << *timer_;
+  return ss.str();
+}
+
+SuspectTimer::operator std::string() const { return ToString(); }
+
+std::ostream& operator<<(std::ostream& os, const SuspectTimer& self) {
+  return os << self.ToString();
+}
+
 //------------------------------------------------------------------------------
 
-Node::Node(uint32_t version, const std::string& name, const std::string& ip,
+Node::Node(const std::string& name, uint32_t version, const std::string& ip,
            uint16_t port, rpc::State state, const std::string& metadata)
-    : version_(version),
-      name_(name),
+    : name_(name),
+      version_(version),
       addr_(ip, port),
       state_(state),
-      metadata_(metadata) {}
+      metadata_(metadata),
+      timestamp_ms_(util::NowInMS()) {
+  LOG(INFO) << ToString(true) << " was created.";
+}
 
 Node::Node(const rpc::NodeMsg* msg)
-    : version_(msg->version()),
-      name_(msg->name()),
+    : name_(msg->name()),
+      version_(msg->version()),
       addr_(msg->ip(), msg->port()),
       state_(msg->state()),
-      metadata_(msg->metadata()) {}
+      metadata_(msg->metadata()),
+      timestamp_ms_(util::NowInMS()) {
+  LOG(INFO) << ToString(true) << " was created by " << msg->ShortDebugString();
+}
 
 Node& Node::operator=(const rpc::NodeMsg& msg) {
   if (name_ != msg.name() || msg.state() == rpc::State::UNKNOWN) {
+    LOG(WARNING) << msg.ShortDebugString() << " failed to assign to " << *this;
     return *this;
   }
+  LOG(INFO) << ToString(true) << " = " << msg.ShortDebugString();
 
   version_ = msg.version();
-  state_ = msg.state();
-  // Force to cancel suspect timer.
-  suspect_timer_ = nullptr;
-
   if (state_ == rpc::State::ALIVE) {
     addr_.set_ip(msg.ip());
     addr_.set_port(msg.port());
     metadata_ = msg.metadata();
   }
+  if (state_ != msg.state()) {
+    timestamp_ms_ = util::NowInMS();
+  }
+  if (state_ != rpc::State::SUSPECT || msg.state() != rpc::State::SUSPECT) {
+    // Force to cancel suspect timer.
+    suspect_timer_ = nullptr;
+  }
+  state_ = msg.state();
 
   return *this;
 }
 
-void Node::ToNodeMsg(const std::string& from, rpc::State state,
-                     rpc::NodeMsg* msg) const {
-  msg->set_version(version_);
+void Node::ToNodeMsg(rpc::NodeMsg* msg) const {
   msg->set_name(name_);
+  msg->set_version(version_);
   msg->set_ip(ip());
   msg->set_port(port());
-  msg->set_state(state == rpc::State::UNKNOWN ? state_ : state);
+  msg->set_state(state_);
   msg->set_metadata(metadata_);
-  msg->set_from(from);
 }
 
-rpc::NodeMsg Node::ToNodeMsg(const std::string& from, rpc::State state) const {
-  rpc::NodeMsg msg;
-  ToNodeMsg(from, state, &msg);
-  return msg;
+bool Node::operator>(const rpc::NodeMsg& msg) {
+  return name_ == msg.name() && version_ > msg.version();
 }
 
-rpc::ForwardMsg Node::ToForwardMsg(const std::string& from,
-                                   rpc::State state) const {
-  rpc::ForwardMsg msg;
-  msg.set_ip(ip());
-  msg.set_port(port());
-  ToNodeMsg(from, state, msg.mutable_node());
-  return msg;
+bool Node::operator>=(const rpc::NodeMsg& msg) {
+  return name_ == msg.name() && version_ >= msg.version();
 }
 
-bool Node::Conflict(const rpc::NodeMsg* msg) const {
-  return (name_ == msg->name()) &&
-         (ip() != msg->ip() || port() != msg->port() ||
-          metadata_ != msg->metadata());
+bool Node::operator<(const rpc::NodeMsg& msg) {
+  return name_ == msg.name() && version_ < msg.version();
 }
+
+bool Node::operator<=(const rpc::NodeMsg& msg) {
+  return name_ == msg.name() && version_ <= msg.version();
+}
+
+bool Node::operator==(const rpc::NodeMsg& msg) {
+  return name_ == msg.name() &&                       //
+         version_ == msg.version() &&                 //
+         ip() == msg.ip() && port() == msg.port() &&  //
+         state_ == msg.state() &&                     //
+         metadata_ == msg.metadata();
+}
+
+bool Node::operator!=(const rpc::NodeMsg& msg) { return !(*this == msg); }
 
 bool Node::Reset(const rpc::NodeMsg* msg) const {
   // Here, we can only use properties to recognize the reset. However, of
   // course, sometimes the node will reset without any changes. In these cases,
   // reset node will refute others outdated message in the future. Even if the
   // delay is uncertain, synchronization will eventually occur.
-  return msg->state() == rpc::State::ALIVE && state_ == rpc::State::DEAD &&
-         Conflict(msg);
+
+  // TODO(sxwang): It is simpler to recognize by the timestamp_ms_.
+  return name_ == msg->name() &&                                             //
+         version_ >= msg->version() &&                                       //
+         state_ == rpc::State::DEAD && msg->state() == rpc::State::ALIVE &&  //
+         (ip() != msg->ip() ||                                               //
+          port() != msg->port() ||                                           //
+          metadata_ != msg->metadata());
 }
+
+const std::string& Node::name() const { return name_; }
 
 uint32_t Node::version() const { return version_; }
 
-void Node::set_version(uint32_t version) { version_ = version; }
-
-const std::string& Node::name() const { return name_; }
+void Node::set_version(uint32_t version) {
+  LOG(INFO) << *this << " updated version: " << version_ << "->" << version;
+  version_ = version;
+}
 
 const std::string& Node::ip() const { return addr_.ip()->ip(); }
 
@@ -147,18 +187,28 @@ rpc::State Node::state() const { return state_; }
 
 const std::string& Node::metadata() const { return metadata_; }
 
+uint64_t Node::timestamp_ms() const { return timestamp_ms_; }
+
+uint64_t Node::elapsed_ms() const { return util::NowInMS() - timestamp_ms_; }
+
 SuspectTimer::Ptr Node::suspect_timer() { return suspect_timer_; }
 
 void Node::set_suspect_timer(SuspectTimer::Ptr suspect_timer) {
+  LOG(INFO) << *this << " set suspect_timer: " << *suspect_timer;
   suspect_timer_ = suspect_timer;
 }
 
 std::string Node::ToString(bool verbose) const {
   std::ostringstream ss;
   if (verbose) {
-    ss << "Node(" << version_ << ", " << name_ << ", " << addr_ << ")";
+    ss << "Node(" << name_ << ", " << version_ << ", " << addr_ << ", "
+       << rpc::State_Name(state_) << ", "
+       << (state_ == rpc::State::SUSPECT && suspect_timer_
+               ? suspect_timer_->ToString() + ", "
+               : "")
+       << timestamp_ms_ << (metadata_.empty() ? "" : ", " + metadata_) << ")";
   } else {
-    ss << "Node(" << version_ << ", " << name_ << ")";
+    ss << "Node(" << name_ << ")";
   }
   return ss.str();
 }
@@ -167,20 +217,6 @@ Node::operator std::string() const { return ToString(); }
 
 std::ostream& operator<<(std::ostream& os, const Node& self) {
   return os << self.ToString();
-}
-
-bool operator>(const Node& node, const rpc::NodeMsg& msg) {
-  return node.name() == msg.name() && node.version() > msg.version();
-}
-
-bool operator<=(const Node& node, const rpc::NodeMsg& msg) {
-  return node.name() == msg.name() && node.version() <= msg.version();
-}
-
-bool operator==(const Node& node, const rpc::NodeMsg& msg) {
-  return node.version() == msg.version() && node.name() == msg.name() &&
-         node.ip() == msg.ip() && node.port() == msg.port() &&
-         node.state() == msg.state() && node.metadata() == msg.metadata();
 }
 
 }  // namespace gossip

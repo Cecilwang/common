@@ -184,6 +184,7 @@ IP::Ptr CreateIP(const char* ip) {
   } else if (IsIPv6(ip)) {
     return IP::Ptr(new IPv6(ip));
   }
+  LOG(WARNING) << "Failed to create ip with " << ip;
   return nullptr;
 }
 
@@ -195,6 +196,7 @@ IP::Ptr CreateIP(const char* ip, uint32_t n_mask) {
   } else if (IsIPv6(ip) && n_mask <= 128) {
     return IP::Ptr(new IPv6(ip, n_mask));
   }
+  LOG(WARNING) << "Failed to create ip with " << ip << " " << n_mask;
   return nullptr;
 }
 
@@ -204,6 +206,7 @@ IP::Ptr CreateIP(const std::string& ip, uint32_t n_mask) {
 
 IP::Ptr CreateIP(ifaddrs* ifa) {
   if (ifa->ifa_addr == nullptr) {
+    LOG(WARNING) << "Failed to create ip with " << ifa;
     return nullptr;
   }
   char ip[NI_MAXHOST];
@@ -224,6 +227,7 @@ IP::Ptr CreateIP(ifaddrs* ifa) {
     }
     return IP::Ptr(ret);
   }
+  LOG(WARNING) << "Failed to create ip with " << ifa;
   return nullptr;
 }
 
@@ -264,6 +268,7 @@ IP::Ptr GetDelegateIP(const std::vector<IP::Ptr>& ips, IP::Ptr ip) {
       return x;
     }
   }
+  LOG(WARNING) << "Failed to get delegate ip.";
   return nullptr;
 }
 
