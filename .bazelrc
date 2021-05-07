@@ -69,6 +69,8 @@ test:cpplint --flaky_test_attempts=1
 
 # Coverage
 coverage --test_tag_filters=-cpplint
+coverage --test_env=HEAPCHECK=
+coverage --test_env=PPROF_PATH=
 
 #################### SCALA ####################
 
