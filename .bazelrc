@@ -81,3 +81,5 @@ build --strategy=Scalac=worker
 build --build_tag_filters=-latex
 test --test_tag_filters=-latex
 coverage --build_tag_filters=-latex
+
+build:latex --build_tag_filters=latex
