@@ -4,7 +4,7 @@
 
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-  <title>LCOV - _coverage_report.dat - /home/runner/work/common/common/example/scala/hello_world.scala</title>
+  <title>LCOV - _coverage_report.dat - /home/runner/work/common/common/example/scala/TestSuite.scala</title>
   <link rel="stylesheet" type="text/css" href="../../../../../../../gcov.css">
 </head>
 
@@ -19,7 +19,7 @@
         <table cellpadding=1 border=0 width="100%">
           <tr>
             <td width="10%" class="headerItem">Current view:</td>
-            <td width="35%" class="headerValue"><a href="../../../../../../../index.html">top level</a> - <a href="index.html">home/runner/work/common/common/example/scala</a> - hello_world.scala<span style="font-size: 80%;"> (source / <a href="hello_world.scala.func-sort-c.html">functions</a>)</span></td>
+            <td width="35%" class="headerValue"><a href="../../../../../../../index.html">top level</a> - <a href="index.html">home/runner/work/common/common/example/scala</a> - TestSuite.scala<span style="font-size: 80%;"> (source / <a href="TestSuite.scala.func-sort-c.html">functions</a>)</span></td>
             <td width="5%"></td>
             <td width="15%"></td>
             <td width="10%" class="headerCovTableHead">Hit</td>
@@ -37,12 +37,12 @@
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2021-04-25 02:04:30</td>
+            <td class="headerValue">2021-05-07 13:03:35</td>
             <td></td>
             <td class="headerItem">Functions:</td>
-            <td class="headerCovTableEntry">3</td>
-            <td class="headerCovTableEntry">4</td>
-            <td class="headerCovTableEntryMed">75.0 %</td>
+            <td class="headerCovTableEntry">1</td>
+            <td class="headerCovTableEntry">1</td>
+            <td class="headerCovTableEntryHi">100.0 %</td>
           </tr>
           <tr><td><img src="../../../../../../../glass.png" width=3 height=3 alt=""></td></tr>
         </table>
@@ -60,9 +60,13 @@
       <td>
 <pre class="sourceHeading">          Line data    Source code</pre>
 <pre class="source">
-<a name="1"><span class="lineNum">       1 </span><span class="lineCov">          1 : object HelloWord {</span></a>
-<a name="2"><span class="lineNum">       2 </span><span class="lineCov">          1 :   val message = &quot;hello world&quot;</span></a>
-<a name="3"><span class="lineNum">       3 </span><span class="lineCov">          1 : }</span></a>
+<a name="1"><span class="lineNum">       1 </span>            : import org.scalatest._</a>
+<a name="2"><span class="lineNum">       2 </span>            : </a>
+<a name="3"><span class="lineNum">       3 </span><span class="lineCov">          1 : class TestSuite extends FlatSpec {</span></a>
+<a name="4"><span class="lineNum">       4 </span><span class="lineCov">          1 :   &quot;things&quot; should &quot;work&quot; in {</span></a>
+<a name="5"><span class="lineNum">       5 </span><span class="lineCov">          1 :     assert(HelloWord.message == &quot;hello world&quot;)</span></a>
+<a name="6"><span class="lineNum">       6 </span>            :   }</a>
+<a name="7"><span class="lineNum">       7 </span>            : }</a>
 </pre>
       </td>
     </tr>
