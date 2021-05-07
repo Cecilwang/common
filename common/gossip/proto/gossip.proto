@@ -2,8 +2,6 @@ syntax = "proto3";
 
 package common.gossip.rpc;
 
-import "google/protobuf/empty.proto";
-
 option cc_generic_services = true;
 
 enum State {

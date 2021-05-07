@@ -107,7 +107,7 @@ TEST(TestHostname, TestPrint) { std::cout << GetHostname() << std::endl; }
 TEST(TestPublicIPs, TestPrint) {
   const auto& ips = GetPublicIPs();
   for (const auto& x : ips) {
-    std::cout << x << std::endl;
+    std::cout << *x << std::endl;
   }
 }
 

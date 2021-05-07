@@ -31,7 +31,7 @@ namespace util {
 class Thread {
  public:
   Thread() = default;
-  ~Thread();
+  virtual ~Thread() = default;
 
   virtual void Run() = 0;
   virtual void _Run() = 0;
@@ -59,6 +59,7 @@ template <class F>
 class ThreadWrap : public Thread {
  public:
   explicit ThreadWrap(F&& f) : f_(std::move(f)) {}
+  ~ThreadWrap() { Stop(); }
 
   void Run() override {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -87,6 +88,7 @@ class LoopThreadWrap : public Thread {
  public:
   LoopThreadWrap(F&& f, uint64_t intvl_ms)
       : f_(std::move(f)), intvl_ms_(intvl_ms) {}
+  ~LoopThreadWrap() { Stop(); }
 
   void Run() override {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -128,6 +130,7 @@ std::unique_ptr<Thread> CreateLoopThread(F&& f, uint64_t intvl_ms,
 class Timer : public Thread {
  public:
   explicit Timer(uint64_t timeout_ms) : timeout_ms_(timeout_ms) {}
+  virtual ~Timer() = default;
 
   void Run() override;
 
@@ -152,6 +155,7 @@ template <class F>
 class TimerWrap : public Timer {
  public:
   TimerWrap(F&& f, uint64_t timeout_ms) : Timer(timeout_ms), f_(std::move(f)) {}
+  ~TimerWrap() { Stop(); }
 
   void _Run() override { f_(); }
 

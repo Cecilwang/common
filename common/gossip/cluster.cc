@@ -51,7 +51,7 @@ bool Client::Send(const net::Address& addr, const REQ& req, RESP* resp,
 
   brpc::Channel channel;
   if (channel.Init(addr.ip()->ip().c_str(), addr.port(), &options) != 0) {
-    LOG(ERROR) << "Fail to initialize channel";
+    LOG(ERROR) << "GossipClient failed to initialize channel";
     return false;
   }
 
@@ -326,7 +326,7 @@ void Cluster::Probe(Node::ConstPtr node) {
   // otherwise invalid
   if (rpc::Client::Send(node->addr(), GenNodeMsg(node), &resp, timeout_ms)) {
     if (resp.state() != rpc::State::ALIVE) {
-      LOG(WARNING) << *this << " ping received invalid ack. resp: "
+      LOG(WARNING) << *this << " received invalid ack for ping. resp: "
                    << resp.ShortDebugString();
       // Something went wrong, exit without taking any action
       return;
@@ -355,7 +355,8 @@ void Cluster::Probe(Node::ConstPtr node) {
         Recv(&resp, nullptr);
         return;
       } else if (resp.state() != rpc::State::UNKNOWN) {
-        LOG(WARNING) << *this << " indirect ping received invalid ack. resp: "
+        LOG(WARNING) << *this
+                     << " received invalid ack for indirect ping. resp: "
                      << resp.ShortDebugString();
         // Something went wrong, but don't take any action
       }

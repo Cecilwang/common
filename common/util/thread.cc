@@ -15,8 +15,6 @@ limitations under the License.
 namespace common {
 namespace util {
 
-Thread::~Thread() { Stop(); }
-
 void Thread::Idle(uint64_t ms) { SleepForMS(ms); }
 
 void Thread::Stop() {
