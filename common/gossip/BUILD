@@ -50,4 +50,16 @@ cc_test(
     ],
 )
 
+cc_binary(
+    name = "gossip_bench",
+    srcs = [
+        "gossip_bench.cc",
+    ],
+    deps = [
+        ":cluster",
+        "@com_google_googletest//:gtest_main",
+        "@gperftools//:tcmalloc_and_profiler",
+    ],
+)
+
 cpplint()
