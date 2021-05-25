@@ -10,7 +10,7 @@ def _latex_pdf_impl(ctx):
         cmds.append(cmd_tpl.format(out.dirname, x.path))
         outs.append(out)
     ctx.actions.run_shell(
-        inputs = srcs + ctx.files.data,
+        inputs = srcs + ctx.files.data + ctx.files.deps,
         outputs = outs,
         use_default_shell_env = True,
         progress_message = " && ".join(cmds),
@@ -24,6 +24,11 @@ _latex_pdf = rule(
         "srcs": attr.label_list(
             mandatory = True,
             allow_files = [".tex"],
+        ),
+        "deps": attr.label_list(
+            allow_empty = True,
+            allow_files = [".tex", ".cls", ".sty"],
+            default = [],
         ),
         "data": attr.label_list(
             allow_empty = True,
@@ -92,10 +97,11 @@ _pdf_view = rule(
     },
 )
 
-def latex_pdf(name, srcs, data = [], opt = [], tags = []):
+def latex_pdf(name, srcs, deps = [], data = [], opt = [], tags = []):
     _latex_pdf(
         name = name + "_pdf",
         srcs = srcs,
+        deps = deps,
         data = data,
         opt = opt,
         tags = ["latex"] + tags,
@@ -105,4 +111,12 @@ def latex_pdf(name, srcs, data = [], opt = [], tags = []):
         name = name,
         pdfs = [name + "_pdf"],
         tags = ["latex"] + tags,
+    )
+
+def latex_library(name, srcs, **kwargs):
+    native.filegroup(
+        name = name,
+        srcs = srcs,
+        tags = ["latex"],
+        **kwargs
     )

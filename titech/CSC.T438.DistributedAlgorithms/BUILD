@@ -6,12 +6,16 @@ latex_pdf(
     srcs = [
         ":HW1/PIF_and_Tarry.tex",
         ":HW2/mutex.tex",
+        ":HW4/Termination_and_Leader.tex",
     ],
     data = [
         ":HW2/p1.png",
         ":HW2/p3.png",
         ":HW2/p4.png",
+        ":HW4/p1.png",
+        ":HW4/p2.png",
     ],
+    deps = ["//latex:common"],
 )
 
 scala_binary(
@@ -84,6 +88,34 @@ scala_binary(
         "prog1/PIFMain.scala",
     ],
     main_class = "prog1.PIFMain",
+    tags = ["scala"],
+    deps = [
+        "//third_party/scalaneko",
+    ],
+)
+
+scala_binary(
+    name = "CutVertices",
+    srcs = [
+        "prog2/CutVertices.scala",
+        "prog2/CutVerticesMain.scala",
+    ],
+    main_class = "prog2.CutVerticesMain",
+    tags = ["scala"],
+    deps = [
+        "//third_party/scalaneko",
+    ],
+)
+
+scala_binary(
+    name = "RaymondMutex",
+    srcs = [
+        "prog3/MutexApplication.scala",
+        "prog3/Raymond.scala",
+        "prog3/RaymondMutexMain.scala",
+        "prog3/SpanningTreeHelper.scala",
+    ],
+    main_class = "prog3.RaymondMutexMain",
     tags = ["scala"],
     deps = [
         "//third_party/scalaneko",

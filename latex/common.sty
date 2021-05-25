@@ -1,0 +1,153 @@
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{common}[2021/05/25 CecilWang's Common Package]
+
+% Package
+\RequirePackage{algorithm2e}
+\RequirePackage{amsmath} % Used by Matrix
+\RequirePackage{booktabs} % Allows the use of \toprule, \midrule and \bottomrule in tables
+\RequirePackage{caption}
+\RequirePackage[edges]{forest} % Used by Hierarchy
+\RequirePackage{graphicx} % Allows including images
+\RequirePackage{ifthen}
+\RequirePackage{listings} % Used by code
+\RequirePackage[normalem]{ulem} % Used by Strikethrough text
+
+\RequirePackage{tikz}
+\usetikzlibrary{arrows.meta} % Used by Hierarchy
+\usetikzlibrary{intersections} % Used by Pyramid
+\usetikzlibrary{arrows,automata} % Used by DAG
+\usetikzlibrary{overlay-beamer-styles} % Used by visible on
+\usetikzlibrary{positioning} % Used by right of
+
+% Color
+\definecolor{White}{RGB}{255,255,255}
+\definecolor{Black}{RGB}{0,0,0}
+\definecolor{Gray}{RGB}{128,128,128}
+\definecolor{DeepLaughGray}{RGB}{222,222,222}
+\definecolor{LaughGray}{RGB}{233,233,233}
+\definecolor{PKURed}{RGB}{140,0,0}
+\definecolor{AuxiliaryColor1}{RGB}{198,61,61}
+\definecolor{AuxiliaryColor2}{RGB}{198,89,89}
+
+% Utility
+\newcommand{\IfEmpty}[3]{
+  \ifthenelse{\equal{#1}{}}{#2}{#3}
+}
+
+% Code
+\lstnewenvironment{Code}[1][]{
+  \lstset{basicstyle=\ttfamily\tiny,
+          escapeinside={@}{@},
+          title={\tiny #1}}
+}{
+}
+
+\lstnewenvironment{CPPCode}[1][]{
+  \lstset{language=C++,
+          basicstyle=\ttfamily\tiny,
+          keywordstyle=\color{blue}\ttfamily,
+          commentstyle=\color{green}\ttfamily,
+          escapeinside={@}{@},
+          title={\tiny #1}}
+}{
+}
+
+% Pyramid
+\newcommand{\Pyramid}[3]{
+  \begin{tikzpicture}
+    \coordinate (A) at (-#1,0) {};
+    \coordinate (B) at (#1 ,0) {};
+    \coordinate (C) at (0  ,#2) {};
+    \path[name path=AC,draw=none] (A) -- (C);
+    \path[name path=BC,draw=none] (B) -- (C);
+    \filldraw[draw=Black, ultra thick,fill=PKURed!10] (A) -- (B) -- (C) -- cycle ;
+
+    \foreach \y/\A in {#3} {
+      \path[draw=none, very thick, dashed, name path=horiz] (A|-0,\y) -- (B|-0,\y);
+      \draw[draw=Black, very thick, dashed,
+            name intersections={of=AC and horiz,by=P},
+            name intersections={of=BC and horiz,by=Q}] (P) -- (Q)
+            node[midway,above,font=\bfseries,color=PKURed] {\A};
+    }
+  \end{tikzpicture}
+}
+
+% DAG
+\newenvironment{DAG}{
+  \begin{tikzpicture}[> = stealth, % arrow head style
+                      shorten > = 1pt, % don't touch arrow head to node
+                      auto,
+                      node distance = 10mm, % distance between nodes
+                      semithick] % line style
+
+    \tikzstyle{every state}=[draw = black,
+                             thick,
+                             fill = white,
+                             minimum size = 10mm]
+
+}{
+  \end{tikzpicture}
+}
+
+\newcommand{\DAGNode}[2][]{
+  \node[state] (#2) [#1] {$#2$};
+}
+
+\newcommand{\DAGEdge}[4]{
+  \path[->] (#1) edge node [#2] {#3} (#4);
+}
+
+% Matrix
+\newcommand{\Matrix}[2]{
+  $#1 = \begin{bmatrix}#2\end{bmatrix}$
+}
+
+% Algorithm
+\SetKw{kWhen}{when}
+\SetKw{kIs}{is}
+\SetKw{kReceived}{received}
+\SetKw{kFrom}{from}
+\SetKw{kDo}{do}
+\SetKw{kSend}{send}
+\SetKw{kTo}{to}
+\SetKw{kForEach}{for each}
+\SetKw{kEndFor}{end for}
+\SetKw{kIf}{if}
+\SetKw{kThen}{then}
+\SetKw{kElse}{else}
+\SetKw{kEndIf}{end if}
+\SetKw{kLet}{let}
+
+\newcommand{\fNewLine}{
+  \DontPrintSemicolon\;\PrintSemicolon
+}
+
+\SetKwBlock{EmptyBlock}{}{}
+
+\newcommand{\fRecv}[3]{
+  \ifthenelse{\equal{#2}{}}{
+    \kWhen #1 \kIs \kReceived \kDo \EmptyBlock{#3}
+  }{
+    \kWhen #1 \kIs \kReceived \kFrom #2 \kDo \EmptyBlock{#3}
+  }
+}
+
+\newcommand{\fSend}[4]{
+  \ifthenelse{\equal{#1}{}}{
+    \kSend #3 \kTo #4
+  }{
+    \kForEach #1 $\in$ #2 \kDo \kSend #3 \kTo #4 \kEndFor
+  }
+}
+
+\newcommand{\fIf}[2]{
+  \kIf #1 \kThen #2 \kEndIf \fNewLine
+}
+
+\newcommand{\fElse}[1]{
+  \kElse #1 \fNewLine \kEndIf
+}
+
+\SetKwIF{If}{ElseIf}{Else}{if}{then}{else if}{else}{\kEndIf}
+
+\newcommand{\abs}[1]{\lvert #1 \rvert}
