@@ -1,0 +1,310 @@
+\documentclass{article}
+
+\usepackage[a4paper, total={6.5in, 11in}]{geometry}
+
+\usepackage{afterpage}
+\usepackage{appendix}
+\usepackage[square,numbers]{natbib}
+\bibliographystyle{abbrvnat}
+
+\usepackage{graphicx}
+\graphicspath{{titech/CSC.T438.DistributedAlgorithms/HW5/}}
+
+\PassOptionsToPackage{linesnumbered, boxed, noline}{algorithm2e}
+\usepackage{latex/common}
+
+\title{Safra's Algorithm Adapted to Arbitrary Topologies}
+\date{2021\\ June}
+\author{Sixue Wang, Tokyo Institute of Technology}
+
+\begin{document}
+
+\maketitle
+
+\section{Safra's Algorithm introduced in CSC.T438\cite[][]{safra}}
+Safra's algorithm introduced in CSC.T438(hereinafter called the "CSC.T438 Safra") is used to detect the termination in a distributed system.
+The essential idea is that collecting the deficit of messages across the entire system round by round until termination.
+
+At the beginning of the round, an initiator(process) launches the detection with the token which has two attributes, one is the deficit and another is color.
+The deficit is the difference between the number of sent messages and received messages, the initialized deficit is 0.
+The color may be "white", which means it is possible to terminate, or "black", which means that it is impossible to terminate, the initialized color is "white".
+Another way to think the color is by treating "white" as 0 and "black" as 1.
+A process can pass the token to the next process on the logical ring when it becomes passive which means it will not send out messages activly.
+Once the token goes back to the initiator, one round can be completed.
+At that time, if $color = "white" \land deficit = 0$, the initiator can identify the termination.
+
+For simplicity, Assume there are $N$ processes $P = \{p_i | 0 \leq i < N\}$, and each process has an unique identifier $i$.
+
+The logical ring topology is a graph $G = (P, E)$, where $E = \{ \{p_{i} \rightarrow p_{(i+1) \mod N}\} | 0 \leq i < N\}$
+
+The rules of updating token can be summarized as the following formula:
+\begin{enumerate}
+  \centering
+  \item Deficit: $d = \sum_{i=0}^{i=N-1} d_{p_i}$
+  \item Color: $c = c_{p_0} \; \lor \; c_{p_1} \; \lor \; ... \; \lor \; c_{p_{n-1}}$
+\end{enumerate}
+
+The automata of the color of the process is:
+\begin{figure}[hbt!]
+  \centering
+  \begin{tikzpicture}[->, node distance=4cm]
+    \node[state, initial, accepting] (white) {white};
+    \node[state, right of=white] (black) {black};
+
+    \draw
+      (white) edge[bend left, above] node{after receiving payload message} (black)
+      (black) edge[bend left, below] node{after sending token} (white);
+  \end{tikzpicture}
+\end{figure}
+
+It is worth noting that we do not care when it will become passive, because this is usually determined by the upstream application.
+
+\section{Safra's Algorithm Adapted to Arbitrary Topologies}
+\subsection{Algorithm}
+A basic principle for termination detection is gathering state from all processes and the assumption of the logical ring fits this situation very well. It makes passing token very straightforward because each processes only need be visited once. When adapting to any arbitrary connected topologies(hereinafter called the "Arbitrary Safra"), despite there is no guarantee that all process are on a ring, the other parts of the algorithm are still workable. So the only question left is how to pass the token.
+
+One possible solution is using Tarry's Traversal algorithm\cite[][]{tarry} to generate a spanning tree at the beginning. Specifically, it started from the initiator. And every process directly passes the "GO" token to unreached neighbors regardless of whether it is active or passive. Once each process has handled all the neighbors, it will send the "GO" token to the parent and let parent mark itself as a child. This procedure is described in the following pescode from line 35 to line 52 in Arbitrary Safra.
+
+Hereafter, the initiator can launch Safra algorithm with an initialized token consists of "white" and 0. Every other process directly passes the token to all its children simultaneously even if it may be active(Arbitrary Safra's line 18).
+Once the process becomes passive after receiving messages from all children, it could update its own state into token with its children's and send it to the parent. By the way, the children's state can be stored into the local variables($c_i$, $d_i$).
+When the token travels all processes and goes back to the initiator, it's the time to detect termination. If it fails this time, then it will launch another round(Arbitrary Safra's line 9) until it succeeds.
+
+\afterpage{\clearpage}
+\begin{figure}[htb]
+  \centering
+    \makebox[\textwidth]{\makebox[1.18\textwidth]{
+      \begin{minipage}{0.58\hsize}
+        \begin{algorithm}[H]
+          \fFunc{init}{}{
+            $C_i \gets white;$
+            $D_i \gets 0;$
+            $state_i \gets active;$ \fNewLine
+            $token_i \gets p_i = initiator$ ? Token(white, 0) : $\perp$;
+          }
+
+          \fNewLine
+          \fNewLine
+
+          \fFunc{send\_token}{Token(c, d)}{
+            \eIf{$p_i$ = initiator}{
+              \fSend{}{}{Token(white, 0)}{$p_{i+1 \mod N}$}
+            }{
+              \fSend{}{}{Token(c $\lor$ $C_i$, d + $D_i$)}{$p_{i+1 \mod N}$}
+            }
+            $token_i \gets \perp;$
+            $C_i \gets white;$
+          }
+
+          \fNewLine
+
+          \fRecv{Token(c, d)}{}{
+            \fNewLine
+            \fNewLine
+            \fNewLine
+            \fNewLine
+            \fNewLine
+            \fNewLine
+            \fNewLine
+            \fNewLine
+            \fNewLine
+            \If{$p_i$ = initiator $\land$ $state_i$ = passive $\land$ \fNewLine
+                (($C_i$ $\lor$ c) = white) $\land$ d + $D_i$ = 0}{
+              TERMINATE();
+            }
+            \eIf{$state_i = active$}{
+              $token_i \gets Token(c, d)$
+            }{
+              send\_token(Token(c, d));
+            }
+          }
+
+          \fNewLine
+          \fNewLine
+
+          \fRecv{BecomePassive}{$myself$} {
+            \If{$state_i = active$}{
+              $state_i \gets passive;$ \fNewLine
+              \kIf $token_i \ne \perp$ \kThen send\_token($token_i$) \kEndIf
+            }
+          }
+
+          \fNewLine
+
+          \fRecv{Payload(m, $p_{from}$, $p_{to}$)}{$p_j$}{
+            \eIf{$p_i = p_j$} {
+              \If{$state_i = active$}{
+                $D_i \gets D_i + 1;$ \fNewLine
+                \fSend{}{}{Payload(m, $p_{from}$, $p_{to}$)}{$p_{to}$}
+              }
+            }{
+              $C_i \gets black;$
+              $D_i \gets D_i - 1;$ \fNewLine
+              $state_i \gets active;$ \fNewLine
+              DELIVER(Payload(m, $p_{from}$, $p_{to}$))
+            }
+          }
+
+          \fNewLine
+          \fNewLine
+          \fNewLine
+          \fNewLine
+          \fNewLine
+          \fNewLine
+          \fNewLine
+
+          \caption{CSC.T438 Safra}
+        \end{algorithm}
+      \end{minipage}
+      \hfill
+      \begin{minipage}{0.58\hsize}
+        \begin{algorithm}[H]
+          \fFunc{init}{}{
+            $C_i \gets white;$
+            $D_i \gets 0;$
+            $state_i \gets active;$ \fNewLine
+            \textcolor{red}{$token_i \gets \perp$;} \fNewLine
+            \textcolor{red}{$expected_i$ $\gets$ -1; $parent_i$ $\gets$ $\perp$; $children_i$ $\gets$ $\emptyset$;}
+          }
+
+          \fNewLine
+
+          \fFunc{send\_token}{Token(c, d)}{
+            \eIf{$p_i$ = initiator}{
+              \fSend{}{}{Token(white, 0)}{\textcolor{red}{$p_i$}}
+            }{
+            \fSend{}{}{Token(c $\lor$ $C_i$, d + $D_i$)}{\textcolor{red}{$parent_i$}}
+            }
+            $token_i \gets \perp;$
+            $C_i \gets white;$
+          }
+
+          \fNewLine
+
+          \kWhen Token(c, d) \kIs \kReceived \textcolor{red}{\kFrom $p_j$} \kDo \EmptyBlock{
+            \textcolor{red}{
+              \eIf{$parent_i$ = $p_j$}{
+                $expected_i$ $\gets$ $\abs{children_i}$; \fNewLine
+                $c_i$ $\gets$ white;
+                $d_i$ $\gets$ 0; \fNewLine
+                \fSend{}{}{Token(white, 0)}{$children_i$}
+              }{
+                $expected_i$ $\gets$ $expected_i$ - 1; \fNewLine
+                $c_i$ $\gets$ $c_i$ $\lor$ c;
+                $d_i$ $\gets$ $d_i$ + d; \fNewLine
+              }
+              \If{$expected_i$ = 0} {
+                \textcolor{black}{
+                  \If{$p_i$ = initiator $\land$ $state_i$ = passive $\land$ \fNewLine
+                      (($C_i$ $\lor$ c) = white) $\land$ d + $D_i$ = 0}{
+                    TERMINATE();
+                  }
+                  \eIf{$state_i = active$}{
+                    $token_i \gets Token(c_i, d_i)$
+                  }{
+                    send\_token(Token($c_i$, $d_i$));
+                  }
+                }
+              }
+            }
+          }
+
+          \fNewLine
+
+          \textcolor{red}{
+            \fRecv{GO(flag)}{$p_j$}{
+              \If{$parent_i = \perp$}{
+                $parent_i \gets p_j$\;
+                $unreached_i \gets neighbors_i \backslash \{p_j\};$
+              }
+              \If{flag = true} {
+                $children_i$ $\gets$ $children_i$ $\cup$ $p_j$;
+              }
+              \eIf{$unreached_i \ne \emptyset$}{
+                \fSend{}{}{GO(false)}{$unreached_i.pop()$}
+              }{
+                \eIf{$p_i = initiator$}{
+                  $parent_i$ $\gets$ $p_i$; \fNewLine
+                  send\_token(white, 0);
+                }{
+                  \fSend{}{}{GO(true)}{$parent_i$}
+                }
+              }
+            }
+          }
+
+          \fNewLine
+
+          \fRecv{BecomePassive}{$myself$} {
+            Same as CSC.T438 Safra
+          }
+
+          \fNewLine
+
+          \fRecv{Payload(m, $p_{from}$, $p_{to}$)}{$p_j$}{
+            Same as CSC.T438 Safra
+          }
+
+          \caption{Arbitrary Safra}
+        \end{algorithm}
+      \end{minipage}
+    }}
+  \caption{Comparison of CSC.T438 Safra and Arbitrary Safra}
+\end{figure}
+
+\subsection{Proof of correctness}
+At first, we need to prove that each round can collect the state of all processes correctly.
+
+The "GO" token is sent by the initiator at the beginning. All processes send the "GO" token through all edges(Arbitrary Safra's line 43-44). Due to the connected graph, every process will be reached.
+On the other hand, the process only marks its parent at the first time of receiving the "GO" token(Arbitrary Safra's line 37), so it will only be the parent's child(Arbitrary Safra's line 40-41).
+Eventually, we can generate a spanning tree of this topology.
+
+Duraing Arbitrary Safra's round, the token will be sent to all children(Arbitrary Safra's line 18), so all processes are visited. Every process will terminate, so it will be passive eventually, which means that the token won't be blocked(CSC.T438 Safra's line 38 and Arbitrary Safra's line 30). And the process could update all children's state and send to its parent(Arbitrary Safra's line 11 and 21). Therefore, each round can collect the state of all processes.
+
+Q.E.Q.
+
+\subsubsection{Safety}
+Assume Arbitrary Safra is not safe which means that claiming termination before it coccurs.
+To that end, the passive initiator received a token which is updated to white and 0.
+On the other hand, there must be some active processes or unreceived messages in the unterminated computation.
+If existing active process except the initiator, the token will be blocked at that process(Arbitrary Safra's line 28), so the initiator can not receive the token.
+If existing unreceived messages, the sender must be passive, so the deficit must be greater than 0.(CSC.T438 Safra's line 44 and 48).
+Hence, the computation was terminated before the identification, which concludes the proof of the safety.
+Q.E.D.
+\subsubsection{Liveness}
+At the ending of each round, the initiator can get the state of all processes, so it can detect the termination(Arbitrary Safra's line 23-24). If it fails to detect the termination, the initiator will launch a new round(Arbitrary Safra's line 30 and 9). Furthermore, if termination occurs, the deficit must be 0, but sometimes the color of some processes are still black. In that situation, it only takes one more accessing at most to turn it into white(Arbitrary Safra's line 13). Hence, once termination occurs, it is eventually detected. Q.E.D.
+
+\subsection{Complexity Analysis}
+The Arbitrary Algorithm can be divided into three stages Tarry's Traversal, before termination, and after termination.
+The boundary between "before termination" and "after termination" is the time $\tau$ when the last process terminated.
+Furthermore, the round including $\tau$ belongs to "before termination".
+
+Assume that the last terminated process is $p_i$, and the last round in "before termination" is $r_i$. If $p_i$ has been accessed in $r_i$, then it will take 2 more rounds to detect termination. One round is used to change the color of the $p_i$, another is the final check. Otherwise, it just need to launch one more round. So there are at most 2 rounds in "after termination". To be simple, assuming that there are M rounds in "before termination". Another justification is that the time cost of deliveing a single message is one unit.
+
+The conclusion is that the message complexity is the sum of these three stages, and the time complexity is $max(2 * \abs{V}, \tau + \epsilon) + 2 * 2 * (H - 1)$, where $\epsilon$ is the time between $\tau$ and the end of $r_i$ round.
+
+\begin{figure}[htb]
+  \centering
+    \makebox[\textwidth]{
+      \begin{tabular}{ |c|c|c|c| }
+        Stage              & Tarry's Traversal & Before Termination                   & After Termination \\
+        Round              &                   & M Rounds                             & 2 Rounds \\
+        Round              &                   & $round_0$, $round_1$, ..., $round_M$ & $round_{M+1}$, $round_{M+2}$ \\
+        Process            &                   & the last terminated process          &  \\
+        Message Complexity &  2 * $\abs{V}$    & M * 2 * (N - 1)                      & 2 * 2 * (N - 1)  \\
+        Time Complexity    &  2 * $\abs{V}$    & $\tau$ + $\epsilon$                  & 2 * 2 * (H - 1)  \\
+      \end{tabular}
+    }
+  \caption{Complexity of Arbitrary Safra}
+\end{figure}
+
+\subsection{Comparison with Helary-Raynal's Algorithm\cite[][]{raynal2013distributed}}
+Helary-Raynal's Algorithm is a general method to detect termination based on waves. A wave is a control flow that is launched by a single process, visits each process once, and returns to the process that activated it\citep[][]{raynal2013distributed}. Both the logical ring and the spanning tree can be easily constructed into waves, just like how CSC.T438 Safra and Arbitrary Safra did. So both Safra's and Helary-Raynal's algorithm are based on waves. The deeper reason is that all nodes need to report their state to a center in the cluster in order to let a leader node determine whether it is terminated. On the other hand, both Safra's and Helary-Raynal's algorithm use two auxiliary variables to detect termination. One is used to check whether the process is active or passive, another is used to count the deficit of messages. For the first variable, even if it is called "color" in Safra's and "sct\_pass" in Helary-Raynal's, they are essentially the same thanks to (0 $\lor$ 0) $\Leftrightarrow$ $\neg$ (1 $\land$ 1). They also ensure that the passive state of each process lasts for the entire wave by launching one more time. The difference between them is how they deal with the deficit. Helary-Raynal's algorithm using different communication protocol which it should send ACK back to sender every time so the process can judge the deficit by itself without sending it to the initiator. Benefit from this ACK, Helary-Raynal's is more efficient than Safra's.
+
+\bibliography{titech/CSC.T438.DistributedAlgorithms/HW5/Bibliography}
+
+\begin{appendices}
+\section{Code}
+I reuse the session3 to build this project in order to avoid build it from scratch. It uses a grid(2,2) topology by default now. Considering the final report focus on Safra's algorithm, so the protocol of generating spanning tree is fake, and I also reuse SpanningTreeHelper.scala from project3. Unlike the original SpanningTreeHelper.scala, the spanningTree function will also return a map of children now. I only added some private variables in class Safra, such as parent, children, expected, etc. Another modification is about the logical of receiving TokenCarrier according to my report. Finally, each process will broadcast Announce to all its neighbors, and use flags to avoid duplication. This is not stated in my report. Unfortunately, I can only submit PDF files, so I only converted the key file Safra.scala. Please see code.pdf.
+\end{appendices}
+
+\end{document}

@@ -117,12 +117,18 @@
 \SetKw{kElse}{else}
 \SetKw{kEndIf}{end if}
 \SetKw{kLet}{let}
+\SetKw{kFunc}{function}
+\SetKw{kReturn}{return}
 
 \newcommand{\fNewLine}{
   \DontPrintSemicolon\;\PrintSemicolon
 }
 
 \SetKwBlock{EmptyBlock}{}{}
+
+\newcommand{\fFunc}[3]{
+  \kFunc #1(#2) \kDo \EmptyBlock{#3}
+}
 
 \newcommand{\fRecv}[3]{
   \ifthenelse{\equal{#2}{}}{

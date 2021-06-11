@@ -7,6 +7,7 @@ latex_pdf(
         ":HW1/PIF_and_Tarry.tex",
         ":HW2/mutex.tex",
         ":HW4/Termination_and_Leader.tex",
+        ":HW5/Arbitrary_Safra.tex",
     ],
     data = [
         ":HW2/p1.png",
@@ -14,70 +15,9 @@ latex_pdf(
         ":HW2/p4.png",
         ":HW4/p1.png",
         ":HW4/p2.png",
+        ":HW5/Bibliography.bib",
     ],
     deps = ["//latex:common"],
-)
-
-scala_binary(
-    name = "HelloWorld",
-    srcs = ["session0/a_hello_scala/HelloWorld.scala"],
-    main_class = "session0.a_hello_scala.HelloScala",
-    tags = ["scala"],
-)
-
-scala_binary(
-    name = "HelloNeko",
-    srcs = ["session0/b_hello_neko/HelloNeko.scala"],
-    main_class = "session0.b_hello_neko.HelloNeko",
-    tags = ["scala"],
-    deps = [
-        "//third_party/scalaneko",
-    ],
-)
-
-scala_binary(
-    name = "Bounce",
-    srcs = [
-        "session1/a_bouncer/BounceMain.scala",
-        "session1/a_bouncer/Bouncer.scala",
-        "session1/a_bouncer/Greeting.scala",
-        "session1/a_bouncer/Player.scala",
-    ],
-    main_class = "session1.a_bouncer.BounceMain",
-    tags = ["scala"],
-    deps = [
-        "//third_party/scalaneko",
-    ],
-)
-
-scala_binary(
-    name = "FIFO",
-    srcs = [
-        "session1/b_fifo/Application.scala",
-        "session1/b_fifo/FIFOChannel.scala",
-        "session1/b_fifo/FIFOTestMain.scala",
-    ],
-    #main_class = "session1.b_fifo.FIFORealMain",
-    main_class = "session1.b_fifo.FIFOTestMain",
-    tags = ["scala"],
-    deps = [
-        "//third_party/scalaneko",
-    ],
-)
-
-scala_binary(
-    name = "Learn",
-    srcs = [
-        "session1/c_learn/Application.scala",
-        "session1/c_learn/LearnTopology.scala",
-        "session1/c_learn/LearnTopologyClient.scala",
-        "session1/c_learn/LearnTopologyMain.scala",
-    ],
-    main_class = "session1.c_learn.LearnTopologyMain",
-    tags = ["scala"],
-    deps = [
-        "//third_party/scalaneko",
-    ],
 )
 
 scala_binary(
@@ -116,6 +56,21 @@ scala_binary(
         "prog3/SpanningTreeHelper.scala",
     ],
     main_class = "prog3.RaymondMutexMain",
+    tags = ["scala"],
+    deps = [
+        "//third_party/scalaneko",
+    ],
+)
+
+scala_binary(
+    name = "Safra",
+    srcs = [
+        "prog4/InformationDiffusion.scala",
+        "prog4/Safra.scala",
+        "prog4/SafraMain.scala",
+        "prog4/SpanningTreeHelper.scala",
+    ],
+    main_class = "session3.SafraMain",
     tags = ["scala"],
     deps = [
         "//third_party/scalaneko",

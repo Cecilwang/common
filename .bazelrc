@@ -34,6 +34,11 @@ build --copt=-O3
 build --per_file_copt=//common/.*\.cc@-Wall,-Werror
 build --per_file_copt=external/.*@-w
 
+# Debug
+build:debug --platform_suffix=-host
+build:debug --copt=-O0
+build:debug --compilation_mode=dbg
+
 # Release
 build:release --copt=-fvisibility=hidden
 
