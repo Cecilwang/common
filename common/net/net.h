@@ -37,7 +37,7 @@ enum class IPType {
 class IP {
  public:
   typedef std::shared_ptr<IP> Ptr;
-  typedef const std::shared_ptr<IP>& ConstPtr;
+  typedef const std::shared_ptr<IP>& ConstPtrRef;
 
   IP(const char* ip, IPType type);
   virtual ~IP() = default;
@@ -120,10 +120,10 @@ IP::Ptr GetDelegateIP(const std::vector<IP::Ptr>& ips, const char* ip);
 class Address {
  public:
   explicit Address(const std::string& ip = "0.0.0.0", uint16_t port = 80);
-  Address(IP::ConstPtr ip, uint16_t port);
+  Address(IP::ConstPtrRef ip, uint16_t port);
 
   void set_ip(const std::string& ip);
-  IP::ConstPtr ip() const;
+  IP::ConstPtrRef ip() const;
   void set_port(uint16_t port);
   uint16_t port() const;
 

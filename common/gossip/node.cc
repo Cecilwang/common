@@ -80,7 +80,7 @@ Node::Node(const std::string& name, uint32_t version, const std::string& ip,
       state_(state),
       metadata_(metadata),
       timestamp_ms_(util::NowInMS()) {
-  LOG(INFO) << ToString(true) << " was created.";
+  VLOG(5) << ToString(true) << " was created.";
 }
 
 Node::Node(const rpc::NodeMsg* msg)
@@ -90,7 +90,7 @@ Node::Node(const rpc::NodeMsg* msg)
       state_(msg->state()),
       metadata_(msg->metadata()),
       timestamp_ms_(util::NowInMS()) {
-  LOG(INFO) << ToString(true) << " was created by " << msg->ShortDebugString();
+  VLOG(5) << ToString(true) << " was created by " << msg->ShortDebugString();
 }
 
 Node& Node::operator=(const rpc::NodeMsg& msg) {
@@ -98,7 +98,7 @@ Node& Node::operator=(const rpc::NodeMsg& msg) {
     LOG(WARNING) << msg.ShortDebugString() << " failed to assign to " << *this;
     return *this;
   }
-  LOG(INFO) << ToString(true) << " = " << msg.ShortDebugString();
+  VLOG(5) << ToString(true) << " = " << msg.ShortDebugString();
 
   version_ = msg.version();
   if (state_ == rpc::State::ALIVE) {

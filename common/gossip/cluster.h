@@ -79,12 +79,17 @@ class ServerImpl : public ServerAPI {
 
 }  // namespace rpc
 
-class BroadcastQueue {
+class BroadcastQueue : public util::Thread {
  public:
-  explicit BroadcastQueue(uint32_t n_transmit);
+  explicit BroadcastQueue(uint32_t n_transmit, uint64_t intvl_ms = 0,
+                          Cluster* cluster = nullptr);
+  ~BroadcastQueue();
 
-  void Push(Node::ConstPtr node);
-  Node::ConstPtr Pop();
+  void Run() override;
+  void _Run() override;
+
+  void Push(Node::ConstPtrRef node);
+  Node::Ptr Pop();
 
   size_t Size();
 
@@ -95,23 +100,24 @@ class BroadcastQueue {
  private:
   struct Element {
     typedef std::shared_ptr<Element> Ptr;
-    typedef const std::shared_ptr<Element>& ConstPtr;
+    typedef const std::shared_ptr<Element>& ConstPtrRef;
 
-    Element(Node::ConstPtr node, uint32_t n_transmit, uint32_t id);
+    Element(Node::ConstPtrRef node, uint32_t n_transmit, uint32_t id);
 
-    Node::ConstPtr node = nullptr;
+    Node::Ptr node = nullptr;
     uint32_t n_transmit;  // The primary key
     uint32_t id;          // The secondary key
   };
-  static bool ElementCmp(Element::ConstPtr a, Element::ConstPtr b);
+  static bool ElementCmp(Element::ConstPtrRef a, Element::ConstPtrRef b);
 
   uint32_t n_transmit_;  // Transmission times
 
-  std::mutex mutex_;
-  std::condition_variable cv_;
   uint32_t id_ = 0;  // Indicate the order of enqueue
   std::set<Element::Ptr, decltype(ElementCmp)*> queue_;    // Balanced tree
   std::unordered_map<Node::Ptr, Element::Ptr> existence_;  // Better way?
+
+  uint64_t intvl_ms_;
+  Cluster* cluster_ = nullptr;
 
   DISALLOW_COPY_AND_ASSIGN(BroadcastQueue);
 };
@@ -134,8 +140,9 @@ class Cluster {
   void StopServer();
   void StopRoutine();
 
+  void Join(const std::string& ip, uint16_t port);
   void Probe();
-  void Probe(Node::ConstPtr node);
+  void Probe(Node::ConstPtrRef node);
   void Sync(util::Thread* p);
   void Sync();
   void Gossip();
@@ -150,19 +157,21 @@ class Cluster {
 
   void Refute(Node::Ptr node, uint32_t version, rpc::NodeMsg* resp);
 
-  void Broadcast(Node::ConstPtr node);
+  void Broadcast(Node::ConstPtrRef node);
 
-  void GenNodeMsg(Node::ConstPtr src, rpc::NodeMsg* dst) const;
-  rpc::NodeMsg GenNodeMsg(Node::ConstPtr node) const;
-  rpc::NodeMsg GenNodeMsg(Node::ConstPtr node, rpc::State state) const;
-  rpc::ForwardMsg GenForwardMsg(Node::ConstPtr node) const;
-  rpc::ForwardMsg GenForwardMsg(Node::ConstPtr node, rpc::State state) const;
+  void GenNodeMsg(Node::ConstPtrRef src, rpc::NodeMsg* dst) const;
+  rpc::NodeMsg GenNodeMsg(Node::ConstPtrRef node) const;
+  rpc::NodeMsg GenNodeMsg(Node::ConstPtrRef node, rpc::State state) const;
+  rpc::ForwardMsg GenForwardMsg(Node::ConstPtrRef node) const;
+  rpc::ForwardMsg GenForwardMsg(Node::ConstPtrRef node, rpc::State state) const;
   void GenSyncMsg(rpc::SyncMsg* msg);
   rpc::SyncMsg GenSyncMsg();
 
   void ShuffleNodes();
   template <class F>
-  std::unordered_set<Node::Ptr> GetRandomNodes(size_t maxn, F&& f);
+  std::vector<Node::Ptr> GetRandomNodes(size_t maxn, F&& f);
+
+  std::vector<Node::Ptr> Nodes();
 
   std::string ToString(bool verbose = false) const;
   operator std::string() const;
@@ -178,18 +187,16 @@ class Cluster {
   std::vector<Node::Ptr> nodes_v_;
   // std::unordered_set<std::string> blacklist_;
 
+  BroadcastQueue queue_;
+
+  net::Address addr_;
+  brpc::Server server_;
+
   size_t probe_i_ = 0;
   uint64_t probe_inv_ms_ = 500;
   std::unique_ptr<util::Thread> probe_t_ = nullptr;
   uint64_t sync_inv_ms_ = 30 * 1000;
   std::unique_ptr<util::Thread> sync_t_ = nullptr;
-  uint64_t gossip_inv_ms_ = 200;
-  std::unique_ptr<util::Thread> gossip_t_ = nullptr;
-
-  net::Address addr_;
-  brpc::Server server_;
-
-  BroadcastQueue queue_;
 
   DISALLOW_COPY_AND_ASSIGN(Cluster);
 };

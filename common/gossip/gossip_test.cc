@@ -94,9 +94,29 @@ TEST(TestCluster, TestPort) {
   c3.Start();
 }
 
-TEST(TestCluster, TestPing) {
-  Cluster c(2333, 3, 100, 100, 100);
+TEST(TestCluster, TestServer) {
+  Cluster c(23331, 3, 100, 100, 100);
   c.Alive().Start();
+  auto self = c.Nodes()[0];
+  rpc::NodeMsg req;
+  self->ToNodeMsg(&req);
+  rpc::NodeMsg resp;
+  rpc::Client::Send(self->addr(), req, &resp);
+  std::cout << resp.ShortDebugString() << std::endl;
+}
+
+TEST(TestCluster, TestSimple) {
+  Cluster c1(23331, 3, 100, 100, 100);
+  c1.Alive("n1").Start();
+  Cluster c2(23332, 3, 100, 100, 100);
+  c2.Alive("n2").Start().Join("0.0.0.0", 23331);
+  Cluster c3(23333, 3, 100, 100, 100);
+  c3.Alive("n3").Start().Join("0.0.0.0", 23331);
+
+  util::SleepForMS(1 * 1000);
+  std::cout << c1.ToString(true) << std::endl;
+  std::cout << c2.ToString(true) << std::endl;
+  std::cout << c3.ToString(true) << std::endl;
 }
 
 }  // namespace gossip

@@ -65,7 +65,7 @@ class SuspectTimer {
 class Node {
  public:
   typedef std::shared_ptr<Node> Ptr;
-  typedef const std::shared_ptr<Node>& ConstPtr;
+  typedef const std::shared_ptr<Node>& ConstPtrRef;
 
   Node(const std::string& name, uint32_t version, const std::string& ip,
        uint16_t port, rpc::State state, const std::string& metadata);

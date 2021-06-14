@@ -281,11 +281,11 @@ IP::Ptr GetDelegateIP(const std::vector<IP::Ptr>& ips, const char* ip) {
 Address::Address(const std::string& ip, uint16_t port)
     : ip_(CreateIP(ip)), port_(port) {}
 
-Address::Address(IP::ConstPtr ip, uint16_t port) : ip_(ip), port_(port) {}
+Address::Address(IP::ConstPtrRef ip, uint16_t port) : ip_(ip), port_(port) {}
 
 void Address::set_ip(const std::string& ip) { ip_ = CreateIP(ip); }
 
-IP::ConstPtr Address::ip() const { return ip_; }
+IP::ConstPtrRef Address::ip() const { return ip_; }
 
 void Address::set_port(uint16_t port) { port_ = port; }
 

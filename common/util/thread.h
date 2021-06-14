@@ -86,8 +86,8 @@ std::unique_ptr<Thread> CreateThread(F&& f) {
 template <class F>
 class LoopThreadWrap : public Thread {
  public:
-  LoopThreadWrap(F&& f, uint64_t intvl_ms)
-      : f_(std::move(f)), intvl_ms_(intvl_ms) {}
+  LoopThreadWrap(F&& f, uint64_t intvl_ms, bool delay = false)
+      : f_(std::move(f)), intvl_ms_(intvl_ms), delay_(delay) {}
   ~LoopThreadWrap() { Stop(); }
 
   void Run() override {
@@ -95,6 +95,7 @@ class LoopThreadWrap : public Thread {
     if (!running_) {
       running_ = true;
       thread_ = std::thread([this] {
+        SleepForMS(Uniform(0, delay_ ? intvl_ms_.count() : 0));
         for (; running();) {
           _Run();
         }
@@ -112,17 +113,16 @@ class LoopThreadWrap : public Thread {
  private:
   F f_;
   std::chrono::milliseconds intvl_ms_;
+  bool delay_ = false;
+
   DISALLOW_COPY_AND_ASSIGN(LoopThreadWrap);
 };
 
 template <class F>
 std::unique_ptr<Thread> CreateLoopThread(F&& f, uint64_t intvl_ms,
                                          bool delay = false) {
-  if (delay) {
-    SleepForMS(Uniform(0, intvl_ms));
-  }
   return std::unique_ptr<Thread>(
-      new LoopThreadWrap<F>(std::forward<F>(f), intvl_ms));
+      new LoopThreadWrap<F>(std::forward<F>(f), intvl_ms, delay));
 }
 
 //------------------------------------------------------------------------------
