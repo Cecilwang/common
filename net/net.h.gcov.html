@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2021-06-14 04:30:17</td>
+            <td class="headerValue">2021-06-14 04:31:28</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">2</td>
@@ -99,7 +99,7 @@
 <a name="37"><span class="lineNum">      37 </span>            : class IP {</a>
 <a name="38"><span class="lineNum">      38 </span>            :  public:</a>
 <a name="39"><span class="lineNum">      39 </span>            :   typedef std::shared_ptr&lt;IP&gt; Ptr;</a>
-<a name="40"><span class="lineNum">      40 </span>            :   typedef const std::shared_ptr&lt;IP&gt;&amp; ConstPtr;</a>
+<a name="40"><span class="lineNum">      40 </span>            :   typedef const std::shared_ptr&lt;IP&gt;&amp; ConstPtrRef;</a>
 <a name="41"><span class="lineNum">      41 </span>            : </a>
 <a name="42"><span class="lineNum">      42 </span>            :   IP(const char* ip, IPType type);</a>
 <a name="43"><span class="lineNum">      43 </span><span class="lineCov">          6 :   virtual ~IP() = default;</span></a>
@@ -124,7 +124,7 @@
 <a name="62"><span class="lineNum">      62 </span>            : class IPv4 : public IP {</a>
 <a name="63"><span class="lineNum">      63 </span>            :  public:</a>
 <a name="64"><span class="lineNum">      64 </span>            :   explicit IPv4(const char* ip, uint32_t n_mask = 32);</a>
-<a name="65"><span class="lineNum">      65 </span><span class="lineCov">         57 :   ~IPv4() = default;</span></a>
+<a name="65"><span class="lineNum">      65 </span><span class="lineCov">         81 :   ~IPv4() = default;</span></a>
 <a name="66"><span class="lineNum">      66 </span>            : </a>
 <a name="67"><span class="lineNum">      67 </span>            :   void set_mask(uint32_t mask);</a>
 <a name="68"><span class="lineNum">      68 </span>            : </a>
@@ -179,13 +179,13 @@
 <a name="117"><span class="lineNum">     117 </span>            : IP::Ptr GetDelegateIP(const std::vector&lt;IP::Ptr&gt;&amp; ips, IP::Ptr ip);</a>
 <a name="118"><span class="lineNum">     118 </span>            : IP::Ptr GetDelegateIP(const std::vector&lt;IP::Ptr&gt;&amp; ips, const char* ip);</a>
 <a name="119"><span class="lineNum">     119 </span>            : </a>
-<a name="120"><span class="lineNum">     120 </span><span class="lineCov">          8 : class Address {</span></a>
+<a name="120"><span class="lineNum">     120 </span><span class="lineCov">         11 : class Address {</span></a>
 <a name="121"><span class="lineNum">     121 </span>            :  public:</a>
 <a name="122"><span class="lineNum">     122 </span>            :   explicit Address(const std::string&amp; ip = &quot;0.0.0.0&quot;, uint16_t port = 80);</a>
-<a name="123"><span class="lineNum">     123 </span>            :   Address(IP::ConstPtr ip, uint16_t port);</a>
+<a name="123"><span class="lineNum">     123 </span>            :   Address(IP::ConstPtrRef ip, uint16_t port);</a>
 <a name="124"><span class="lineNum">     124 </span>            : </a>
 <a name="125"><span class="lineNum">     125 </span>            :   void set_ip(const std::string&amp; ip);</a>
-<a name="126"><span class="lineNum">     126 </span>            :   IP::ConstPtr ip() const;</a>
+<a name="126"><span class="lineNum">     126 </span>            :   IP::ConstPtrRef ip() const;</a>
 <a name="127"><span class="lineNum">     127 </span>            :   void set_port(uint16_t port);</a>
 <a name="128"><span class="lineNum">     128 </span>            :   uint16_t port() const;</a>
 <a name="129"><span class="lineNum">     129 </span>            : </a>

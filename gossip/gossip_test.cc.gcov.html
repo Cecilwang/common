@@ -31,17 +31,17 @@
             <td class="headerValue">_coverage_report.dat</td>
             <td></td>
             <td class="headerItem">Lines:</td>
-            <td class="headerCovTableEntry">63</td>
-            <td class="headerCovTableEntry">63</td>
+            <td class="headerCovTableEntry">81</td>
+            <td class="headerCovTableEntry">81</td>
             <td class="headerCovTableEntryHi">100.0 %</td>
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2021-06-14 04:30:17</td>
+            <td class="headerValue">2021-06-14 04:31:28</td>
             <td></td>
             <td class="headerItem">Functions:</td>
-            <td class="headerCovTableEntry">7</td>
-            <td class="headerCovTableEntry">7</td>
+            <td class="headerCovTableEntry">8</td>
+            <td class="headerCovTableEntry">8</td>
             <td class="headerCovTableEntryHi">100.0 %</td>
           </tr>
           <tr><td><img src="../glass.png" width=3 height=3 alt=""></td></tr>
@@ -156,13 +156,33 @@
 <a name="94"><span class="lineNum">      94 </span><span class="lineCov">          1 :   c3.Start();</span></a>
 <a name="95"><span class="lineNum">      95 </span><span class="lineCov">          1 : }</span></a>
 <a name="96"><span class="lineNum">      96 </span>            : </a>
-<a name="97"><span class="lineNum">      97 </span><span class="lineCov">          1 : TEST(TestCluster, TestPing) {</span></a>
-<a name="98"><span class="lineNum">      98 </span><span class="lineCov">          1 :   Cluster c(2333, 3, 100, 100, 100);</span></a>
-<a name="99"><span class="lineNum">      99 </span><span class="lineCov">          2 :   c.Alive().Start();</span></a>
-<a name="100"><span class="lineNum">     100 </span><span class="lineCov">          1 : }</span></a>
-<a name="101"><span class="lineNum">     101 </span>            : </a>
-<a name="102"><span class="lineNum">     102 </span>            : }  // namespace gossip</a>
-<a name="103"><span class="lineNum">     103 </span>            : }  // namespace common</a>
+<a name="97"><span class="lineNum">      97 </span><span class="lineCov">          1 : TEST(TestCluster, TestServer) {</span></a>
+<a name="98"><span class="lineNum">      98 </span><span class="lineCov">          2 :   Cluster c(23331, 3, 100, 100, 100);</span></a>
+<a name="99"><span class="lineNum">      99 </span><span class="lineCov">          1 :   c.Alive().Start();</span></a>
+<a name="100"><span class="lineNum">     100 </span><span class="lineCov">          2 :   auto self = c.Nodes()[0];</span></a>
+<a name="101"><span class="lineNum">     101 </span><span class="lineCov">          1 :   rpc::NodeMsg req;</span></a>
+<a name="102"><span class="lineNum">     102 </span><span class="lineCov">          1 :   self-&gt;ToNodeMsg(&amp;req);</span></a>
+<a name="103"><span class="lineNum">     103 </span><span class="lineCov">          1 :   rpc::NodeMsg resp;</span></a>
+<a name="104"><span class="lineNum">     104 </span><span class="lineCov">          1 :   rpc::Client::Send(self-&gt;addr(), req, &amp;resp);</span></a>
+<a name="105"><span class="lineNum">     105 </span><span class="lineCov">          2 :   std::cout &lt;&lt; resp.ShortDebugString() &lt;&lt; std::endl;</span></a>
+<a name="106"><span class="lineNum">     106 </span><span class="lineCov">          1 : }</span></a>
+<a name="107"><span class="lineNum">     107 </span>            : </a>
+<a name="108"><span class="lineNum">     108 </span><span class="lineCov">          1 : TEST(TestCluster, TestSimple) {</span></a>
+<a name="109"><span class="lineNum">     109 </span><span class="lineCov">          2 :   Cluster c1(23331, 3, 100, 100, 100);</span></a>
+<a name="110"><span class="lineNum">     110 </span><span class="lineCov">          1 :   c1.Alive(&quot;n1&quot;).Start();</span></a>
+<a name="111"><span class="lineNum">     111 </span><span class="lineCov">          2 :   Cluster c2(23332, 3, 100, 100, 100);</span></a>
+<a name="112"><span class="lineNum">     112 </span><span class="lineCov">          2 :   c2.Alive(&quot;n2&quot;).Start().Join(&quot;0.0.0.0&quot;, 23331);</span></a>
+<a name="113"><span class="lineNum">     113 </span><span class="lineCov">          1 :   Cluster c3(23333, 3, 100, 100, 100);</span></a>
+<a name="114"><span class="lineNum">     114 </span><span class="lineCov">          2 :   c3.Alive(&quot;n3&quot;).Start().Join(&quot;0.0.0.0&quot;, 23331);</span></a>
+<a name="115"><span class="lineNum">     115 </span>            : </a>
+<a name="116"><span class="lineNum">     116 </span><span class="lineCov">          1 :   util::SleepForMS(1 * 1000);</span></a>
+<a name="117"><span class="lineNum">     117 </span><span class="lineCov">          1 :   std::cout &lt;&lt; c1.ToString(true) &lt;&lt; std::endl;</span></a>
+<a name="118"><span class="lineNum">     118 </span><span class="lineCov">          1 :   std::cout &lt;&lt; c2.ToString(true) &lt;&lt; std::endl;</span></a>
+<a name="119"><span class="lineNum">     119 </span><span class="lineCov">          2 :   std::cout &lt;&lt; c3.ToString(true) &lt;&lt; std::endl;</span></a>
+<a name="120"><span class="lineNum">     120 </span><span class="lineCov">          1 : }</span></a>
+<a name="121"><span class="lineNum">     121 </span>            : </a>
+<a name="122"><span class="lineNum">     122 </span>            : }  // namespace gossip</a>
+<a name="123"><span class="lineNum">     123 </span>            : }  // namespace common</a>
 </pre>
       </td>
     </tr>
