@@ -1,0 +1,111 @@
+\documentclass{article}
+
+\usepackage[a4paper, total={6.5in, 11in}]{geometry}
+\setlength{\parindent}{0em}
+
+\usepackage{latex/common}
+
+\begin{document}
+
+\newcommand{\under}[2]{\mathop{#1}\limits_{#2}}
+\newcommand{\f}{(y_i-ax_i-b)}
+
+\newcommand{\ff}{\f^2}
+\newcommand{\fa}{\frac{\ff}{\sigma^2}}
+\newcommand{\fb}{\frac{1}{2}\fa}
+
+\newcommand{\s}{\sum\limits_{i=1}^{n}}
+\newcommand{\p}[2]{\frac{\partial #1}{\partial #2}}
+\newcommand{\F}{-\frac{n}{2} ln2\pi - nln\abs{\sigma} -\s \frac{1}{2} \frac{\ff}{\sigma^2}}
+
+\newcommand{\B}[1]{\left\{\begin{aligned}#1\end{aligned}\right.}
+\newcommand{\E}{\mathrm{E}}
+\newcommand{\V}{\mathrm{V}}
+
+\section{P1}
+
+$\hat{a}, \hat{b}, \hat{\sigma^2} = \under{argmin}{a,b,\sigma^2}(\F)$
+
+assume F = $\F$
+
+$
+\begin{aligned}
+\p{F}{a} & = \p{}{a} (- \s \fb) \\
+         & = -\s \p{}{a} (\fb) \\
+         & = -\s \frac{1}{2} \frac{1}{\sigma^2} 2 \f (-x_i) \\
+         & = \frac{n}{\sigma^2} \s x_i \f \\
+\p{F}{b} & = \frac{n}{\sigma^2} \s \f
+\end{aligned}
+$
+
+
+According to MLE, we can get the maximum at critial point of the partial derivative.
+
+Substituting (1,2),(2,3),(4,6) into
+$\B{
+  \p{F}{a} = 0 \\
+  \p{F}{b} = 0
+}$
+
+$\B{
+  1(2-a-b) + 2(3-2a-b) + 4(6-4a-b) & = 0 \\
+  (2-a-b) + (3-2a-b) + (6-4a-b)  & = 0
+}$
+
+$\hat{a}=\frac{19}{14}, \hat{b}=0.5$
+
+$
+\begin{aligned}
+\p{F}{\sigma}    & = \p{}{\sigma} (-nln\abs{\sigma} - \s \fb) \\
+                 & = -\frac{n}{\sigma} - \s \frac{1}{2} \ff \frac{-2}{\sigma^3} \\
+                 & = -\frac{n}{\sigma} + \s \frac{\ff}{\sigma^3} \\
+\p{F}{\sigma}    & = 0 \\
+               0 & = -\frac{n}{\sigma} + \s \frac{\ff}{\sigma^3} \\
+\frac{n}{\sigma} & = \s \frac{\ff}{\sigma^3} \\
+        \sigma^2 & = \s \frac{\ff}{n} \\
+  \hat{\sigma^2} & = \frac{1}{42}
+\end{aligned}
+$
+
+
+\section{P2}
+
+$
+\begin{aligned}
+\V[x] & = \E[(x-\E[x])(x-\E[x])^T] \\
+      & = \E[(x-\E[x])(x^T-\E[x]^T)] \\
+      & = \E[x(x^T-\E[x]^T)-\E[x](x^T-\E[x]^T)] \\
+      & = \E[xx^T-x\E[x]^T-\E[x]x^T-\E[x]\E[x]^T] \\
+      & = \E[xx^T]-\E[x]\E[x]^T-\E[x]\E[x^T]-\E[x]\E[x]^T \\
+      & = \E[xx^T]-\E[x]\E[x^T] \\
+      & = \E[xx^T]-\E[x]\E[x]^T \\
+\end{aligned}
+$
+
+\newpage
+
+\section{P3}
+
+$\hat{x} = \under{argmin}{x} (\frac{1}{2} trace(Axx^T) - b^Tx + c)$
+
+assume F = $\frac{1}{2} trace(Axx^T) - b^Tx + c$
+
+Due to A is a positive definite matrix, F gets the minimum value at $\p{F}{x} = 0$.
+
+$
+\begin{aligned}
+  \p{F}{x} & = \p{}{x}(\frac{1}{2} trace(Axx^T) - b^Tx + c) \\
+           & = \frac{1}{2} \p{}{x}(trace((Axx^T)^T)) - b + 0 \\
+           & = \frac{1}{2} \p{}{x}(trace(xx^TA^T) - b \\
+           & = \p{}{xx^T}(trace(xx^TA^T) \frac{1}{2} \p{}{x}(xx^T) - b \\
+           & = A \frac{1}{2} 2x - b \\
+           & = Ax - b \\
+  x^{k+1}  & = \alpha_k \p{F}{x} \\
+  x^{k+1}  & = \alpha_k (Ax - b) \\
+  \p{F}{x} & = 0 \\
+       Ax  & = b \\
+  \hat{x}  & = A^{-1}b
+\end{aligned}
+$
+
+\end{document}
