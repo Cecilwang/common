@@ -1,0 +1,51 @@
+\documentclass{article}
+
+\usepackage[a4paper, total={6.5in, 11in}]{geometry}
+\setlength{\parindent}{0em}
+
+\usepackage{latex/common}
+
+\begin{document}
+
+\newcommand{\under}[2]{\mathop{#1}\limits_{#2}}
+\newcommand{\s}{\sum\limits_{i=1}^{n}}
+\newcommand{\p}[2]{\frac{\partial #1}{\partial #2}}
+\newcommand{\B}[1]{\left\{\begin{aligned}#1\end{aligned}\right.}
+\newcommand{\E}{\mathrm{E}}
+\newcommand{\V}{\mathrm{V}}
+
+\section{P1}
+
+$
+\begin{aligned}
+  \p{}{\sigma} nln\sigma + \frac{1}{2} \sigma^{-2} \s (y_i-\hat{w}^Tx_i)^2 \mid _{\sigma=\hat{\sigma}} &= 0 \\
+  \frac{n}{\hat{\sigma}} + \frac{1}{2} (-2) \hat{\sigma}^{-3} \s (y_i-\hat{w}^Tx_i)^2                  &= 0 \\
+  \frac{n}{\hat{\sigma}} - \hat{\sigma}^{-3} \s (y_i-\hat{w}^Tx_i)^2                                   &= 0 \\
+  \hat{\sigma}^{2}                                                                                     &= \frac{\s (y_i-\hat{w}^Tx_i)^2}{n} \\
+\end{aligned}
+$
+
+assume $\Matrix{Y}{y_1 \\ y_2 \\ . \\ . \\ . \\ y_n}$,
+$\Matrix{X}{x_1Z^T \\ x_2^T \\ . \\ . \\ . \\ x_n^T}$, then $\hat{\sigma}^2 = \frac{1}{N}||Y-X\hat{w}||$
+
+\section{P2}
+
+$
+\begin{aligned}
+  R(f) = \E[(f(x)-y)^2] & = \E[f(x)^2-yf(x)-f(x)y+y^2]
+\end{aligned}
+$
+
+\section{P3}
+
+$
+\begin{aligned}
+  \p{}{w} \frac{1}{2} ||y-Xw||^2_2 + \lambda ||w||^2_2 \mid _{w=\hat{w}} &= 0 \\
+  \frac{1}{2} 2 (-X^T) (y-X\hat{w}) + \lambda 2 \hat{w}                  &= 0 \\
+  -X^Ty + X^TX\hat{w} + \lambda \hat{w} &= 0 \\
+  (X^TX + \lambda I)\hat{w} &= X^Ty \\
+  \hat{w} &= (X^TX + \lambda I)^{-1}X^Ty \\
+\end{aligned}
+$
+
+\end{document}

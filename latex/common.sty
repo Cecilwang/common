@@ -52,6 +52,15 @@
 }{
 }
 
+\lstnewenvironment{PYCode}[1][]{
+  \lstset{language=Python,
+          basicstyle=\ttfamily\tiny,
+          keywordstyle=\color{blue}\ttfamily,
+          commentstyle=\color{green}\ttfamily,
+          title={\tiny #1}}
+}{
+}
+
 % Pyramid
 \newcommand{\Pyramid}[3]{
   \begin{tikzpicture}
@@ -99,7 +108,7 @@
 
 % Matrix
 \newcommand{\Matrix}[2]{
-  $#1 = \begin{bmatrix}#2\end{bmatrix}$
+  #1 = \begin{bmatrix}#2\end{bmatrix}
 }
 
 % Algorithm
