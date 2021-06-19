@@ -76,3 +76,11 @@ def common_deps():
         sha256 = "31701ad93dbfe544d597dbe62c9a1fdd76d81d8a9150c2bf1ecf928ecdf97169",
         url = "https://github.com/bazelbuild/rules_jvm_external/archive/4.0.zip",
     )
+
+    #################### PYTHON ####################
+
+    http_archive(
+        name = "rules_python",
+        url = "https://github.com/bazelbuild/rules_python/releases/download/0.2.0/rules_python-0.2.0.tar.gz",
+        sha256 = "778197e26c5fbeb07ac2a2c5ae405b30f6cb7ad1f5510ea6fdac03bded96cc6f",
+    )

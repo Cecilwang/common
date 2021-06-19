@@ -30,12 +30,12 @@ build --platform_suffix=-host
 build --cxxopt=-fdiagnostics-color=always
 build --cxxopt=-std=c++11
 build --host_cxxopt=-std=c++11
-build --copt=-O3
+build --copt=-O2
 build --per_file_copt=//common/.*\.cc@-Wall,-Werror
 build --per_file_copt=external/.*@-w
 
 # Debug
-build:debug --platform_suffix=-host
+build:debug --platform_suffix=-dbg
 build:debug --copt=-O0
 build:debug --compilation_mode=dbg
 

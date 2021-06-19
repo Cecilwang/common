@@ -72,28 +72,6 @@ TEST(TestBroadcastQueue, TestConcurrent) {
   t2.join();
 }
 
-TEST(TestCluster, TestLog) {
-  Cluster c(2333, 3, 100, 100, 100);
-  EXPECT_EQ(c.ToString(), "Cluster(0.0.0.0:2333)");
-  EXPECT_EQ(c.ToString(true),
-            "Cluster(version: 0 state: down, address: 0.0.0.0:2333)");
-  c.Start();
-  EXPECT_EQ(c.ToString(true),
-            "Cluster(version: 0 state: up, address: 0.0.0.0:2333)");
-  c.Start();
-  c.Stop();
-  c.Stop();
-}
-
-TEST(TestCluster, TestPort) {
-  Cluster c1(2333, 3, 100, 100, 100);
-  c1.Start();
-  Cluster c2(2333, 3, 100, 100, 100);
-  c2.Start();
-  Cluster c3(1111, 3, 100, 100, 100);
-  c3.Start();
-}
-
 TEST(TestCluster, TestServer) {
   Cluster c(23331, 3, 100, 100, 100);
   c.Alive().Start();

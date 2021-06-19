@@ -47,3 +47,12 @@ maven_install(
         "https://repo1.maven.org/maven2",
     ],
 )
+
+################### PYTHON ###################
+load("@rules_python//python:pip.bzl", "pip_install")
+
+pip_install(
+    name = "py_deps",
+    python_interpreter = "python3",
+    requirements = "//:requirements.txt",
+)
