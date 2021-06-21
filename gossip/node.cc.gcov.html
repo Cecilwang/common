@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2021-06-19 09:15:00</td>
+            <td class="headerValue">2021-06-21 03:07:02</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">18</td>
@@ -180,14 +180,14 @@
 <a name="118"><span class="lineNum">     118 </span><span class="lineNoCov">          0 :   return *this;</span></a>
 <a name="119"><span class="lineNum">     119 </span>            : }</a>
 <a name="120"><span class="lineNum">     120 </span>            : </a>
-<a name="121"><span class="lineNum">     121 </span><span class="lineCov">        307 : void Node::ToNodeMsg(rpc::NodeMsg* msg) const {</span></a>
-<a name="122"><span class="lineNum">     122 </span><span class="lineCov">        307 :   msg-&gt;set_name(name_);</span></a>
-<a name="123"><span class="lineNum">     123 </span><span class="lineCov">        307 :   msg-&gt;set_version(version_);</span></a>
-<a name="124"><span class="lineNum">     124 </span><span class="lineCov">        307 :   msg-&gt;set_ip(ip());</span></a>
-<a name="125"><span class="lineNum">     125 </span><span class="lineCov">        307 :   msg-&gt;set_port(port());</span></a>
-<a name="126"><span class="lineNum">     126 </span><span class="lineCov">        307 :   msg-&gt;set_state(state_);</span></a>
-<a name="127"><span class="lineNum">     127 </span><span class="lineCov">        307 :   msg-&gt;set_metadata(metadata_);</span></a>
-<a name="128"><span class="lineNum">     128 </span><span class="lineCov">        307 : }</span></a>
+<a name="121"><span class="lineNum">     121 </span><span class="lineCov">        305 : void Node::ToNodeMsg(rpc::NodeMsg* msg) const {</span></a>
+<a name="122"><span class="lineNum">     122 </span><span class="lineCov">        305 :   msg-&gt;set_name(name_);</span></a>
+<a name="123"><span class="lineNum">     123 </span><span class="lineCov">        305 :   msg-&gt;set_version(version_);</span></a>
+<a name="124"><span class="lineNum">     124 </span><span class="lineCov">        305 :   msg-&gt;set_ip(ip());</span></a>
+<a name="125"><span class="lineNum">     125 </span><span class="lineCov">        305 :   msg-&gt;set_port(port());</span></a>
+<a name="126"><span class="lineNum">     126 </span><span class="lineCov">        305 :   msg-&gt;set_state(state_);</span></a>
+<a name="127"><span class="lineNum">     127 </span><span class="lineCov">        305 :   msg-&gt;set_metadata(metadata_);</span></a>
+<a name="128"><span class="lineNum">     128 </span><span class="lineCov">        305 : }</span></a>
 <a name="129"><span class="lineNum">     129 </span>            : </a>
 <a name="130"><span class="lineNum">     130 </span><span class="lineNoCov">          0 : bool Node::operator&gt;(const rpc::NodeMsg&amp; msg) {</span></a>
 <a name="131"><span class="lineNum">     131 </span><span class="lineNoCov">          0 :   return name_ == msg.name() &amp;&amp; version_ &gt; msg.version();</span></a>
@@ -197,8 +197,8 @@
 <a name="135"><span class="lineNum">     135 </span><span class="lineNoCov">          0 :   return name_ == msg.name() &amp;&amp; version_ &gt;= msg.version();</span></a>
 <a name="136"><span class="lineNum">     136 </span>            : }</a>
 <a name="137"><span class="lineNum">     137 </span>            : </a>
-<a name="138"><span class="lineNum">     138 </span><span class="lineCov">        246 : bool Node::operator&lt;(const rpc::NodeMsg&amp; msg) {</span></a>
-<a name="139"><span class="lineNum">     139 </span><span class="lineCov">        246 :   return name_ == msg.name() &amp;&amp; version_ &lt; msg.version();</span></a>
+<a name="138"><span class="lineNum">     138 </span><span class="lineCov">        244 : bool Node::operator&lt;(const rpc::NodeMsg&amp; msg) {</span></a>
+<a name="139"><span class="lineNum">     139 </span><span class="lineCov">        244 :   return name_ == msg.name() &amp;&amp; version_ &lt; msg.version();</span></a>
 <a name="140"><span class="lineNum">     140 </span>            : }</a>
 <a name="141"><span class="lineNum">     141 </span>            : </a>
 <a name="142"><span class="lineNum">     142 </span><span class="lineNoCov">          0 : bool Node::operator&lt;=(const rpc::NodeMsg&amp; msg) {</span></a>
@@ -215,22 +215,22 @@
 <a name="153"><span class="lineNum">     153 </span>            : </a>
 <a name="154"><span class="lineNum">     154 </span><span class="lineCov">         87 : bool Node::operator!=(const rpc::NodeMsg&amp; msg) { return !(*this == msg); }</span></a>
 <a name="155"><span class="lineNum">     155 </span>            : </a>
-<a name="156"><span class="lineNum">     156 </span><span class="lineCov">        159 : bool Node::Reset(const rpc::NodeMsg* msg) const {</span></a>
+<a name="156"><span class="lineNum">     156 </span><span class="lineCov">        157 : bool Node::Reset(const rpc::NodeMsg* msg) const {</span></a>
 <a name="157"><span class="lineNum">     157 </span>            :   // Here, we can only use properties to recognize the reset. However, of</a>
 <a name="158"><span class="lineNum">     158 </span>            :   // course, sometimes the node will reset without any changes. In these cases,</a>
 <a name="159"><span class="lineNum">     159 </span>            :   // reset node will refute others outdated message in the future. Even if the</a>
 <a name="160"><span class="lineNum">     160 </span>            :   // delay is uncertain, synchronization will eventually occur.</a>
 <a name="161"><span class="lineNum">     161 </span>            : </a>
 <a name="162"><span class="lineNum">     162 </span>            :   // TODO(sxwang): It is simpler to recognize by the timestamp_ms_.</a>
-<a name="163"><span class="lineNum">     163 </span><span class="lineCov">        159 :   return name_ == msg-&gt;name() &amp;&amp;                                             //</span></a>
-<a name="164"><span class="lineNum">     164 </span><span class="lineCov">        159 :          version_ &gt;= msg-&gt;version() &amp;&amp;                                       //</span></a>
-<a name="165"><span class="lineNum">     165 </span><span class="lineCov">        318 :          state_ == rpc::State::DEAD &amp;&amp; msg-&gt;state() == rpc::State::ALIVE &amp;&amp;  //</span></a>
+<a name="163"><span class="lineNum">     163 </span><span class="lineCov">        157 :   return name_ == msg-&gt;name() &amp;&amp;                                             //</span></a>
+<a name="164"><span class="lineNum">     164 </span><span class="lineCov">        157 :          version_ &gt;= msg-&gt;version() &amp;&amp;                                       //</span></a>
+<a name="165"><span class="lineNum">     165 </span><span class="lineCov">        314 :          state_ == rpc::State::DEAD &amp;&amp; msg-&gt;state() == rpc::State::ALIVE &amp;&amp;  //</span></a>
 <a name="166"><span class="lineNum">     166 </span><span class="lineNoCov">          0 :          (ip() != msg-&gt;ip() ||                                               //</span></a>
 <a name="167"><span class="lineNum">     167 </span><span class="lineNoCov">          0 :           port() != msg-&gt;port() ||                                           //</span></a>
 <a name="168"><span class="lineNum">     168 </span><span class="lineNoCov">          0 :           metadata_ != msg-&gt;metadata());</span></a>
 <a name="169"><span class="lineNum">     169 </span>            : }</a>
 <a name="170"><span class="lineNum">     170 </span>            : </a>
-<a name="171"><span class="lineNum">     171 </span><span class="lineCov">     129367 : const std::string&amp; Node::name() const { return name_; }</span></a>
+<a name="171"><span class="lineNum">     171 </span><span class="lineCov">     385568 : const std::string&amp; Node::name() const { return name_; }</span></a>
 <a name="172"><span class="lineNum">     172 </span>            : </a>
 <a name="173"><span class="lineNum">     173 </span><span class="lineCov">         97 : uint32_t Node::version() const { return version_; }</span></a>
 <a name="174"><span class="lineNum">     174 </span>            : </a>
@@ -239,13 +239,13 @@
 <a name="177"><span class="lineNum">     177 </span><span class="lineNoCov">          0 :   version_ = version;</span></a>
 <a name="178"><span class="lineNum">     178 </span><span class="lineNoCov">          0 : }</span></a>
 <a name="179"><span class="lineNum">     179 </span>            : </a>
-<a name="180"><span class="lineNum">     180 </span><span class="lineCov">        404 : const std::string&amp; Node::ip() const { return addr_.ip()-&gt;ip(); }</span></a>
+<a name="180"><span class="lineNum">     180 </span><span class="lineCov">        402 : const std::string&amp; Node::ip() const { return addr_.ip()-&gt;ip(); }</span></a>
 <a name="181"><span class="lineNum">     181 </span>            : </a>
-<a name="182"><span class="lineNum">     182 </span><span class="lineCov">        404 : uint16_t Node::port() const { return addr_.port(); }</span></a>
+<a name="182"><span class="lineNum">     182 </span><span class="lineCov">        402 : uint16_t Node::port() const { return addr_.port(); }</span></a>
 <a name="183"><span class="lineNum">     183 </span>            : </a>
 <a name="184"><span class="lineNum">     184 </span><span class="lineCov">         66 : const net::Address&amp; Node::addr() const { return addr_; }</span></a>
 <a name="185"><span class="lineNum">     185 </span>            : </a>
-<a name="186"><span class="lineNum">     186 </span><span class="lineCov">        133 : rpc::State Node::state() const { return state_; }</span></a>
+<a name="186"><span class="lineNum">     186 </span><span class="lineCov">        130 : rpc::State Node::state() const { return state_; }</span></a>
 <a name="187"><span class="lineNum">     187 </span>            : </a>
 <a name="188"><span class="lineNum">     188 </span><span class="lineCov">         10 : const std::string&amp; Node::metadata() const { return metadata_; }</span></a>
 <a name="189"><span class="lineNum">     189 </span>            : </a>
@@ -260,9 +260,9 @@
 <a name="198"><span class="lineNum">     198 </span>            :   suspect_timer_ = suspect_timer;</a>
 <a name="199"><span class="lineNum">     199 </span><span class="lineNoCov">          0 : }</span></a>
 <a name="200"><span class="lineNum">     200 </span>            : </a>
-<a name="201"><span class="lineNum">     201 </span><span class="lineCov">        180 : std::string Node::ToString(bool verbose) const {</span></a>
-<a name="202"><span class="lineNum">     202 </span><span class="lineCov">        360 :   std::ostringstream ss;</span></a>
-<a name="203"><span class="lineNum">     203 </span><span class="lineCov">        180 :   if (verbose) {</span></a>
+<a name="201"><span class="lineNum">     201 </span><span class="lineCov">        175 : std::string Node::ToString(bool verbose) const {</span></a>
+<a name="202"><span class="lineNum">     202 </span><span class="lineCov">        350 :   std::ostringstream ss;</span></a>
+<a name="203"><span class="lineNum">     203 </span><span class="lineCov">        175 :   if (verbose) {</span></a>
 <a name="204"><span class="lineNum">     204 </span><span class="lineCov">         40 :     ss &lt;&lt; &quot;Node(&quot; &lt;&lt; name_ &lt;&lt; &quot;, &quot; &lt;&lt; version_ &lt;&lt; &quot;, &quot; &lt;&lt; addr_ &lt;&lt; &quot;, &quot;</span></a>
 <a name="205"><span class="lineNum">     205 </span><span class="lineCov">         20 :        &lt;&lt; rpc::State_Name(state_) &lt;&lt; &quot;, &quot;</span></a>
 <a name="206"><span class="lineNum">     206 </span><span class="lineNoCov">          0 :        &lt;&lt; (state_ == rpc::State::SUSPECT &amp;&amp; suspect_timer_</span></a>
@@ -270,9 +270,9 @@
 <a name="208"><span class="lineNum">     208 </span>            :                : &quot;&quot;)</a>
 <a name="209"><span class="lineNum">     209 </span><span class="lineCov">         60 :        &lt;&lt; timestamp_ms_ &lt;&lt; (metadata_.empty() ? &quot;&quot; : &quot;, &quot; + metadata_) &lt;&lt; &quot;)&quot;;</span></a>
 <a name="210"><span class="lineNum">     210 </span>            :   } else {</a>
-<a name="211"><span class="lineNum">     211 </span><span class="lineCov">        160 :     ss &lt;&lt; &quot;Node(&quot; &lt;&lt; name_ &lt;&lt; &quot;)&quot;;</span></a>
+<a name="211"><span class="lineNum">     211 </span><span class="lineCov">        155 :     ss &lt;&lt; &quot;Node(&quot; &lt;&lt; name_ &lt;&lt; &quot;)&quot;;</span></a>
 <a name="212"><span class="lineNum">     212 </span>            :   }</a>
-<a name="213"><span class="lineNum">     213 </span><span class="lineCov">        180 :   return ss.str();</span></a>
+<a name="213"><span class="lineNum">     213 </span><span class="lineCov">        175 :   return ss.str();</span></a>
 <a name="214"><span class="lineNum">     214 </span>            : }</a>
 <a name="215"><span class="lineNum">     215 </span>            : </a>
 <a name="216"><span class="lineNum">     216 </span><span class="lineNoCov">          0 : Node::operator std::string() const { return ToString(); }</span></a>
