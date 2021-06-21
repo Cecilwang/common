@@ -6,10 +6,10 @@ latex_pdf(
     srcs = [
         ":HW1/h1.tex",
         ":HW2/h2.tex",
-        "//titech/ART.T458.AdvancedMachineLearning/HW3:h3.tex",
+        ":HW3/h3.tex",
     ],
     data = [
-        "//titech/ART.T458.AdvancedMachineLearning/HW3:h3.py",
+        "//example/ml:1_binary_classification.py",
     ],
     deps = ["//latex:common"],
 )
