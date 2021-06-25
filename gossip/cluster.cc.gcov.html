@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2021-06-21 03:07:02</td>
+            <td class="headerValue">2021-06-25 05:08:15</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">50</td>
@@ -81,9 +81,9 @@
 <a name="19"><span class="lineNum">      19 </span>            : </a>
 <a name="20"><span class="lineNum">      20 </span>            : namespace {</a>
 <a name="21"><span class="lineNum">      21 </span>            : </a>
-<a name="22"><span class="lineNum">      22 </span><span class="lineCov">         41 : void AppendLog(std::string* dst, const std::string&amp; src) {</span></a>
-<a name="23"><span class="lineNum">      23 </span><span class="lineCov">         41 :   dst-&gt;empty() ? (*dst = src) : (*dst += &quot; &quot; + src);</span></a>
-<a name="24"><span class="lineNum">      24 </span><span class="lineCov">         41 : }</span></a>
+<a name="22"><span class="lineNum">      22 </span><span class="lineCov">         42 : void AppendLog(std::string* dst, const std::string&amp; src) {</span></a>
+<a name="23"><span class="lineNum">      23 </span><span class="lineCov">         42 :   dst-&gt;empty() ? (*dst = src) : (*dst += &quot; &quot; + src);</span></a>
+<a name="24"><span class="lineNum">      24 </span><span class="lineCov">         42 : }</span></a>
 <a name="25"><span class="lineNum">      25 </span>            : </a>
 <a name="26"><span class="lineNum">      26 </span>            : }  // namespace</a>
 <a name="27"><span class="lineNum">      27 </span>            : </a>
@@ -196,14 +196,14 @@
 <a name="134"><span class="lineNum">     134 </span><span class="lineCov">          4 : void BroadcastQueue::_Run() {</span></a>
 <a name="135"><span class="lineNum">     135 </span><span class="lineCov">          4 :   util::SleepForMS(util::Uniform(0, intvl_ms_));</span></a>
 <a name="136"><span class="lineNum">     136 </span>            :   while (true) {</a>
-<a name="137"><span class="lineNum">     137 </span><span class="lineCov">     385493 :     std::unique_lock&lt;std::mutex&gt; lock(mutex_);</span></a>
-<a name="138"><span class="lineNum">     138 </span><span class="lineCov">     385493 :     cv_.wait_for(lock, std::chrono::milliseconds(intvl_ms_),</span></a>
-<a name="139"><span class="lineNum">     139 </span><span class="lineCov">     385523 :                  [this] { return queue_.size() &gt; 0 || !running(); });</span></a>
-<a name="140"><span class="lineNum">     140 </span><span class="lineCov">     385493 :     if (!running()) {</span></a>
+<a name="137"><span class="lineNum">     137 </span><span class="lineCov">     128665 :     std::unique_lock&lt;std::mutex&gt; lock(mutex_);</span></a>
+<a name="138"><span class="lineNum">     138 </span><span class="lineCov">     128665 :     cv_.wait_for(lock, std::chrono::milliseconds(intvl_ms_),</span></a>
+<a name="139"><span class="lineNum">     139 </span><span class="lineCov">     128695 :                  [this] { return queue_.size() &gt; 0 || !running(); });</span></a>
+<a name="140"><span class="lineNum">     140 </span><span class="lineCov">     128665 :     if (!running()) {</span></a>
 <a name="141"><span class="lineNum">     141 </span>            :       break;</a>
-<a name="142"><span class="lineNum">     142 </span><span class="lineCov">     385489 :     } else if (queue_.size() &gt; 0) {</span></a>
-<a name="143"><span class="lineNum">     143 </span><span class="lineCov">     385462 :       lock.unlock();</span></a>
-<a name="144"><span class="lineNum">     144 </span><span class="lineCov">     385462 :       cluster_-&gt;Gossip();</span></a>
+<a name="142"><span class="lineNum">     142 </span><span class="lineCov">     128661 :     } else if (queue_.size() &gt; 0) {</span></a>
+<a name="143"><span class="lineNum">     143 </span><span class="lineCov">     128634 :       lock.unlock();</span></a>
+<a name="144"><span class="lineNum">     144 </span><span class="lineCov">     128634 :       cluster_-&gt;Gossip();</span></a>
 <a name="145"><span class="lineNum">     145 </span>            :     }</a>
 <a name="146"><span class="lineNum">     146 </span>            :   }</a>
 <a name="147"><span class="lineNum">     147 </span><span class="lineCov">          4 : }</span></a>
@@ -245,12 +245,12 @@
 <a name="183"><span class="lineNum">     183 </span><span class="lineCov">         17 :   return e-&gt;node;</span></a>
 <a name="184"><span class="lineNum">     184 </span>            : }</a>
 <a name="185"><span class="lineNum">     185 </span>            : </a>
-<a name="186"><span class="lineNum">     186 </span><span class="lineCov">     385469 : size_t BroadcastQueue::Size() {</span></a>
-<a name="187"><span class="lineNum">     187 </span><span class="lineCov">     385469 :   std::unique_lock&lt;std::mutex&gt; lock(mutex_);</span></a>
+<a name="186"><span class="lineNum">     186 </span><span class="lineCov">     128641 : size_t BroadcastQueue::Size() {</span></a>
+<a name="187"><span class="lineNum">     187 </span><span class="lineCov">     128641 :   std::unique_lock&lt;std::mutex&gt; lock(mutex_);</span></a>
 <a name="188"><span class="lineNum">     188 </span>            :   size_t ret = queue_.size();</a>
-<a name="189"><span class="lineNum">     189 </span><span class="lineCov">     385469 :   lock.unlock();</span></a>
-<a name="190"><span class="lineNum">     190 </span><span class="lineCov">     385469 :   cv_.notify_all();</span></a>
-<a name="191"><span class="lineNum">     191 </span><span class="lineCov">     385469 :   return ret;</span></a>
+<a name="189"><span class="lineNum">     189 </span><span class="lineCov">     128641 :   lock.unlock();</span></a>
+<a name="190"><span class="lineNum">     190 </span><span class="lineCov">     128641 :   cv_.notify_all();</span></a>
+<a name="191"><span class="lineNum">     191 </span><span class="lineCov">     128641 :   return ret;</span></a>
 <a name="192"><span class="lineNum">     192 </span>            : }</a>
 <a name="193"><span class="lineNum">     193 </span>            : </a>
 <a name="194"><span class="lineNum">     194 </span><span class="lineCov">          1 : std::string BroadcastQueue::ToString() {</span></a>
@@ -342,7 +342,7 @@
 <a name="280"><span class="lineNum">     280 </span>            : </a>
 <a name="281"><span class="lineNum">     281 </span><span class="lineCov">          4 : bool Cluster::StartRoutine() {</span></a>
 <a name="282"><span class="lineNum">     282 </span><span class="lineCov">          4 :   if (!probe_t_) {</span></a>
-<a name="283"><span class="lineNum">     283 </span><span class="lineCov">         35 :     probe_t_ = util::CreateLoopThread([this] { Probe(); }, probe_inv_ms_, true);</span></a>
+<a name="283"><span class="lineNum">     283 </span><span class="lineCov">         34 :     probe_t_ = util::CreateLoopThread([this] { Probe(); }, probe_inv_ms_, true);</span></a>
 <a name="284"><span class="lineNum">     284 </span><span class="lineCov">          4 :     probe_t_-&gt;Run();</span></a>
 <a name="285"><span class="lineNum">     285 </span>            :   }</a>
 <a name="286"><span class="lineNum">     286 </span><span class="lineCov">          4 :   if (!sync_t_) {</span></a>
@@ -390,14 +390,14 @@
 <a name="328"><span class="lineNum">     328 </span><span class="lineCov">          4 :   LOG(INFO) &lt;&lt; *this &lt;&lt; &quot; joined &quot; &lt;&lt; ip &lt;&lt; &quot;:&quot; &lt;&lt; port;</span></a>
 <a name="329"><span class="lineNum">     329 </span><span class="lineCov">          2 : }</span></a>
 <a name="330"><span class="lineNum">     330 </span>            : </a>
-<a name="331"><span class="lineNum">     331 </span><span class="lineCov">         27 : void Cluster::Probe() {</span></a>
+<a name="331"><span class="lineNum">     331 </span><span class="lineCov">         26 : void Cluster::Probe() {</span></a>
 <a name="332"><span class="lineNum">     332 </span>            :   // We don't need to guarantee that nodes_v_ is the same in each iteration.</a>
 <a name="333"><span class="lineNum">     333 </span>            :   Node::Ptr node = nullptr;</a>
-<a name="334"><span class="lineNum">     334 </span><span class="lineCov">         76 :   for (size_t n_checked = 0; !node; ++n_checked) {</span></a>
-<a name="335"><span class="lineNum">     335 </span><span class="lineCov">         50 :     nodes_mutex_.lock();</span></a>
+<a name="334"><span class="lineNum">     334 </span><span class="lineCov">         75 :   for (size_t n_checked = 0; !node; ++n_checked) {</span></a>
+<a name="335"><span class="lineNum">     335 </span><span class="lineCov">         49 :     nodes_mutex_.lock();</span></a>
 <a name="336"><span class="lineNum">     336 </span>            : </a>
-<a name="337"><span class="lineNum">     337 </span><span class="lineCov">         50 :     size_t n = nodes_v_.size();</span></a>
-<a name="338"><span class="lineNum">     338 </span><span class="lineCov">         50 :     if (n_checked &gt;= n) {  // Have checked all nodes in this round.</span></a>
+<a name="337"><span class="lineNum">     337 </span><span class="lineCov">         49 :     size_t n = nodes_v_.size();</span></a>
+<a name="338"><span class="lineNum">     338 </span><span class="lineCov">         49 :     if (n_checked &gt;= n) {  // Have checked all nodes in this round.</span></a>
 <a name="339"><span class="lineNum">     339 </span>            :       nodes_mutex_.unlock();</a>
 <a name="340"><span class="lineNum">     340 </span>            :       return;</a>
 <a name="341"><span class="lineNum">     341 </span>            :     }</a>
@@ -497,8 +497,8 @@
 <a name="435"><span class="lineNum">     435 </span>            : </a>
 <a name="436"><span class="lineNum">     436 </span><span class="lineCov">         31 : void Cluster::Sync() {</span></a>
 <a name="437"><span class="lineNum">     437 </span>            :   // Use the filter to randomly select up to 1 elements</a>
-<a name="438"><span class="lineNum">     438 </span><span class="lineCov">         43 :   auto nodes = GetRandomNodes(1, [this](Node::ConstPtrRef x) {</span></a>
-<a name="439"><span class="lineNum">     439 </span><span class="lineCov">         43 :     return x-&gt;state() != rpc::State::ALIVE || x-&gt;name() == name_;</span></a>
+<a name="438"><span class="lineNum">     438 </span><span class="lineCov">         40 :   auto nodes = GetRandomNodes(1, [this](Node::ConstPtrRef x) {</span></a>
+<a name="439"><span class="lineNum">     439 </span><span class="lineCov">         40 :     return x-&gt;state() != rpc::State::ALIVE || x-&gt;name() == name_;</span></a>
 <a name="440"><span class="lineNum">     440 </span><span class="lineCov">         61 :   });</span></a>
 <a name="441"><span class="lineNum">     441 </span>            : </a>
 <a name="442"><span class="lineNum">     442 </span><span class="lineCov">         31 :   if (nodes.size() == 0) {</span></a>
@@ -514,30 +514,30 @@
 <a name="452"><span class="lineNum">     452 </span><span class="lineCov">         30 :   RecvSync(&amp;resp);</span></a>
 <a name="453"><span class="lineNum">     453 </span>            : }</a>
 <a name="454"><span class="lineNum">     454 </span>            : </a>
-<a name="455"><span class="lineNum">     455 </span><span class="lineCov">     385462 : void Cluster::Gossip() {</span></a>
+<a name="455"><span class="lineNum">     455 </span><span class="lineCov">     128634 : void Cluster::Gossip() {</span></a>
 <a name="456"><span class="lineNum">     456 </span>            :   // Use the filter to randomly select up to 3 elements where 3 is arbitrary</a>
-<a name="457"><span class="lineNum">     457 </span><span class="lineCov">     385477 :   auto nodes = GetRandomNodes(3, [this](Node::ConstPtrRef x) {</span></a>
-<a name="458"><span class="lineNum">     458 </span><span class="lineCov">     385495 :     return x-&gt;name() == name_ ||  //</span></a>
+<a name="457"><span class="lineNum">     457 </span><span class="lineCov">     128654 :   auto nodes = GetRandomNodes(3, [this](Node::ConstPtrRef x) {</span></a>
+<a name="458"><span class="lineNum">     458 </span><span class="lineCov">     128672 :     return x-&gt;name() == name_ ||  //</span></a>
 <a name="459"><span class="lineNum">     459 </span><span class="lineCov">         18 :            (x-&gt;state() == rpc::State::DEAD &amp;&amp; x-&gt;elapsed_ms() &gt;= 1 * 60 * 1000);</span></a>
-<a name="460"><span class="lineNum">     460 </span><span class="lineCov">     770924 :   });</span></a>
+<a name="460"><span class="lineNum">     460 </span><span class="lineCov">     257268 :   });</span></a>
 <a name="461"><span class="lineNum">     461 </span>            : </a>
-<a name="462"><span class="lineNum">     462 </span><span class="lineCov">     770915 :   size_t n = std::min(queue_.Size(), nodes.size() * 3);</span></a>
+<a name="462"><span class="lineNum">     462 </span><span class="lineCov">     257259 :   size_t n = std::min(queue_.Size(), nodes.size() * 3);</span></a>
 <a name="463"><span class="lineNum">     463 </span>            : </a>
-<a name="464"><span class="lineNum">     464 </span><span class="lineCov">     385462 :   rpc::NodeMsg resp;</span></a>
-<a name="465"><span class="lineNum">     465 </span><span class="lineCov">     385471 :   for (size_t i = 0; i &lt; n; ++i) {</span></a>
+<a name="464"><span class="lineNum">     464 </span><span class="lineCov">     128634 :   rpc::NodeMsg resp;</span></a>
+<a name="465"><span class="lineNum">     465 </span><span class="lineCov">     128643 :   for (size_t i = 0; i &lt; n; ++i) {</span></a>
 <a name="466"><span class="lineNum">     466 </span><span class="lineCov">          9 :     Node::Ptr dst = nodes[i % nodes.size()];</span></a>
 <a name="467"><span class="lineNum">     467 </span><span class="lineCov">          9 :     Node::Ptr x = queue_.Pop();</span></a>
 <a name="468"><span class="lineNum">     468 </span><span class="lineCov">         27 :     LOG(INFO) &lt;&lt; *this &lt;&lt; &quot; gossips &quot; &lt;&lt; *x &lt;&lt; &quot; to &quot; &lt;&lt; *dst;</span></a>
 <a name="469"><span class="lineNum">     469 </span><span class="lineCov">          9 :     rpc::Client::Send(dst-&gt;addr(), GenNodeMsg(x), &amp;resp);</span></a>
 <a name="470"><span class="lineNum">     470 </span>            :   }</a>
-<a name="471"><span class="lineNum">     471 </span><span class="lineCov">     385462 : }</span></a>
+<a name="471"><span class="lineNum">     471 </span><span class="lineCov">     128634 : }</span></a>
 <a name="472"><span class="lineNum">     472 </span>            : </a>
-<a name="473"><span class="lineNum">     473 </span><span class="lineCov">        248 : void Cluster::Recv(const rpc::NodeMsg* req, rpc::NodeMsg* resp) {</span></a>
-<a name="474"><span class="lineNum">     474 </span><span class="lineCov">        248 :   rpc::NodeMsg unused;</span></a>
-<a name="475"><span class="lineNum">     475 </span><span class="lineCov">        248 :   resp = resp == nullptr ? &amp;unused : resp;</span></a>
-<a name="476"><span class="lineNum">     476 </span><span class="lineCov">        248 :   switch (req-&gt;state()) {</span></a>
-<a name="477"><span class="lineNum">     477 </span><span class="lineCov">        248 :     case rpc::State::ALIVE:</span></a>
-<a name="478"><span class="lineNum">     478 </span><span class="lineCov">        248 :       RecvAlive(req, resp);</span></a>
+<a name="473"><span class="lineNum">     473 </span><span class="lineCov">        251 : void Cluster::Recv(const rpc::NodeMsg* req, rpc::NodeMsg* resp) {</span></a>
+<a name="474"><span class="lineNum">     474 </span><span class="lineCov">        251 :   rpc::NodeMsg unused;</span></a>
+<a name="475"><span class="lineNum">     475 </span><span class="lineCov">        251 :   resp = resp == nullptr ? &amp;unused : resp;</span></a>
+<a name="476"><span class="lineNum">     476 </span><span class="lineCov">        251 :   switch (req-&gt;state()) {</span></a>
+<a name="477"><span class="lineNum">     477 </span><span class="lineCov">        251 :     case rpc::State::ALIVE:</span></a>
+<a name="478"><span class="lineNum">     478 </span><span class="lineCov">        251 :       RecvAlive(req, resp);</span></a>
 <a name="479"><span class="lineNum">     479 </span>            :       break;</a>
 <a name="480"><span class="lineNum">     480 </span><span class="lineNoCov">          0 :     case rpc::State::SUSPECT:</span></a>
 <a name="481"><span class="lineNum">     481 </span><span class="lineNoCov">          0 :       RecvSuspect(req, resp);</span></a>
@@ -549,14 +549,14 @@
 <a name="487"><span class="lineNum">     487 </span><span class="lineNoCov">          0 :       LOG(WARNING) &lt;&lt; *this &lt;&lt; &quot; discarded an UNKNOWN NodeMsg.&quot;;</span></a>
 <a name="488"><span class="lineNum">     488 </span><span class="lineNoCov">          0 :       break;</span></a>
 <a name="489"><span class="lineNum">     489 </span>            :   }</a>
-<a name="490"><span class="lineNum">     490 </span><span class="lineCov">        248 : }</span></a>
+<a name="490"><span class="lineNum">     490 </span><span class="lineCov">        251 : }</span></a>
 <a name="491"><span class="lineNum">     491 </span>            : </a>
-<a name="492"><span class="lineNum">     492 </span><span class="lineCov">        248 : void Cluster::RecvAlive(const rpc::NodeMsg* alive, rpc::NodeMsg* resp) {</span></a>
-<a name="493"><span class="lineNum">     493 </span><span class="lineCov">        248 :   std::lock_guard&lt;std::mutex&gt; lock(nodes_mutex_);</span></a>
+<a name="492"><span class="lineNum">     492 </span><span class="lineCov">        251 : void Cluster::RecvAlive(const rpc::NodeMsg* alive, rpc::NodeMsg* resp) {</span></a>
+<a name="493"><span class="lineNum">     493 </span><span class="lineCov">        251 :   std::lock_guard&lt;std::mutex&gt; lock(nodes_mutex_);</span></a>
 <a name="494"><span class="lineNum">     494 </span>            : </a>
 <a name="495"><span class="lineNum">     495 </span>            :   Node::Ptr node = nullptr;</a>
-<a name="496"><span class="lineNum">     496 </span><span class="lineCov">        248 :   auto search = nodes_m_.find(alive-&gt;name());</span></a>
-<a name="497"><span class="lineNum">     497 </span><span class="lineCov">        248 :   if (search == nodes_m_.end()) {  // New Node</span></a>
+<a name="496"><span class="lineNum">     496 </span><span class="lineCov">        251 :   auto search = nodes_m_.find(alive-&gt;name());</span></a>
+<a name="497"><span class="lineNum">     497 </span><span class="lineCov">        251 :   if (search == nodes_m_.end()) {  // New Node</span></a>
 <a name="498"><span class="lineNum">     498 </span><span class="lineCov">         10 :     node = std::make_shared&lt;Node&gt;(alive);</span></a>
 <a name="499"><span class="lineNum">     499 </span><span class="lineCov">         10 :     nodes_m_[alive-&gt;name()] = node;</span></a>
 <a name="500"><span class="lineNum">     500 </span><span class="lineCov">         10 :     nodes_v_.push_back(node);</span></a>
@@ -570,7 +570,7 @@
 <a name="508"><span class="lineNum">     508 </span>            :     node = search-&gt;second;</a>
 <a name="509"><span class="lineNum">     509 </span>            :   }</a>
 <a name="510"><span class="lineNum">     510 </span>            : </a>
-<a name="511"><span class="lineNum">     511 </span><span class="lineCov">        248 :   if (alive-&gt;name() == name_) {      // about me</span></a>
+<a name="511"><span class="lineNum">     511 </span><span class="lineCov">        251 :   if (alive-&gt;name() == name_) {      // about me</span></a>
 <a name="512"><span class="lineNum">     512 </span><span class="lineCov">         91 :     if (search == nodes_m_.end()) {  // internal bootstrap</span></a>
 <a name="513"><span class="lineNum">     513 </span><span class="lineCov">          8 :       LOG(INFO) &lt;&lt; *this &lt;&lt; &quot; started itself: &quot; &lt;&lt; *node &lt;&lt; &quot;.&quot;;</span></a>
 <a name="514"><span class="lineNum">     514 </span><span class="lineCov">          4 :       Broadcast(node);</span></a>
@@ -587,13 +587,13 @@
 <a name="525"><span class="lineNum">     525 </span>            :     }</a>
 <a name="526"><span class="lineNum">     526 </span>            :   } else {  // about others</a>
 <a name="527"><span class="lineNum">     527 </span>            :     // We only handle the new/reset message and discard others.</a>
-<a name="528"><span class="lineNum">     528 </span><span class="lineCov">        157 :     if (*node &lt; *alive || node-&gt;Reset(alive)) {</span></a>
+<a name="528"><span class="lineNum">     528 </span><span class="lineCov">        160 :     if (*node &lt; *alive || node-&gt;Reset(alive)) {</span></a>
 <a name="529"><span class="lineNum">     529 </span><span class="lineNoCov">          0 :       *node = *alive;</span></a>
 <a name="530"><span class="lineNum">     530 </span><span class="lineNoCov">          0 :       LOG(INFO) &lt;&lt; *this &lt;&lt; &quot; received new ALIVE message &quot; &lt;&lt; *node;</span></a>
 <a name="531"><span class="lineNum">     531 </span><span class="lineNoCov">          0 :       Broadcast(node);</span></a>
 <a name="532"><span class="lineNum">     532 </span>            :     }</a>
 <a name="533"><span class="lineNum">     533 </span>            :   }</a>
-<a name="534"><span class="lineNum">     534 </span><span class="lineCov">        248 : }</span></a>
+<a name="534"><span class="lineNum">     534 </span><span class="lineCov">        251 : }</span></a>
 <a name="535"><span class="lineNum">     535 </span>            : </a>
 <a name="536"><span class="lineNum">     536 </span><span class="lineNoCov">          0 : void Cluster::RecvSuspect(const rpc::NodeMsg* suspect, rpc::NodeMsg* resp) {</span></a>
 <a name="537"><span class="lineNum">     537 </span><span class="lineNoCov">          0 :   std::lock_guard&lt;std::mutex&gt; lock(nodes_mutex_);</span></a>
@@ -674,8 +674,8 @@
 <a name="612"><span class="lineNum">     612 </span>            : }</a>
 <a name="613"><span class="lineNum">     613 </span>            : </a>
 <a name="614"><span class="lineNum">     614 </span><span class="lineCov">         64 : void Cluster::RecvSync(const rpc::SyncMsg* req) {</span></a>
-<a name="615"><span class="lineNum">     615 </span><span class="lineCov">        246 :   for (const auto&amp; x : req-&gt;nodes()) {</span></a>
-<a name="616"><span class="lineNum">     616 </span><span class="lineCov">        182 :     Recv(&amp;x, nullptr);</span></a>
+<a name="615"><span class="lineNum">     615 </span><span class="lineCov">        249 :   for (const auto&amp; x : req-&gt;nodes()) {</span></a>
+<a name="616"><span class="lineNum">     616 </span><span class="lineCov">        185 :     Recv(&amp;x, nullptr);</span></a>
 <a name="617"><span class="lineNum">     617 </span>            :   }</a>
 <a name="618"><span class="lineNum">     618 </span><span class="lineCov">         64 : }</span></a>
 <a name="619"><span class="lineNum">     619 </span>            : </a>
@@ -690,10 +690,10 @@
 <a name="628"><span class="lineNum">     628 </span>            : </a>
 <a name="629"><span class="lineNum">     629 </span><span class="lineCov">          4 : void Cluster::Broadcast(Node::ConstPtrRef node) { queue_.Push(node); }</span></a>
 <a name="630"><span class="lineNum">     630 </span>            : </a>
-<a name="631"><span class="lineNum">     631 </span><span class="lineCov">        304 : void Cluster::GenNodeMsg(Node::ConstPtrRef src, rpc::NodeMsg* dst) const {</span></a>
-<a name="632"><span class="lineNum">     632 </span><span class="lineCov">        304 :   src-&gt;ToNodeMsg(dst);</span></a>
-<a name="633"><span class="lineNum">     633 </span><span class="lineCov">        304 :   dst-&gt;set_from(name_);</span></a>
-<a name="634"><span class="lineNum">     634 </span><span class="lineCov">        304 : }</span></a>
+<a name="631"><span class="lineNum">     631 </span><span class="lineCov">        307 : void Cluster::GenNodeMsg(Node::ConstPtrRef src, rpc::NodeMsg* dst) const {</span></a>
+<a name="632"><span class="lineNum">     632 </span><span class="lineCov">        307 :   src-&gt;ToNodeMsg(dst);</span></a>
+<a name="633"><span class="lineNum">     633 </span><span class="lineCov">        307 :   dst-&gt;set_from(name_);</span></a>
+<a name="634"><span class="lineNum">     634 </span><span class="lineCov">        307 : }</span></a>
 <a name="635"><span class="lineNum">     635 </span>            : </a>
 <a name="636"><span class="lineNum">     636 </span><span class="lineCov">         35 : rpc::NodeMsg Cluster::GenNodeMsg(Node::ConstPtrRef node) const {</span></a>
 <a name="637"><span class="lineNum">     637 </span>            :   rpc::NodeMsg msg;</a>
@@ -725,10 +725,10 @@
 <a name="663"><span class="lineNum">     663 </span>            : </a>
 <a name="664"><span class="lineNum">     664 </span><span class="lineCov">         64 : void Cluster::GenSyncMsg(rpc::SyncMsg* msg) {</span></a>
 <a name="665"><span class="lineNum">     665 </span><span class="lineCov">         64 :   std::lock_guard&lt;std::mutex&gt; lock(nodes_mutex_);</span></a>
-<a name="666"><span class="lineNum">     666 </span><span class="lineCov">        246 :   for (const auto&amp; x : nodes_v_) {</span></a>
+<a name="666"><span class="lineNum">     666 </span><span class="lineCov">        249 :   for (const auto&amp; x : nodes_v_) {</span></a>
 <a name="667"><span class="lineNum">     667 </span>            :     auto node_msg = msg-&gt;add_nodes();</a>
-<a name="668"><span class="lineNum">     668 </span><span class="lineCov">        182 :     GenNodeMsg(x, node_msg);</span></a>
-<a name="669"><span class="lineNum">     669 </span><span class="lineCov">        182 :     if (node_msg-&gt;state() == rpc::State::DEAD) {</span></a>
+<a name="668"><span class="lineNum">     668 </span><span class="lineCov">        185 :     GenNodeMsg(x, node_msg);</span></a>
+<a name="669"><span class="lineNum">     669 </span><span class="lineCov">        185 :     if (node_msg-&gt;state() == rpc::State::DEAD) {</span></a>
 <a name="670"><span class="lineNum">     670 </span>            :       node_msg-&gt;set_state(rpc::State::SUSPECT);</a>
 <a name="671"><span class="lineNum">     671 </span>            :     }</a>
 <a name="672"><span class="lineNum">     672 </span>            :   }</a>
@@ -762,21 +762,21 @@
 <a name="700"><span class="lineNum">     700 </span><span class="lineCov">         11 : }</span></a>
 <a name="701"><span class="lineNum">     701 </span>            : </a>
 <a name="702"><span class="lineNum">     702 </span>            : template &lt;class F&gt;</a>
-<a name="703"><span class="lineNum">     703 </span><span class="lineCov">     385493 : std::vector&lt;Node::Ptr&gt; Cluster::GetRandomNodes(size_t maxn, F&amp;&amp; f) {</span></a>
+<a name="703"><span class="lineNum">     703 </span><span class="lineCov">     128665 : std::vector&lt;Node::Ptr&gt; Cluster::GetRandomNodes(size_t maxn, F&amp;&amp; f) {</span></a>
 <a name="704"><span class="lineNum">     704 </span>            :   std::unordered_set&lt;Node::Ptr&gt; nodes;</a>
 <a name="705"><span class="lineNum">     705 </span>            :   std::string log;</a>
-<a name="706"><span class="lineNum">     706 </span><span class="lineCov">     385493 :   std::lock_guard&lt;std::mutex&gt; lock(nodes_mutex_);</span></a>
-<a name="707"><span class="lineNum">     707 </span><span class="lineCov">     385493 :   size_t n = nodes_v_.size();</span></a>
-<a name="708"><span class="lineNum">     708 </span><span class="lineCov">     771013 :   for (size_t i = 0, j = 0; i &lt; n &amp;&amp; j &lt; maxn; ++i) {</span></a>
-<a name="709"><span class="lineNum">     709 </span><span class="lineCov">     385520 :     auto node = nodes_v_[util::Uniform(0, n - 1)];</span></a>
-<a name="710"><span class="lineNum">     710 </span><span class="lineCov">     385568 :     if (!f(node) &amp;&amp; nodes.find(node) == nodes.end()) {</span></a>
-<a name="711"><span class="lineNum">     711 </span><span class="lineCov">         41 :       ++j;</span></a>
+<a name="706"><span class="lineNum">     706 </span><span class="lineCov">     128665 :   std::lock_guard&lt;std::mutex&gt; lock(nodes_mutex_);</span></a>
+<a name="707"><span class="lineNum">     707 </span><span class="lineCov">     128665 :   size_t n = nodes_v_.size();</span></a>
+<a name="708"><span class="lineNum">     708 </span><span class="lineCov">     257359 :   for (size_t i = 0, j = 0; i &lt; n &amp;&amp; j &lt; maxn; ++i) {</span></a>
+<a name="709"><span class="lineNum">     709 </span><span class="lineCov">     128694 :     auto node = nodes_v_[util::Uniform(0, n - 1)];</span></a>
+<a name="710"><span class="lineNum">     710 </span><span class="lineCov">     128742 :     if (!f(node) &amp;&amp; nodes.find(node) == nodes.end()) {</span></a>
+<a name="711"><span class="lineNum">     711 </span><span class="lineCov">         42 :       ++j;</span></a>
 <a name="712"><span class="lineNum">     712 </span>            :       nodes.insert(node);</a>
-<a name="713"><span class="lineNum">     713 </span><span class="lineCov">         82 :       AppendLog(&amp;log, node-&gt;ToString());</span></a>
+<a name="713"><span class="lineNum">     713 </span><span class="lineCov">         84 :       AppendLog(&amp;log, node-&gt;ToString());</span></a>
 <a name="714"><span class="lineNum">     714 </span>            :     }</a>
 <a name="715"><span class="lineNum">     715 </span>            :   }</a>
-<a name="716"><span class="lineNum">     716 </span><span class="lineCov">     385493 :   VLOG(5) &lt;&lt; *this &lt;&lt; &quot; randomly selected &quot; &lt;&lt; log;</span></a>
-<a name="717"><span class="lineNum">     717 </span><span class="lineCov">     770986 :   return std::vector&lt;Node::Ptr&gt;(nodes.begin(), nodes.end());</span></a>
+<a name="716"><span class="lineNum">     716 </span><span class="lineCov">     128665 :   VLOG(5) &lt;&lt; *this &lt;&lt; &quot; randomly selected &quot; &lt;&lt; log;</span></a>
+<a name="717"><span class="lineNum">     717 </span><span class="lineCov">     257330 :   return std::vector&lt;Node::Ptr&gt;(nodes.begin(), nodes.end());</span></a>
 <a name="718"><span class="lineNum">     718 </span>            : }</a>
 <a name="719"><span class="lineNum">     719 </span>            : </a>
 <a name="720"><span class="lineNum">     720 </span><span class="lineCov">          4 : std::vector&lt;Node::Ptr&gt; Cluster::Nodes() {</span></a>
