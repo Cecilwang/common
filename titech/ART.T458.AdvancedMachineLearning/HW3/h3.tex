@@ -27,11 +27,11 @@ $
 \begin{aligned}
   \p{J(w)}{w}         &= \frac{1}{n} \s \frac{\e}{1+\e} (-y_ix_i) + 2\lambda w \\
                       &= \frac{1}{n} \s (1-P(y_i|w,x_i))(-y_ix_i) + 2\lambda w \\
-  H = \pp{J(w)}{w}{w} &= \p{}{w} \frac{1}{n} \s (1-P(y_i|w,x_i))(-y_ix_i) + 2\lambda w \\
-                      &= \frac{1}{n} \s -\p{}{w}(P(y_i|w,x_i))(-y_ix_i) + 2\lambda \\
-                      &= \frac{1}{n} \s -P(y_i|w,x_i)(1-P(y_i|w,x_i)) \p{}{w}(-y_iw^Tx_i)(-y_ix_i) + 2\lambda \\
-                      &= \frac{1}{n} \s -P(y_i|w,x_i)(1-P(y_i|w,x_i)) (-y_ix_i)(-y_ix_i) + 2\lambda \\
-                      &= \frac{1}{n} \s -P(y_i|w,x_i)(1-P(y_i|w,x_i)) (y_ix_i)^2 + 2\lambda \\
+  H = \pp{J(w)}{w}{w^T} &= \p{}{w^T} \frac{1}{n} \s (1-P(y_i|w,x_i))(-y_ix_i) + 2\lambda w \\
+                      &= \frac{1}{n} \s \p{}{w^T}(P(y_i|w,x_i)(-y_ix_i)) + 2\lambda I \\
+                      &= \frac{1}{n} \s P(y_i|w,x_i)(1-P(y_i|w,x_i)) (-y_ix_i)\p{}{w}(-y_iw^Tx_i) + 2\lambda I \\
+                      &= \frac{1}{n} \s P(y_i|w,x_i)(1-P(y_i|w,x_i)) (-y_ix_i)(-y_ix_i^T) + 2\lambda I \\
+                      &= \frac{1}{n} \s P(y_i|w,x_i)(1-P(y_i|w,x_i)) x_ix_i^T + 2\lambda I \\
 \end{aligned}
 $
 

@@ -1,0 +1,112 @@
+\documentclass{article}
+
+\usepackage[a4paper, total={6.5in, 11in}]{geometry}
+\setlength{\parindent}{0em}
+
+
+\usepackage{latex/common}
+
+\newcommand{\under}[2]{\mathop{#1}\limits_{#2}}
+\newcommand{\s}{\sum\limits_{i=1}^{n}}
+\newcommand{\p}[2]{\frac{\partial #1}{\partial #2}}
+\newcommand{\pp}[3]{\frac{{\partial}^2 #1}{\partial #2 \partial #3}}
+\newcommand{\B}[1]{\left\{\begin{aligned}#1\end{aligned}\right.}
+\newcommand{\E}{\mathrm{E}}
+\newcommand{\V}{\mathrm{V}}
+
+\begin{document}
+
+\section{P1}
+
+\begin{center}
+  $
+  \begin{aligned}
+    minimize \;      & 2\pi t^2 + 2\pi th \\
+    subject \; to \; & \pi t^2h = V
+  \end{aligned}
+  $ \\
+\end{center}
+
+$
+\begin{aligned}
+  L(t,h,\lambda) & =  2\pi t^2 + 2\pi th + \lambda(\pi t^2h - V) \\
+  \p{L}{t}       & =  4\pi t   + 2\pi h + 2 \lambda \pi t h      \\
+  \p{L}{h}       & =             2 \pi t + \lambda \pi t^2       \\
+  \p{L}{\lambda} & =                       \pi t^2h - V          \\
+\end{aligned}
+$ \\
+
+$
+\B{
+  \p{L}{t} \mid _ {t=\hat{t},h=\hat{h},\lambda=\hat{\lambda}} &= 0 \\
+  \p{L}{h} \mid _ {t=\hat{t},h=\hat{h},\lambda=\hat{\lambda}} &= 0 \\
+  \p{L}{\lambda} \mid _ {t=\hat{t},h=\hat{h},\lambda=\hat{\lambda}} &= 0 \\
+}
+$ \\
+
+$
+\B{
+  \hat{t}       &= \sqrt[3]{\frac{V}{2\pi}} \\
+  \hat{h}       &= 2 \sqrt[3]{\frac{V}{2\pi}} \\
+  \hat{\lambda} &= -2 \sqrt[3]{\frac{2\pi}{V}} \\
+}
+$
+
+\section{P2 and P3}
+
+\begin{center}
+  $
+  \begin{aligned}
+    minimize \;      & x_1^2 + 2x_2^2 \\
+    subject \; to \; & x_2 \ge -x_1+1 \\
+                     & x_2 \ge \frac{1}{2} (x_1-1)
+  \end{aligned}
+  $
+\end{center}
+
+Assume that
+$
+\Matrix{X}{x_1 \\ x_2},
+\Matrix{A}{1 \; 0 \\ 0 \; 2},
+\Matrix{C}{-1 \; -1 \\ 1 \; -2},
+\Matrix{B}{1 \\ -1},
+\Matrix{\lambda}{\lambda_1 \\ \lambda_2}
+$ \\
+
+The question can be rewritten to  \\
+\begin{center}
+  $
+  \begin{aligned}
+    minimize \;      &  X^TAX \\
+    subject \; to \; & \lambda \circ (CX+B) \le \Matrix{}{0 \\ 0} \\
+  \end{aligned}
+  $
+\end{center}
+
+The KKT conditions are: \\
+\\
+$
+\B{
+  \nabla J(\hat{X}) + \hat{\lambda} \circ \nabla G(\hat{X}) = 2A\hat{X} + C^T \hat{\lambda} &= \Matrix{}{0 \\ 0} \\
+  \hat{\lambda} \circ G(\hat{X}) &= \Matrix{}{0 \\ 0} \\
+  \hat{\lambda} &\ge \Matrix{}{0 \\ 0} \\
+}
+$
+\\
+
+If $\hat{\lambda_1} > 0$ and $\hat{\lambda_2} = 0$, the $\Matrix{\hat{X}}{\frac{2}{3} \\ \frac{1}{3}}$.
+Other situations are not feasible.
+
+The lagrange function of the this question is $L(X,\lambda) = X^TAX + \lambda^T(CX+B)$. \\
+The optimal value can be get at $\p{L}{X} \mid _ {X=\hat{X}} = 2A\hat{X} + C^T \lambda = 0.$ \\
+So the $\hat{X} = - \frac{1}{2} A^{-1} C^T \lambda$, substituing it back to the L, we get the dual function: \\
+\begin{center}
+  $
+  \begin{aligned}
+    maximize \;      &  \tilde{L(\lambda)} = - \frac{1}{2} \lambda^T C A^{-1} C^T \lambda + \lambda^TB \\
+    subject \; to \; & \lambda \ge \Matrix{}{0 \\ 0} \\
+  \end{aligned}
+  $
+\end{center}
+
+\end{document}

@@ -7,6 +7,7 @@ latex_pdf(
         ":HW1/h1.tex",
         ":HW2/h2.tex",
         ":HW3/h3.tex",
+        ":HW4/h4.tex",
     ],
     data = [
         "//example/ml:1_binary_classification.py",

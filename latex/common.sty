@@ -108,7 +108,11 @@
 
 % Matrix
 \newcommand{\Matrix}[2]{
-  #1 = \begin{bmatrix}#2\end{bmatrix}
+  \ifthenelse{\equal{#1}{}}{
+    \begin{bmatrix}#2\end{bmatrix}
+  }{
+    #1 = \begin{bmatrix}#2\end{bmatrix}
+  }
 }
 
 % Algorithm
