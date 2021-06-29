@@ -50,6 +50,7 @@ class Thread {
   std::condition_variable cv_;
   std::mutex mutex_;
 
+ private:
   DISALLOW_COPY_AND_ASSIGN(Thread);
 };
 
@@ -146,6 +147,7 @@ class Timer : public Thread {
   bool breath_ = false;
   std::chrono::time_point<std::chrono::system_clock> start_;
 
+ private:
   DISALLOW_COPY_AND_ASSIGN(Timer);
 };
 
