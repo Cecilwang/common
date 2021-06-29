@@ -130,7 +130,7 @@ std::unique_ptr<Thread> CreateLoopThread(F&& f, uint64_t intvl_ms,
 class Timer : public Thread {
  public:
   explicit Timer(uint64_t timeout_ms) : timeout_ms_(timeout_ms) {}
-  virtual ~Timer() = default;
+  ~Timer() { Stop(); }
 
   void Run() override;
 
@@ -138,7 +138,7 @@ class Timer : public Thread {
   uint64_t end_ms() const;
   void set_timeout_ms(uint64_t timeout_ms);
 
-  friend std::ostream& operator<<(std::ostream& os, const Timer& self);
+  friend std::ostream& operator<<(std::ostream& os, Timer& self);
 
  protected:
   std::chrono::milliseconds timeout_ms_;
@@ -155,7 +155,7 @@ template <class F>
 class TimerWrap : public Timer {
  public:
   TimerWrap(F&& f, uint64_t timeout_ms) : Timer(timeout_ms), f_(std::move(f)) {}
-  ~TimerWrap() { Stop(); }
+  ~TimerWrap() = default;
 
   void _Run() override { f_(); }
 

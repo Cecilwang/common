@@ -359,7 +359,7 @@ void Cluster::Probe() {
 
 void Cluster::Probe(Node::ConstPtrRef node) {
   uint64_t timeout_ms = health_ * probe_inv_ms_;
-  LOG(INFO) << *this << " is probing " << *node << " in " << timeout_ms << "ms";
+  VLOG(5) << *this << " is probing " << *node << " in " << timeout_ms << "ms";
 
   rpc::NodeMsg resp;
 
@@ -375,11 +375,11 @@ void Cluster::Probe(Node::ConstPtrRef node) {
       return;
     }
     health_ += -1;
-    LOG(INFO) << *this << " succeed to probe" << *node;
+    VLOG(5) << *this << " succeed to probe" << *node;
     Recv(&resp, nullptr);
     return;
   }
-  LOG(INFO) << *this << " failed to probe" << *node << " directly.";
+  LOG(WARNING) << *this << " failed to probe" << *node << " directly.";
 
   // Use the filter to randomly select up to 3 elements where 3 is arbitrary
   auto nodes = GetRandomNodes(3, [this, &node](Node::ConstPtrRef x) {
@@ -396,7 +396,7 @@ void Cluster::Probe(Node::ConstPtrRef node) {
   for (const auto& x : nodes) {
     if (rpc::Client::Send(x->addr(), GenForwardMsg(node), &resp, timeout_ms)) {
       if (resp.state() == rpc::State::ALIVE) {  // ack
-        LOG(INFO) << *this << " succeed to probe" << *node << " with " << *x;
+        VLOG(5) << *this << " succeed to probe" << *node << " with " << *x;
         health_ += -1;
         Recv(&resp, nullptr);
         return;
@@ -407,13 +407,13 @@ void Cluster::Probe(Node::ConstPtrRef node) {
         // Something went wrong, but don't take any action
       }
     } else {  // failed to connect;
-      LOG(INFO) << *this << " failed to probe" << *node << " with " << *x;
+      LOG(WARNING) << *this << " failed to probe" << *node << " with " << *x;
       health_ += 1;
     }
   }
 
   // All nack or failed, mark it as suspect
-  LOG(INFO) << *this << " failed to probe" << *node;
+  LOG(WARNING) << *this << " failed to probe" << *node;
   auto msg = GenNodeMsg(node, rpc::State::SUSPECT);
   Recv(&msg, nullptr);
 }
@@ -444,7 +444,7 @@ void Cluster::Sync() {
   }
 
   Node::Ptr node = *(nodes.begin());
-  LOG(INFO) << *this << " is syncing with " << *node;
+  VLOG(5) << *this << " is syncing with " << *node;
 
   rpc::SyncMsg req = GenSyncMsg();
   rpc::SyncMsg resp;
@@ -465,7 +465,7 @@ void Cluster::Gossip() {
   for (size_t i = 0; i < n; ++i) {
     Node::Ptr dst = nodes[i % nodes.size()];
     Node::Ptr x = queue_.Pop();
-    LOG(INFO) << *this << " gossips " << *x << " to " << *dst;
+    VLOG(5) << *this << " gossips " << *x << " to " << *dst;
     rpc::Client::Send(dst->addr(), GenNodeMsg(x), &resp);
   }
 }
@@ -500,7 +500,7 @@ void Cluster::RecvAlive(const rpc::NodeMsg* alive, rpc::NodeMsg* resp) {
     nodes_v_.push_back(node);
     size_t n = nodes_v_.size();
     // Randomly select an element from [0, and-1] and exchange it with the
-    // latest element. Of course, nothing may happen, but we can’t use [0, n-2]
+    // latest element. Of course, nothing may happen, but we can't use [0, n-2]
     // instead of [0, n-1] because n may be equal to 1.
     std::swap(nodes_v_[util::Uniform(0, n - 1)], nodes_v_[n - 1]);
     LOG(INFO) << *this << " received new ALIVE: " << *node;
@@ -520,7 +520,7 @@ void Cluster::RecvAlive(const rpc::NodeMsg* alive, rpc::NodeMsg* resp) {
       Refute(node, alive->version(), resp);
       LOG(INFO) << *this << " refutes the rumor about me.";
     } else {  // send latest message about me back
-      LOG(INFO) << *this << " syncs my information with peer.";
+      VLOG(5) << *this << " syncs my latest information with peer.";
       GenNodeMsg(node, resp);
     }
   } else {  // about others
@@ -551,6 +551,8 @@ void Cluster::RecvSuspect(const rpc::NodeMsg* suspect, rpc::NodeMsg* resp) {
     if (node->state() == rpc::State::SUSPECT &&
         node->suspect_timer()->AddSuspector(suspect->from())) {
       // received new suspector
+      LOG(INFO) << *this << ":" << *node << " received new suspector "
+                << suspect->from();
       Broadcast(node);
     }
     // nothing need to do
@@ -558,6 +560,7 @@ void Cluster::RecvSuspect(const rpc::NodeMsg* suspect, rpc::NodeMsg* resp) {
   }
 
   if (node->name() == name_) {  // about me
+    LOG(INFO) << *this << " refute the rumor about suspection.";
     Refute(node, suspect->version(), resp);
     return;
   }
@@ -574,10 +577,17 @@ void Cluster::RecvSuspect(const rpc::NodeMsg* suspect, rpc::NodeMsg* resp) {
   // Setup suspect timer
   node->set_suspect_timer(std::make_shared<SuspectTimer>(
       util::CreateTimer(
-          [this, &node] {
-            // timeout reached, SUSPECT->DEAD
-            auto msg = GenNodeMsg(node, rpc::State::DEAD);
-            Recv(&msg, nullptr);
+          [this, node] {
+            // We must detach another thread to run the callback in order to
+            // avoiding deadlock. Otherwise, RecvDead will try to delete timer
+            // in the callback of timer. Justing image that this DAED message is
+            // from void.
+            std::thread([this, node] {
+              // timeout reached, SUSPECT->DEAD
+              LOG(INFO) << *this << ":" << *node << "'s suspect timer is up.";
+              auto msg = GenNodeMsg(node, rpc::State::DEAD);
+              Recv(&msg, nullptr);
+            }).detach();
           },
           n == 0 ? min_ms : max_ms),
       n, min_ms, max_ms, name_));
@@ -607,6 +617,7 @@ void Cluster::RecvDead(const rpc::NodeMsg* dead, rpc::NodeMsg* resp) {
 
   // ALIVE/SUSPECT->DEAD include self-shutdown.
   *node = *dead;
+  LOG(INFO) << *this << " received new DEAD: " << *node;
 
   Broadcast(node);
 }

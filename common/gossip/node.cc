@@ -45,6 +45,7 @@ SuspectTimer::SuspectTimer(std::unique_ptr<util::Timer> timer, size_t n,
                            const std::string& suspector)
     : timer_(std::move(timer)), n_(n), min_ms_(min_ms), max_ms_(max_ms) {
   suspectors_.insert(suspector);
+  timer_->Run();
 }
 
 bool SuspectTimer::AddSuspector(const std::string& suspector) {
@@ -54,7 +55,11 @@ bool SuspectTimer::AddSuspector(const std::string& suspector) {
   }
   suspectors_.insert(suspector);
   size_t m = suspectors_.size();
-  timer_->set_timeout_ms(max_ms_ - log(m) / log(n_) * (max_ms_ - min_ms_));
+  if (m >= n_) {
+    timer_->set_timeout_ms(min_ms_);
+  } else {
+    timer_->set_timeout_ms(max_ms_ - log(m) / log(n_) * (max_ms_ - min_ms_));
+  }
   return true;
 }
 
@@ -194,8 +199,8 @@ uint64_t Node::elapsed_ms() const { return util::NowInMS() - timestamp_ms_; }
 SuspectTimer::Ptr Node::suspect_timer() { return suspect_timer_; }
 
 void Node::set_suspect_timer(SuspectTimer::Ptr suspect_timer) {
-  LOG(INFO) << *this << " set suspect_timer: " << *suspect_timer;
   suspect_timer_ = suspect_timer;
+  LOG(INFO) << *this << " set suspect_timer: " << *suspect_timer;
 }
 
 std::string Node::ToString(bool verbose) const {

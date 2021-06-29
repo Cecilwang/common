@@ -84,14 +84,18 @@ void Timer::set_timeout_ms(uint64_t timeout_ms) {
 }
 
 // TODO(sxwang): It's much better to lock;
-std::ostream& operator<<(std::ostream& os, const Timer& self) {
-  auto now = util::NowInMS();
-  auto end = self.end_ms();
-  os << now << "->" << end << ":";
-  if (end <= now) {
-    os << "end";
+std::ostream& operator<<(std::ostream& os, Timer& self) {
+  if (self.running()) {
+    auto now = util::NowInMS();
+    auto end = self.end_ms();
+    os << now << "->" << end << ":";
+    if (end <= now) {
+      os << "end";
+    } else {
+      os << end - now << "ms";
+    }
   } else {
-    os << end - now << "ms";
+    os << " has not started.";
   }
   return os;
 }
