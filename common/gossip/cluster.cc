@@ -64,9 +64,8 @@ bool Client::Send(const net::Address& addr, const REQ& req, RESP* resp,
   Send(&stub, &cntl, &req, resp);
 
   if (cntl.Failed()) {
-    LOG(ERROR) << "Failed to send to " << cntl.remote_side() << ": errcode["
-               << cntl.ErrorCode() << "], errMessage[" << cntl.ErrorText()
-               << "]";
+    LOG(ERROR) << "Failed to send to " << cntl.remote_side() << ": "
+               << cntl.ErrorText();
     return false;
   }
   return true;
@@ -114,37 +113,8 @@ void ServerImpl::Sync(RpcController* cntl, const SyncMsg* req, SyncMsg* resp,
 
 //------------------------------------------------------------------------------
 
-BroadcastQueue::BroadcastQueue(uint32_t n_transmit, uint64_t intvl_ms,
-                               Cluster* cluster)
-    : n_transmit_(n_transmit),
-      queue_(ElementCmp),
-      intvl_ms_(intvl_ms),
-      cluster_(cluster) {}
-
-BroadcastQueue::~BroadcastQueue() { Stop(); }
-
-void BroadcastQueue::Run() {
-  std::lock_guard<std::mutex> lock(mutex_);
-  if (!running_) {
-    running_ = true;
-    thread_ = std::thread([this] { _Run(); });
-  }
-}
-
-void BroadcastQueue::_Run() {
-  util::SleepForMS(util::Uniform(0, intvl_ms_));
-  while (true) {
-    std::unique_lock<std::mutex> lock(mutex_);
-    cv_.wait_for(lock, std::chrono::milliseconds(intvl_ms_),
-                 [this] { return queue_.size() > 0 || !running(); });
-    if (!running()) {
-      break;
-    } else if (queue_.size() > 0) {
-      lock.unlock();
-      cluster_->Gossip();
-    }
-  }
-}
+BroadcastQueue::BroadcastQueue(uint32_t n_transmit)
+    : n_transmit_(n_transmit), queue_(ElementCmp) {}
 
 void BroadcastQueue::Push(Node::ConstPtrRef node) {
   {
@@ -226,10 +196,11 @@ bool BroadcastQueue::ElementCmp(Element::ConstPtrRef a,
 Cluster::Cluster(uint16_t port, uint32_t n_transmit, uint64_t probe_inv_ms,
                  uint64_t sync_inv_ms, uint64_t gossip_inv_ms)
     : version_(0),
-      queue_(n_transmit, gossip_inv_ms, this),
+      queue_(n_transmit),
       addr_("0.0.0.0", port),
       probe_inv_ms_(probe_inv_ms),
-      sync_inv_ms_(sync_inv_ms) {}
+      sync_inv_ms_(sync_inv_ms),
+      gossip_inv_ms_(gossip_inv_ms) {}
 
 Cluster::~Cluster() { Stop(); }
 
@@ -268,7 +239,10 @@ bool Cluster::StartServer() {
     return false;
   }
 
-  if (server_.Start(addr_.ToString().c_str(), nullptr) != 0) {
+  brpc::ServerOptions options;
+  options.has_builtin_services = false;
+
+  if (server_.Start(addr_.ToString().c_str(), &options) != 0) {
     LOG(ERROR) << *this << " failed to listen on " << addr_;
     server_.ClearServices();
     return false;
@@ -284,11 +258,20 @@ bool Cluster::StartRoutine() {
     probe_t_->Run();
   }
   if (!sync_t_) {
-    sync_t_ = util::CreateThread([this](util::Thread* p) { Sync(p); });
+    sync_t_ = util::CreateLoopThread(
+        [this] { Sync(); },
+        [this] {
+          size_t n = std::max(static_cast<size_t>(32), nodes_v_.size());
+          return sync_inv_ms_ * (ceil(log(n) - log(32)) + 1.0);
+        },
+        true);
     sync_t_->Run();
   }
-  if (!queue_.running()) {
-    queue_.Run();
+  if (!gossip_t_) {
+    gossip_t_ =
+        util::CreateLoopThread([this] { Gossip(); }, gossip_inv_ms_,
+                               [this] { return queue_.Size() > 0; }, true);
+    gossip_t_->Run();
   }
   return true;
 }
@@ -315,8 +298,8 @@ void Cluster::StopRoutine() {
   if (sync_t_) {
     sync_t_->Stop();
   }
-  if (queue_.running()) {
-    queue_.Stop();
+  if (gossip_t_) {
+    gossip_t_->Stop();
   }
 }
 
@@ -369,17 +352,17 @@ void Cluster::Probe(Node::ConstPtrRef node) {
   // otherwise invalid
   if (rpc::Client::Send(node->addr(), GenNodeMsg(node), &resp, timeout_ms)) {
     if (resp.state() != rpc::State::ALIVE) {
-      LOG(WARNING) << *this << " received invalid ack for ping. resp: "
-                   << resp.ShortDebugString();
+      LOG(WARNING) << *this << " received invalid ack for ping to " << *node
+                   << ", resp: " << resp.ShortDebugString();
       // Something went wrong, exit without taking any action
       return;
     }
     health_ += -1;
-    VLOG(5) << *this << " succeed to probe" << *node;
+    VLOG(5) << *this << " succeed to probe " << *node;
     Recv(&resp, nullptr);
     return;
   }
-  LOG(WARNING) << *this << " failed to probe" << *node << " directly.";
+  LOG(WARNING) << *this << " failed to probe " << *node << " directly.";
 
   // Use the filter to randomly select up to 3 elements where 3 is arbitrary
   auto nodes = GetRandomNodes(3, [this, &node](Node::ConstPtrRef x) {
@@ -396,7 +379,7 @@ void Cluster::Probe(Node::ConstPtrRef node) {
   for (const auto& x : nodes) {
     if (rpc::Client::Send(x->addr(), GenForwardMsg(node), &resp, timeout_ms)) {
       if (resp.state() == rpc::State::ALIVE) {  // ack
-        VLOG(5) << *this << " succeed to probe" << *node << " with " << *x;
+        VLOG(5) << *this << " succeed to probe " << *node << " with " << *x;
         health_ += -1;
         Recv(&resp, nullptr);
         return;
@@ -407,30 +390,15 @@ void Cluster::Probe(Node::ConstPtrRef node) {
         // Something went wrong, but don't take any action
       }
     } else {  // failed to connect;
-      LOG(WARNING) << *this << " failed to probe" << *node << " with " << *x;
+      LOG(WARNING) << *this << " failed to probe " << *node << " with " << *x;
       health_ += 1;
     }
   }
 
   // All nack or failed, mark it as suspect
-  LOG(WARNING) << *this << " failed to probe" << *node;
+  LOG(WARNING) << *this << " failed to probe " << *node;
   auto msg = GenNodeMsg(node, rpc::State::SUSPECT);
   Recv(&msg, nullptr);
-}
-
-void Cluster::Sync(util::Thread* p) {
-  util::SleepForMS(util::Uniform(0, sync_inv_ms_));
-  while (true) {
-    Sync();
-
-    size_t n = std::max(static_cast<size_t>(32), nodes_v_.size());
-    uint64_t timeout = sync_inv_ms_ * (ceil(log(n) - log(32)) + 1.0);
-    auto timeout_ms = std::chrono::milliseconds(timeout);
-    std::unique_lock<std::mutex> lock(p->mutex());
-    if (p->cv().wait_for(lock, timeout_ms, [p] { return !p->running(); })) {
-      break;
-    }
-  }
 }
 
 void Cluster::Sync() {

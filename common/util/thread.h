@@ -15,6 +15,7 @@ limitations under the License.
 
 #include <chrono>              // NOLINT
 #include <condition_variable>  // NOLINT
+#include <functional>
 #include <memory>
 #include <mutex>  // NOLINT
 #include <ostream>
@@ -33,10 +34,9 @@ class Thread {
   Thread() = default;
   virtual ~Thread() = default;
 
-  virtual void Run() = 0;
-  virtual void _Run() = 0;
+  void Run();
+  virtual void RunThread() = 0;
 
-  void Idle(uint64_t ms);
   void Stop();
   void WaitUntilStop();
 
@@ -62,15 +62,9 @@ class ThreadWrap : public Thread {
   explicit ThreadWrap(F&& f) : f_(std::move(f)) {}
   ~ThreadWrap() { Stop(); }
 
-  void Run() override {
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (!running_) {
-      running_ = true;
-      thread_ = std::thread([this] { _Run(); });
-    }
+  void RunThread() override {
+    thread_ = std::thread([this] { f_(this); });
   }
-
-  void _Run() override { f_(this); }
 
  private:
   F f_;
@@ -84,46 +78,66 @@ std::unique_ptr<Thread> CreateThread(F&& f) {
 
 //------------------------------------------------------------------------------
 
-template <class F>
+template <class F, class T = std::function<uint64_t()>,
+          class C = std::function<bool()>>
 class LoopThreadWrap : public Thread {
  public:
-  LoopThreadWrap(F&& f, uint64_t intvl_ms, bool delay = false)
-      : f_(std::move(f)), intvl_ms_(intvl_ms), delay_(delay) {}
+  LoopThreadWrap(F&& f, T&& t, C&& c, bool delay = false)
+      : f_(std::move(f)), t_(t), c_(c), delay_(delay) {}
+
   ~LoopThreadWrap() { Stop(); }
 
-  void Run() override {
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (!running_) {
-      running_ = true;
-      thread_ = std::thread([this] {
-        SleepForMS(Uniform(0, delay_ ? intvl_ms_.count() : 0));
-        for (; running();) {
-          _Run();
-        }
-      });
-    }
+  void RunThread() override {
+    thread_ = std::thread([this] {
+      SleepForMS(Uniform(0, delay_ ? t_() : 0));
+      for (; running();) {
+        f_();
+      }
+    });
   }
 
-  void _Run() override { f_(); }
-
   bool running() override {
-    std::unique_lock<std::mutex> lock(mutex_);
-    return !cv_.wait_for(lock, intvl_ms_, [this] { return !running_; });
+    bool ret;
+    {
+      std::unique_lock<std::mutex> lock(mutex_);
+      cv_.wait_for(lock, std::chrono::milliseconds(t_()),
+                   [this] { return !running_; });
+      cv_.wait(lock, [this] { return c_() || !running_; });
+      ret = running_;
+    }
+    cv_.notify_all();
+    return ret;
   }
 
  private:
   F f_;
-  std::chrono::milliseconds intvl_ms_;
+  T t_;
+  C c_;
   bool delay_ = false;
 
   DISALLOW_COPY_AND_ASSIGN(LoopThreadWrap);
 };
 
+template <class F, class T>
+std::unique_ptr<Thread> CreateLoopThread(F&& f, T&& t, bool delay = false) {
+  return std::unique_ptr<Thread>(new LoopThreadWrap<F>(
+      std::forward<F>(f), std::forward<T>(t), [] { return true; }, delay));
+}
+
 template <class F>
 std::unique_ptr<Thread> CreateLoopThread(F&& f, uint64_t intvl_ms,
                                          bool delay = false) {
-  return std::unique_ptr<Thread>(
-      new LoopThreadWrap<F>(std::forward<F>(f), intvl_ms, delay));
+  return std::unique_ptr<Thread>(new LoopThreadWrap<F>(
+      std::forward<F>(f), [intvl_ms] { return intvl_ms; }, [] { return true; },
+      delay));
+}
+
+template <class F, class C>
+std::unique_ptr<Thread> CreateLoopThread(F&& f, uint64_t intvl_ms, C&& c,
+                                         bool delay = false) {
+  return std::unique_ptr<Thread>(new LoopThreadWrap<F>(
+      std::forward<F>(f), [intvl_ms] { return intvl_ms; }, std::forward<C>(c),
+      delay));
 }
 
 //------------------------------------------------------------------------------
@@ -133,10 +147,11 @@ class Timer : public Thread {
   explicit Timer(uint64_t timeout_ms) : timeout_ms_(timeout_ms) {}
   ~Timer() { Stop(); }
 
-  void Run() override;
+  void RunThread() override;
+  virtual void CallBack() = 0;
 
-  uint64_t timeout_ms() const;
-  uint64_t end_ms() const;
+  uint64_t timeout_ms();
+  uint64_t end_ms();
   void set_timeout_ms(uint64_t timeout_ms);
 
   friend std::ostream& operator<<(std::ostream& os, Timer& self);
@@ -159,7 +174,7 @@ class TimerWrap : public Timer {
   TimerWrap(F&& f, uint64_t timeout_ms) : Timer(timeout_ms), f_(std::move(f)) {}
   ~TimerWrap() = default;
 
-  void _Run() override { f_(); }
+  void CallBack() override { f_(); }
 
  private:
   F f_;

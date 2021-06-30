@@ -117,6 +117,9 @@ Node& Node::operator=(const rpc::NodeMsg& msg) {
   if (state_ != rpc::State::SUSPECT || msg.state() != rpc::State::SUSPECT) {
     // Force to cancel suspect timer.
     suspect_timer_ = nullptr;
+    LOG(WARNING) << *this
+                 << "'s suspect timer has been canceled due to receiving "
+                 << rpc::State_Name(msg.state());
   }
   state_ = msg.state();
 

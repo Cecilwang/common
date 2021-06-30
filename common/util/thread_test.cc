@@ -26,8 +26,12 @@ TEST(TestThread, TestDetach) {
 }
 
 TEST(TestThread, TestSimple) {
-  auto t = CreateThread([](Thread* p) { std::cout << "Running" << std::endl; });
-  t->Run();
+  int a = 0;
+  {
+    auto t = CreateThread([&a](Thread* p) { a = 1; });
+    t->Run();
+  }
+  EXPECT_EQ(a, 1);
 }
 
 TEST(TestThread, TestIdle) {
@@ -38,7 +42,7 @@ TEST(TestThread, TestIdle) {
     EXPECT_NEAR(NowInMS() - ts, ms, 100);
   });
   t->Run();
-  t->Idle(ms);
+  SleepForMS(ms);
   t->Stop();
 }
 
@@ -48,7 +52,7 @@ TEST(TestLoopThread, TestSimple) {
   int count = 0;
   auto t = CreateLoopThread([&count] { ++count; }, intvl_ms);
   t->Run();
-  t->Idle(ms);
+  SleepForMS(ms);
   t->Stop();
   EXPECT_EQ(count, ms / intvl_ms);
 }
@@ -58,7 +62,7 @@ TEST(TestTimer, TestExcute) {
   int i = 0;
   auto t = CreateTimer([&i] { ++i; }, timeout_ms);
   t->Run();
-  t->Idle(timeout_ms + 100);
+  SleepForMS(timeout_ms + 100);
   EXPECT_EQ(i, 1);
 }
 
@@ -69,14 +73,14 @@ TEST(TestTimer, TestCancel) {
   {
     auto t = CreateTimer([&i] { ++i; }, timeout_ms);
     t->Run();
-    t->Idle(500);
+    SleepForMS(500);
   }
   EXPECT_EQ(i, 0);
 
   {
     auto t = CreateTimer([&i] { ++i; }, timeout_ms);
     t->Run();
-    t->Idle(500);
+    SleepForMS(500);
     t->Stop();
     EXPECT_EQ(i, 0);
   }
@@ -91,27 +95,27 @@ TEST(TestTimer, TestChangeTimeout) {
     auto t = CreateTimer([&i] { ++i; }, timeout_ms);
     t->Run();
     t->set_timeout_ms(100);
-    t->Idle(100 + 100);
+    SleepForMS(100 + 100);
     EXPECT_EQ(i, 1);
   }
 
   {
     auto t = CreateTimer([&i] { ++i; }, timeout_ms);
     t->Run();
-    t->Idle(100);
+    SleepForMS(100);
     t->set_timeout_ms(10 * 1000);
-    t->Idle(100);
+    SleepForMS(100);
     t->set_timeout_ms(1000);
-    t->Idle(1000);
+    SleepForMS(1000);
     EXPECT_EQ(i, 2);
   }
 
   {
     auto t = CreateTimer([&i] { ++i; }, timeout_ms);
     t->Run();
-    t->Idle(500);
+    SleepForMS(500);
     t->set_timeout_ms(100);
-    t->Idle(10);
+    SleepForMS(10);
     EXPECT_EQ(i, 3);
   }
 }

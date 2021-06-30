@@ -79,14 +79,9 @@ class ServerImpl : public ServerAPI {
 
 }  // namespace rpc
 
-class BroadcastQueue : public util::Thread {
+class BroadcastQueue {
  public:
-  explicit BroadcastQueue(uint32_t n_transmit, uint64_t intvl_ms = 0,
-                          Cluster* cluster = nullptr);
-  ~BroadcastQueue();
-
-  void Run() override;
-  void _Run() override;
+  explicit BroadcastQueue(uint32_t n_transmit);
 
   void Push(Node::ConstPtrRef node);
   Node::Ptr Pop();
@@ -116,8 +111,8 @@ class BroadcastQueue : public util::Thread {
   std::set<Element::Ptr, decltype(ElementCmp)*> queue_;    // Balanced tree
   std::unordered_map<Node::Ptr, Element::Ptr> existence_;  // Better way?
 
-  uint64_t intvl_ms_;
-  Cluster* cluster_ = nullptr;
+  std::condition_variable cv_;
+  std::mutex mutex_;
 
   DISALLOW_COPY_AND_ASSIGN(BroadcastQueue);
 };
@@ -143,7 +138,6 @@ class Cluster {
   void Join(const std::string& ip, uint16_t port);
   void Probe();
   void Probe(Node::ConstPtrRef node);
-  void Sync(util::Thread* p);
   void Sync();
   void Gossip();
 
@@ -197,6 +191,8 @@ class Cluster {
   std::unique_ptr<util::Thread> probe_t_ = nullptr;
   uint64_t sync_inv_ms_ = 30 * 1000;
   std::unique_ptr<util::Thread> sync_t_ = nullptr;
+  uint64_t gossip_inv_ms_ = 200;
+  std::unique_ptr<util::Thread> gossip_t_ = nullptr;
 
   DISALLOW_COPY_AND_ASSIGN(Cluster);
 };

@@ -91,38 +91,44 @@ TEST(TestCluster, TestSimple) {
   Cluster c3(23333, 3, 100, 100, 100);
   c3.Alive("n3").Start().Join("0.0.0.0", 23331);
 
-  util::SleepForMS(1 * 1000);
-  std::cout << c1.ToString(true) << std::endl;
-  std::cout << c2.ToString(true) << std::endl;
-  std::cout << c3.ToString(true) << std::endl;
+  {
+    util::SleepForMS(1 * 1000);
+    std::cout << c1.ToString(true) << std::endl;
+    std::cout << c2.ToString(true) << std::endl;
+    std::cout << c3.ToString(true) << std::endl;
 
-  c3.Stop();
-  util::SleepForMS(1 * 1000);
-  std::cout << c1.ToString(true) << std::endl;
-  std::cout << c2.ToString(true) << std::endl;
+    c3.Stop();
+    util::SleepForMS(1 * 1000);
+    std::cout << c1.ToString(true) << std::endl;
+    std::cout << c2.ToString(true) << std::endl;
 
-  util::SleepForMS(1 * 60 * 1000);
-  std::cout << c1.ToString(true) << std::endl;
-  std::cout << c2.ToString(true) << std::endl;
+    util::SleepForMS(1 * 60 * 1000);
+    std::cout << c1.ToString(true) << std::endl;
+    std::cout << c2.ToString(true) << std::endl;
+  }
 
-  Cluster c31(23333, 3, 100, 100, 100);
-  c31.Alive("n3").Start().Join("0.0.0.0", 23331);
-  util::SleepForMS(1 * 1000);
-  std::cout << c1.ToString(true) << std::endl;
-  std::cout << c2.ToString(true) << std::endl;
-  std::cout << c31.ToString(true) << std::endl;
+  {
+    Cluster c3(23333, 3, 100, 100, 100);
+    c3.Alive("n3").Start().Join("0.0.0.0", 23331);
+    util::SleepForMS(1 * 1000);
+    std::cout << c1.ToString(true) << std::endl;
+    std::cout << c2.ToString(true) << std::endl;
+    std::cout << c3.ToString(true) << std::endl;
 
-  c31.Stop();
-  util::SleepForMS(100);
-  std::cout << c1.ToString(true) << std::endl;
-  std::cout << c2.ToString(true) << std::endl;
+    c3.Stop();
+    util::SleepForMS(100);
+    std::cout << c1.ToString(true) << std::endl;
+    std::cout << c2.ToString(true) << std::endl;
+  }
 
-  Cluster c32(23333, 3, 100, 100, 100);
-  c32.Alive("n3").Start().Join("0.0.0.0", 23331);
-  util::SleepForMS(100);
-  std::cout << c1.ToString(true) << std::endl;
-  std::cout << c2.ToString(true) << std::endl;
-  std::cout << c32.ToString(true) << std::endl;
+  {
+    Cluster c3(23333, 3, 100, 100, 100);
+    c3.Alive("n3").Start().Join("0.0.0.0", 23331);
+    util::SleepForMS(1000);
+    std::cout << c1.ToString(true) << std::endl;
+    std::cout << c2.ToString(true) << std::endl;
+    std::cout << c3.ToString(true) << std::endl;
+  }
 }
 
 }  // namespace gossip

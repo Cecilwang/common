@@ -15,7 +15,13 @@ limitations under the License.
 namespace common {
 namespace util {
 
-void Thread::Idle(uint64_t ms) { SleepForMS(ms); }
+void Thread::Run() {
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (!running_) {
+    running_ = true;
+    RunThread();
+  }
+}
 
 void Thread::Stop() {
   mutex_.lock();
@@ -34,7 +40,15 @@ void Thread::WaitUntilStop() {
   cv_.wait(lock, [this] { return !running_; });
 }
 
-bool Thread::running() { return running_; }
+bool Thread::running() {
+  bool ret;
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    ret = running_;
+  }
+  cv_.notify_all();
+  return ret;
+}
 
 std::condition_variable& Thread::cv() { return cv_; }
 
@@ -42,36 +56,44 @@ std::mutex& Thread::mutex() { return mutex_; }
 
 //------------------------------------------------------------------------------
 
-void Timer::Run() {
-  std::lock_guard<std::mutex> lock(mutex_);
-  if (!running_) {
-    running_ = true;
-    start_ = std::chrono::system_clock::now();
-    thread_ = std::thread([this] {
-      while (true) {
-        std::unique_lock<std::mutex> lock(mutex_);
-        if (cv_.wait_until(lock, start_ + timeout_ms_,
-                           [this] { return !running_ || breath_; })) {
-          if (!running_) {  // cancel
-            return;
-          } else {  // change timeout
-            breath_ = false;
-          }
-        } else {  // timeout, call func
-          break;
+void Timer::RunThread() {
+  start_ = std::chrono::system_clock::now();
+  thread_ = std::thread([this] {
+    while (true) {
+      std::unique_lock<std::mutex> lock(mutex_);
+      if (cv_.wait_until(lock, start_ + timeout_ms_,
+                         [this] { return !running_ || breath_; })) {
+        if (!running_) {  // cancel
+          return;
+        } else {  // change timeout
+          breath_ = false;
         }
+      } else {  // timeout, call func
+        break;
       }
-      _Run();
-    });
-  }
+    }
+    CallBack();
+  });
 }
 
-// TODO(sxwang): It's much better to lock;
-uint64_t Timer::timeout_ms() const { return timeout_ms_.count(); }
+uint64_t Timer::timeout_ms() {
+  uint16_t ret;
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    ret = timeout_ms_.count();
+  }
+  cv_.notify_all();
+  return ret;
+}
 
-// TODO(sxwang): It's much better to lock;
-uint64_t Timer::end_ms() const {
-  return util::TimePointToMS(start_ + timeout_ms_);
+uint64_t Timer::end_ms() {
+  uint16_t ret;
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    ret = util::TimePointToMS(start_ + timeout_ms_);
+  }
+  cv_.notify_all();
+  return ret;
 }
 
 void Timer::set_timeout_ms(uint64_t timeout_ms) {
@@ -83,7 +105,6 @@ void Timer::set_timeout_ms(uint64_t timeout_ms) {
   cv_.notify_all();
 }
 
-// TODO(sxwang): It's much better to lock;
 std::ostream& operator<<(std::ostream& os, Timer& self) {
   if (self.running()) {
     auto now = util::NowInMS();
