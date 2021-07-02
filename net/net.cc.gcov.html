@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2021-06-30 11:02:23</td>
+            <td class="headerValue">2021-07-02 08:11:58</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">32</td>
@@ -90,7 +90,7 @@
 <a name="28"><span class="lineNum">      28 </span>            : </a>
 <a name="29"><span class="lineNum">      29 </span><span class="lineCov">        157 : IP::IP(const char* ip, IPType type) : ip_(ip), type_(type) {}</span></a>
 <a name="30"><span class="lineNum">      30 </span>            : </a>
-<a name="31"><span class="lineNum">      31 </span><span class="lineCov">      13755 : const std::string&amp; IP::ip() const { return ip_; }</span></a>
+<a name="31"><span class="lineNum">      31 </span><span class="lineCov">      13702 : const std::string&amp; IP::ip() const { return ip_; }</span></a>
 <a name="32"><span class="lineNum">      32 </span>            : </a>
 <a name="33"><span class="lineNum">      33 </span><span class="lineCov">        225 : IPType IP::type() const { return type_; }</span></a>
 <a name="34"><span class="lineNum">      34 </span>            : </a>
@@ -347,11 +347,11 @@
 <a name="285"><span class="lineNum">     285 </span>            : </a>
 <a name="286"><span class="lineNum">     286 </span><span class="lineCov">          2 : void Address::set_ip(const std::string&amp; ip) { ip_ = CreateIP(ip); }</span></a>
 <a name="287"><span class="lineNum">     287 </span>            : </a>
-<a name="288"><span class="lineNum">     288 </span><span class="lineCov">      13734 : IP::ConstPtrRef Address::ip() const { return ip_; }</span></a>
+<a name="288"><span class="lineNum">     288 </span><span class="lineCov">      13680 : IP::ConstPtrRef Address::ip() const { return ip_; }</span></a>
 <a name="289"><span class="lineNum">     289 </span>            : </a>
 <a name="290"><span class="lineNum">     290 </span><span class="lineCov">          2 : void Address::set_port(uint16_t port) { port_ = port; }</span></a>
 <a name="291"><span class="lineNum">     291 </span>            : </a>
-<a name="292"><span class="lineNum">     292 </span><span class="lineCov">      13730 : uint16_t Address::port() const { return port_; }</span></a>
+<a name="292"><span class="lineNum">     292 </span><span class="lineCov">      13683 : uint16_t Address::port() const { return port_; }</span></a>
 <a name="293"><span class="lineNum">     293 </span>            : </a>
 <a name="294"><span class="lineNum">     294 </span><span class="lineCov">          3 : bool Address::operator==(const Address&amp; other) const {</span></a>
 <a name="295"><span class="lineNum">     295 </span><span class="lineCov">          3 :   return port_ == other.port_ &amp;&amp; ((*ip_) == (*(other.ip_)));</span></a>
