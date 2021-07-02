@@ -19,6 +19,7 @@ limitations under the License.
 #include <memory>
 #include <mutex>  // NOLINT
 #include <ostream>
+#include <string>
 #include <thread>  // NOLINT
 #include <utility>
 

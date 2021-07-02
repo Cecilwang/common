@@ -71,13 +71,13 @@ bool Client::Send(const net::Address& addr, const REQ& req, RESP* resp,
   return true;
 }
 
-template bool Client::send(const net::Address& addr, const NodeMsg& req,
+template bool Client::Send(const net::Address& addr, const NodeMsg& req,
                            NodeMsg* resp, uint64_t timeout_ms, int32_t n_retry);
 
-template bool Client::send(const net::Address& addr, const ForwardMsg& req,
+template bool Client::Send(const net::Address& addr, const ForwardMsg& req,
                            NodeMsg* resp, uint64_t timeout_ms, int32_t n_retry);
 
-template bool Client::send(const net::Address& addr, const SyncMsg& req,
+template bool Client::Send(const net::Address& addr, const SyncMsg& req,
                            SyncMsg* resp, uint64_t timeout_ms, int32_t n_retry);
 
 //------------------------------------------------------------------------------
