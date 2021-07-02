@@ -1,0 +1,106 @@
+\documentclass{article}
+
+\usepackage[a4paper, total={6.5in, 11in}]{geometry}
+\setlength{\parindent}{0em}
+
+\usepackage{latex/common}
+
+\newcommand{\under}[2]{\mathop{#1}\limits_{#2}}
+\newcommand{\s}{\sum\limits_{i=1}^{n}}
+\newcommand{\p}[2]{\frac{\partial #1}{\partial #2}}
+\newcommand{\pp}[3]{\frac{{\partial}^2 #1}{\partial #2 \partial #3}}
+\newcommand{\B}[1]{\left\{\begin{aligned}#1\end{aligned}\right.}
+\newcommand{\E}{\mathrm{E}}
+\newcommand{\V}{\mathrm{V}}
+
+\begin{document}
+
+\section{P1}
+
+\begin{center}
+  $
+  \begin{aligned}
+    \under{minimize}{w} \;  & \frac{1}{2} ||Xw-y||^2_2 + \lambda 1^T q \\
+    subject \; to \;        & q>=0 \\
+                            & -q \le w \le q
+  \end{aligned}
+  $ \\
+\end{center}
+
+Assume that
+\begin{center}
+  $
+  \begin{aligned}
+    J = \frac{1}{2} ||Xw-y||^2_2 + \lambda 1^T q & \qquad (1) \\
+    \Matrix{H}{h_1 \\ h_2 \\ h_3}                & \qquad (2) \\
+    \Matrix{A}{0, \; -w, \; w}                   & \qquad (3) \\
+  \end{aligned}
+  $ \\
+\end{center}
+
+The KKT conditions are: \\
+\begin{center}
+$
+  \B{
+    \nabla (J+H^T(A-q)) = 0 \\
+    H^T(A-q) = 0 \\
+    H \ge 0 \\
+  }
+$ \\
+\end{center}
+
+According to \\
+\begin{center}
+  $
+  \begin{aligned}
+                         & \nabla (J+H^T(A-q))                                             & = 0          & \\
+                         & \Matrix{}{X^T(Xw-y) - h_2 + h_3 \\ \lambda 1 - h_1 - h_2 - h_3} & = 0          & \\
+    X^T(Xw-y) + \lambda1 & = h_1 + 2 h_2                                                   & \ge 0        & \qquad by (3)\\
+    X^T(Xw-y) - \lambda1 & = -h_1 - 2 h_3                                                  & \le 0        & \qquad by (3)\\
+                         & |X^T(Xw-y)|                                                     & \le \lambda1 & \\
+  \end{aligned}
+  $
+\end{center}
+
+If $q > 0$ and $w > 0$ then $h_1 = h_2 = 0$, so $X^T(Xw-y) = - \lambda1$ \\
+If $q > 0$ and $w < 0$ then $h_1 = h_2 = h_3 = 0$, so $X^T(Xw-y) = \lambda1$ \\
+If $q = 0$ then $w = 0$, and $h_1 > 0$, $h_2 > 0$, $h_3 > 0$, so $|X^T(Xw-y)| < \lambda1$ \\
+
+\section{P2}
+
+\begin{center}
+  $
+  \begin{aligned}
+    f(x) = \frac{1}{2} a (x-\mu)^2+b, a>0 & \\
+    ||\nabla f(x) - \nabla f(y)||_2 &= ||a(x-\mu) - a(y-\mu)||_2 \\
+                                    &= ||a(x-y)||_2 \\
+                                    &= a||(x-y)||_2 \\
+                             \gamma &= a \\
+    g(w) = \frac{1}{2} ||Xw-y||_2^2 & \\
+    ||\nabla g(u) - \nabla g(v)||_2 &= ||X^T(Xu-y) - X^T(Xv-y)||_2 \\
+                                    &= ||X^TX(u-v)||_2 \\
+  \end{aligned}
+  $
+\end{center}
+
+Due to $X^TX$ is a symmetric matrix, so $X^TX = Q \Lambda Q^{-1} = Q \Lambda Q^T$, where $\Lambda$ is a diagonal matrix whose entries are the eigenvalues of $X^TX$
+
+\begin{center}
+  $
+  \begin{aligned}
+    ||\nabla g(u) - \nabla g(v)||_2 &= ||X^TX(u-v)||_2 \\
+                                    &= \sqrt{(X^TX(u-v))^T X^TX(u-v)} \\
+                                    &= \sqrt{(u-v)^TX^TXX^TX(u-v)} \\
+                                    &= \sqrt{(u-v)^T Q \Lambda Q^T Q \Lambda Q^T (u-v)} \\
+                                    &= \sqrt{(u-v)^T Q \Lambda Q^{-1} Q \Lambda Q^T (u-v)} \\
+                                    &= \sqrt{(u-v)^T Q \Lambda^2 Q^T (u-v)} \\
+                                    &= \sqrt{\sum_i \lambda_i^2 (u-v)^T q_i q_i^T (u-v)} \\
+                                    &\le max_i(\lambda_i) ||(u-v)||_2 \\
+                             \gamma &= max_i(\lambda_i)
+  \end{aligned}
+  $
+\end{center}
+
+
+
+\end{document}
