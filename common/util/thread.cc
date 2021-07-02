@@ -12,6 +12,8 @@ limitations under the License.
 
 #include "common/util/thread.h"
 
+#include <sstream>
+
 namespace common {
 namespace util {
 
@@ -105,20 +107,26 @@ void Timer::set_timeout_ms(uint64_t timeout_ms) {
   cv_.notify_all();
 }
 
-std::ostream& operator<<(std::ostream& os, Timer& self) {
-  if (self.running()) {
+std::string Timer::ToString(bool verbose) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  std::ostringstream ss;
+  if (running_) {
     auto now = util::NowInMS();
-    auto end = self.end_ms();
-    os << now << "->" << end << ":";
+    auto end = util::TimePointToMS(start_ + timeout_ms_);
+    ss << now << "->" << end << ":";
     if (end <= now) {
-      os << "end";
+      ss << "end";
     } else {
-      os << end - now << "ms";
+      ss << end - now << "ms";
     }
   } else {
-    os << " has not started.";
+    ss << "has not started";
   }
-  return os;
+  return ss.str();
+}
+
+std::ostream& operator<<(std::ostream& os, Timer& self) {
+  return os << self.ToString();
 }
 
 }  // namespace util

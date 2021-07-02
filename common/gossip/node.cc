@@ -114,7 +114,8 @@ Node& Node::operator=(const rpc::NodeMsg& msg) {
   if (state_ != msg.state()) {
     timestamp_ms_ = util::NowInMS();
   }
-  if (state_ != rpc::State::SUSPECT || msg.state() != rpc::State::SUSPECT) {
+  if (suspect_timer_ && state_ != rpc::State::SUSPECT ||
+      msg.state() != rpc::State::SUSPECT) {
     // Force to cancel suspect timer.
     suspect_timer_ = nullptr;
     LOG(WARNING) << *this

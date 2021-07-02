@@ -154,6 +154,7 @@ class Timer : public Thread {
   uint64_t end_ms();
   void set_timeout_ms(uint64_t timeout_ms);
 
+  std::string ToString(bool verbose = false);
   friend std::ostream& operator<<(std::ostream& os, Timer& self);
 
  protected:

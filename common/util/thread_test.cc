@@ -31,6 +31,7 @@ TEST(TestThread, TestSimple) {
     auto t = CreateThread([&a](Thread* p) { a = 1; });
     t->Run();
   }
+  // XXX(sxwang): waiting for thread
   EXPECT_EQ(a, 1);
 }
 
