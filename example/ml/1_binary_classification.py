@@ -1,8 +1,8 @@
 # Refs: https://colab.research.google.com/drive/1tkKCaDuZMhKK2UIgYKLRSxJMcHpp5qCT#scrollTo=L1nwXMbu2v96
 
-import numpy as np
 from matplotlib import cm
 import matplotlib.pyplot as plt
+import numpy as np
 
 np.random.seed(214)
 fig = plt.figure()
@@ -106,7 +106,9 @@ def gradient_discent(x, y, lam, w, ax):
 def hessian(x, y, lam, w):
     D = sigmoid(-F(x, y, w)) * (1 - sigmoid(-F(x, y, w)))  # ignore y^2 == 1
     D = vec2diag(D)
-    return x.T @ D @ x / x.shape[0] + 2 * lam
+    H = x.T @ D @ x / x.shape[0] + 2 * lam
+    np.fill_diagonal(H, H.diagonal() + 2 * lam)
+    return H
 
 
 def newton(x, y, lam, w, ax):

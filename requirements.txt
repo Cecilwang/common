@@ -2,3 +2,4 @@ numpy
 matplotlib
 cvxpy
 cvxopt
+jax[cpu]
