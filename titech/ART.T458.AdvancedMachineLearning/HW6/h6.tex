@@ -1,0 +1,28 @@
+\documentclass{article}
+
+\usepackage[a4paper, total={6.5in, 11in}]{geometry}
+\setlength{\parindent}{0em}
+
+\usepackage{latex/common}
+
+\newcommand{\under}[2]{\mathop{#1}\limits_{#2}}
+\newcommand{\s}{\sum\limits_{i=1}^{n}}
+\newcommand{\p}[2]{\frac{\partial #1}{\partial #2}}
+\newcommand{\pp}[3]{\frac{{\partial}^2 #1}{\partial #2 \partial #3}}
+\newcommand{\B}[1]{\left\{\begin{aligned}#1\end{aligned}\right.}
+\newcommand{\E}{\mathrm{E}}
+\newcommand{\V}{\mathrm{V}}
+
+\begin{document}
+
+\section{P2}
+
+Any function $f$ is strongly convex if and only if $f^{''}(x) \ge m > 0$ for all $x$. \\
+
+$\pp{e^x}{x}{x} = e^x$ and $inf e^x = 0$, so $e^x$ is not strongly convex. \\
+
+$\pp{x^2}{x}{x} = 2$, so it's strongly convex. \\
+
+$\pp{x^4}{x}{x} = 12x^2$ and $inf 12x^2 = 0$, so it is not strongly convex.
+
+\end{document}
