@@ -17,7 +17,10 @@ def parse_args():
     parser.add_argument('--de', type=int, default=5)
     parser.add_argument('--l', type=float, default=0.05)
     parser.add_argument('--noise', type=float, default=0.1)
-    parser.add_argument('--show', dest='show', action='store_true', default=False)
+    parser.add_argument('--show',
+                        dest='show',
+                        action='store_true',
+                        default=False)
     parser.add_argument('--w1_min', type=float, default=None)
     parser.add_argument('--w1_max', type=float, default=None)
     parser.add_argument('--w2_min', type=float, default=None)
@@ -73,12 +76,12 @@ def gen_data(args):
         ax.set_xlabel("y")
 
         # Ploting error surface
-        w1_min = w[0,0]-1.0 if args.w1_min==None else args.w1_min
-        w1_max = w[0,0]+1.0 if args.w1_max==None else args.w1_max
-        w2_min = w[1,0]-1.0 if args.w2_min==None else args.w2_min
-        w2_max = w[1,0]+1.0 if args.w2_max==None else args.w2_max
-        W1 = jnp.arange(w1_min, w1_max, (w1_max-w1_min)/50.0)
-        W2 = jnp.arange(w2_min, w2_max, (w2_max-w2_min)/50.0)
+        w1_min = w[0, 0] - 1.0 if args.w1_min == None else args.w1_min
+        w1_max = w[0, 0] + 1.0 if args.w1_max == None else args.w1_max
+        w2_min = w[1, 0] - 1.0 if args.w2_min == None else args.w2_min
+        w2_max = w[1, 0] + 1.0 if args.w2_max == None else args.w2_max
+        W1 = jnp.arange(w1_min, w1_max, (w1_max - w1_min) / 50.0)
+        W2 = jnp.arange(w2_min, w2_max, (w2_max - w2_min) / 50.0)
         W1, W2 = jnp.meshgrid(W1, W2)
         l = jnp.array([
             loss(x, y, args.l, jnp.array([[w1], [w2]]))
@@ -86,7 +89,7 @@ def gen_data(args):
         ]).reshape(W1.shape)
 
         what = jnp.array([[W1[jnp.unravel_index(l.argmin(), W1.shape)]],
-                      [W2[jnp.unravel_index(l.argmin(), W2.shape)]]])
+                          [W2[jnp.unravel_index(l.argmin(), W2.shape)]]])
         print("what^T: {} gets the minimum loss: {}".format(what.T, l.min()))
 
         ax = fig.add_subplot(1, 2, 2, projection="3d")
@@ -108,7 +111,7 @@ def update(x, y, w, delta, epoch, args, color):
     if args.show:
         ax = fig.get_axes()[1]
         ax.scatter(*w.flatten().tolist(), l, color=color, alpha=0.8)
-    if epoch % args.de == 0 or epoch == args.e-1:
+    if epoch % args.de == 0 or epoch == args.e - 1:
         print("epoch: {:<3} loss: {:<20}, delta: {}, w: {}".format(
             epoch, l, delta.T, w.T))
     return w
@@ -127,7 +130,8 @@ def newton(args, x, y):
     w = init_w()
     for epoch in range(args.e):
         g = jax.grad(loss, 3)(x, y, args.l, w)
-        h = jax.hessian(loss, 3)(x, y, args.l, w).reshape(w.shape[0], w.shape[0])
+        h = jax.hessian(loss, 3)(x, y, args.l,
+                                 w).reshape(w.shape[0], w.shape[0])
 
         # TODO(sxwang): It is not necessary to explicitly caculate the inverse
         # of Hessian. Because we can get inv(h)@g directly by solving this
@@ -152,7 +156,8 @@ def ggn(args, x, y):
             xi = jnp.array([xi])
             yi = jnp.array([yi])
             dFdw = jax.grad(lambda w: F(xi, w).reshape(()))(w)
-            hz = jax.hessian(logloss, 1)(yi, F(xi, w)).reshape((w.shape[1], w.shape[1]))
+            hz = jax.hessian(logloss, 1)(yi, F(xi, w)).reshape(
+                (w.shape[1], w.shape[1]))
             G += dFdw @ hz @ dFdw.T
         G = G / x.shape[0] + args.l * jnp.identity(G.shape[0])
 
@@ -165,9 +170,9 @@ def main():
     args = parse_args()
     x, y = gen_data(args)
     gradient_discent(args, x, y)
-    print("="*50)
+    print("=" * 50)
     newton(args, x, y)
-    print("="*50)
+    print("=" * 50)
     ggn(args, x, y)
     if args.show:
         plt.show()
