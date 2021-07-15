@@ -87,7 +87,7 @@ def surface(x, y, lam):
     #surf = ax.plot_surface(W1, W2, l, cmap=cm.coolwarm)
     #fig.colorbar(surf)
     surf = ax.plot_surface(W1, W2, l, alpha=0.6)
-    ax.scatter(*w.flatten().tolist(), l.min(), color='red')
+    ax.scatter(*w.flatten().tolist(), l.min(), color="red")
 
     return ax
 
@@ -95,7 +95,7 @@ def surface(x, y, lam):
 def gradient_discent(x, y, lam, w, ax):
     for epoch in range(50):
         l = loss(x, y, lam, w)
-        ax.scatter(*w.flatten().tolist(), l, color='yellow', alpha=0.8)
+        ax.scatter(*w.flatten().tolist(), l, color="yellow", alpha=0.8)
         g = gradient(x, y, lam, w)
         w -= g
         if epoch % 10 == 0:
@@ -114,7 +114,7 @@ def hessian(x, y, lam, w):
 def newton(x, y, lam, w, ax):
     for epoch in range(50):
         l = loss(x, y, lam, w)
-        ax.scatter(*w.flatten().tolist(), l, color='green', alpha=0.8)
+        ax.scatter(*w.flatten().tolist(), l, color="green", alpha=0.8)
         g = gradient(x, y, lam, w)
         h = hessian(x, y, lam, w)
         w -= np.linalg.pinv(h) @ g

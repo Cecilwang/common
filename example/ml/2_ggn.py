@@ -10,21 +10,21 @@ jnp.set_printoptions(formatter=dict(float=lambda x: "{:+10.8f}".format(x)))
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='kfac.')
-    parser.add_argument('--n', type=int, default=40)
-    parser.add_argument('--lr', type=float, default=1.0)
-    parser.add_argument('--e', type=int, default=20)
-    parser.add_argument('--de', type=int, default=5)
-    parser.add_argument('--l', type=float, default=0.05)
-    parser.add_argument('--noise', type=float, default=0.1)
-    parser.add_argument('--show',
-                        dest='show',
-                        action='store_true',
+    parser = argparse.ArgumentParser(description="ggn")
+    parser.add_argument("--n", type=int, default=40)
+    parser.add_argument("--lr", type=float, default=1.0)
+    parser.add_argument("--e", type=int, default=20)
+    parser.add_argument("--de", type=int, default=5)
+    parser.add_argument("--l", type=float, default=0.05)
+    parser.add_argument("--noise", type=float, default=0.1)
+    parser.add_argument("--show",
+                        dest="show",
+                        action="store_true",
                         default=False)
-    parser.add_argument('--w1_min', type=float, default=None)
-    parser.add_argument('--w1_max', type=float, default=None)
-    parser.add_argument('--w2_min', type=float, default=None)
-    parser.add_argument('--w2_max', type=float, default=None)
+    parser.add_argument("--w1_min", type=float, default=None)
+    parser.add_argument("--w1_max", type=float, default=None)
+    parser.add_argument("--w2_min", type=float, default=None)
+    parser.add_argument("--w2_max", type=float, default=None)
     return parser.parse_args()
 
 
@@ -94,7 +94,7 @@ def gen_data(args):
 
         ax = fig.add_subplot(1, 2, 2, projection="3d")
         surf = ax.plot_surface(W1, W2, l, alpha=0.6)
-        ax.scatter(*what.flatten().tolist(), l.min(), color='gray')
+        ax.scatter(*what.flatten().tolist(), l.min(), color="gray")
 
     return x, y
 

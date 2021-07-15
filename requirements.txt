@@ -3,3 +3,5 @@ matplotlib
 cvxpy
 cvxopt
 jax[cpu]
+torch
+torchvision
