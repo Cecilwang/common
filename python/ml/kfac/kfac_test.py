@@ -33,12 +33,10 @@ class TestKFAC(unittest.TestCase):
             bp.extend(model)
             bp.extend(loss)
 
-            x = (torch.tensor([[0.7, 0.5, 0.9], [0.1, 0.2, 0.3]]),
-                 torch.tensor([[0.8, 0.7, 0.7], [0.4, 0.1, 0.3]]))
-            y = (torch.tensor([0, 1]), torch.tensor([0, 1]))
+            x = torch.tensor([[0.7, 0.5, 0.9], [0.1, 0.2, 0.3]])
+            y = torch.tensor([0, 1])
             with bp.backpack(bp.extensions.KFAC()):
-                for xi, yi in zip(x, y):
-                    loss(model(xi), yi).backward()
+                loss(model(x), y).backward()
 
         # Sometimes it will fail because the sampling is different.
         for p in model.parameters():
