@@ -1,4 +1,8 @@
+__pycache__
+
 *.swp
+
+.data
 
 bazel-common
 bazel-bin

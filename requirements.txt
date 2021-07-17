@@ -5,3 +5,4 @@ cvxopt
 jax[cpu]
 torch
 torchvision
+backpack-for-pytorch
