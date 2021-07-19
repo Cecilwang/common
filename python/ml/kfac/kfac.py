@@ -69,9 +69,7 @@ class LinearHook(Hook):
                 m.weight.A = 0.95 * m.weight.A + 0.05 * A
             else:
                 m.weight.A = A
-            D, P = torch.linalg.eig(m.weight.A)
-            m.weight.Da = D.float()
-            m.weight.Pa = P.float()
+            m.weight.Da, m.weight.Pa = torch.linalg.eigh(m.weight.A)
 
         return _forward_hook
 
@@ -84,9 +82,7 @@ class LinearHook(Hook):
                 m.weight.G = 0.95 * m.weight.G + 0.05 * G
             else:
                 m.weight.G = G
-            D, P = torch.linalg.eig(m.weight.G)
-            m.weight.Dg = D.float()
-            m.weight.Pg = P.float()
+            m.weight.Dg, m.weight.Pg = torch.linalg.eigh(m.weight.G)
             m.d = d @ m.weight
 
         return _backward_hook

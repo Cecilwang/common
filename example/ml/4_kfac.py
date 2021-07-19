@@ -16,7 +16,7 @@ from python.util import cprint
 
 def parse_args():
     parser = argparse.ArgumentParser(description="kfac")
-    parser.add_argument("--lr", type=float, default=0.01)
+    parser.add_argument("--lr", type=float, default=0.5)
     parser.add_argument("--damping", type=float, default=1.0)
     parser.add_argument("--batch", type=int, default=32)
     parser.add_argument("--e", type=int, default=10)
