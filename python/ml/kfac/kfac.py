@@ -69,6 +69,9 @@ class LinearHook(Hook):
                 m.weight.A = 0.95 * m.weight.A + 0.05 * A
             else:
                 m.weight.A = A
+            D, P = torch.linalg.eig(m.weight.A)
+            m.weight.Da = D.float()
+            m.weight.Pa = P.float()
 
         return _forward_hook
 
@@ -81,6 +84,9 @@ class LinearHook(Hook):
                 m.weight.G = 0.95 * m.weight.G + 0.05 * G
             else:
                 m.weight.G = G
+            D, P = torch.linalg.eig(m.weight.G)
+            m.weight.Dg = D.float()
+            m.weight.Pg = P.float()
             m.d = d @ m.weight
 
         return _backward_hook
@@ -167,14 +173,9 @@ class KFAC(torch.optim.Optimizer):
             damping = pg["damping"]
             for p in pg["params"]:
                 if hasattr(p, "A") and hasattr(p, "G"):
-                    NG = p.G.shape[0]
-                    NA = p.A.shape[0]
-                    pi = torch.trace(p.A) / torch.trace(p.G) * NG / NA
-                    regA = torch.eye(p.A.shape[0]) * torch.sqrt(damping * pi)
-                    regG = torch.eye(p.G.shape[0]) * torch.sqrt(damping / pi)
-                    invA = (p.A + regA).inverse()
-                    invG = (p.G + regG).inverse()
-                    g = torch.mm(torch.mm(invG, p.grad), invA)
-                    p.data += -lr * g
+                    V = p.Pg.T @ p.grad @ p.Pa
+                    V = V / (torch.outer(p.Dg, p.Da) + damping)
+                    V = p.Pg @ V @ p.Pa.T
+                    p.data += -lr * V
                 else:
                     p.data += -lr * p.grad

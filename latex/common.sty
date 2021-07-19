@@ -54,10 +54,10 @@
 
 \lstnewenvironment{PYCode}[1][]{
   \lstset{language=Python,
-          basicstyle=\ttfamily\tiny,
+          basicstyle=\ttfamily,
           keywordstyle=\color{blue}\ttfamily,
           commentstyle=\color{green}\ttfamily,
-          title={\tiny #1}}
+          title={#1}}
 }{
 }
 
@@ -170,3 +170,14 @@
 \SetKwIF{If}{ElseIf}{Else}{if}{then}{else if}{else}{\kEndIf}
 
 \newcommand{\abs}[1]{\lvert #1 \rvert}
+
+% Math
+\newenvironment{CMath}{
+  \begin{center}
+    $
+      \begin{aligned}
+}{
+      \end{aligned}
+    $ \\
+  \end{center}
+}

@@ -1,9 +1,9 @@
 import argparse
+
 import jax
 import jax.numpy as jnp
 from matplotlib import cm
 import matplotlib.pyplot as plt
-import timeit
 
 fig = plt.figure()
 jnp.set_printoptions(formatter=dict(float=lambda x: "{:+10.8f}".format(x)))
