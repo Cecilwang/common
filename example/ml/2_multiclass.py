@@ -1,6 +1,5 @@
 import jax
 import jax.numpy as jnp
-from matplotlib import cm
 import matplotlib.pyplot as plt
 import numpy as np
 

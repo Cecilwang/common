@@ -102,6 +102,23 @@ where Diag expands the vector to a diagonal matrix.
 
 \newpage
 
+
+\section*{Problem 2}
+The problem is
+\begin{CMath}
+  \hat{w} = \mathop{argmin}_{w} ((w-\mu)^T A (w-\mu) + \lambda ||w||_1)
+\end{CMath}
+The updating rule is
+\begin{CMath}
+  w^{t+1} = ST_{\eta\lambda}(w^t - 2 \eta A (w-\mu))
+\end{CMath}
+
+\begin{center}
+  \includegraphics[scale=0.7]{lasso.png}
+\end{center}
+
+
+
 \section*{Problem 8}
 \subsection*{8.1}
 To get the optimal $\hat{w}_{LS}$ and $\hat{w}_{ridge}$, we need to get the critial point with respect to $w$. \\

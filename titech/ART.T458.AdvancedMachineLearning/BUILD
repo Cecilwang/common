@@ -12,6 +12,7 @@ latex_pdf(
         #":HW6/h6.tex",
     ],
     data = [
+        ":Final/lasso.png",
         ":Final/semi-log.png",
         ":Final/semi-log2.png",
         "//example/ml:1_binary_classification.py",
