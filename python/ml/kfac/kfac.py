@@ -192,9 +192,9 @@ class EKFAC(KFAC):
                 if hasattr(p, "A") and hasattr(p, "G"):
                     Dg, Pg = torch.linalg.eigh(p.G)
                     Da, Pa = torch.linalg.eigh(p.A)
-                    V = p.Pg.T @ p.grad @ p.Pa
-                    V = V / (torch.outer(p.Dg, p.Da) + damping)
-                    V = p.Pg @ V @ p.Pa.T
+                    V = Pg.T @ p.grad @ Pa
+                    V = V / (torch.outer(Dg, Da) + damping)
+                    V = Pg @ V @ Pa.T
                     p.data += -lr * V
                 else:
                     p.data += -lr * p.grad
