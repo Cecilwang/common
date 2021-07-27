@@ -89,7 +89,7 @@ Now we can use cross-entropy loss with l2-norm to optimize multiclass version of
 \begin{CMath}
   L(w) = -log(softmax(w^Tx)[y])) + 2 \lambda w
 \end{CMath}
-where $C$ indicates the number of the classes, $x \in R^d$, $w \in R^{dxC}$, $y \in [1, C]$ indicates the class. There is only one thing left to implement SGD and Newton Method, which is deriving the gradient and the Hessian.
+where $x \in R^d$, $w \in R^{dxC}$, $y \in [1, C]$ indicates the class, and $C$ is the number of the classes, . There is only one thing left to implement SGD and Newton Method, which is deriving the gradient and the Hessian.
 \begin{CMath}
   gradient &= softmax(w^Tx) - one\_hot(y) + 2\lambda w \\
   H        &= Diag(softmax(w^Tx)) - softmax(w^Tx)softmax(w^Tx)^T + 2\lambda \\
@@ -117,6 +117,45 @@ The updating rule is
   \includegraphics[scale=0.7]{lasso.png}
 \end{center}
 
+
+\section*{Problem 3}
+\subsection*{3.1}
+Let rewrite the problem in convex problem form:
+\begin{CMath}
+  minimize_{w,\xi} \quad & \frac{1}{2}w^Tw + \frac{1}{2\lambda}1^T\xi \\
+  subject \; to    \quad & \xi_i \geq 1-y_iw^Tx_i, \quad i=1,...,n \\
+                         & \xi \geq 0 \\
+\end{CMath}
+The Lagrangian of the original problem is:
+\begin{CMath}
+  L(w, \xi, \alpha, \beta) = \frac{1}{2}w^Tw + \frac{1}{2\lambda}1^T\xi + \s \alpha_i (1-y_i w^T x_i-\xi_i) - \beta^T\xi \\
+\end{CMath}
+Now we can get the optimal value at the critial point of the Lagrangian function.
+\begin{CMath}
+  & \p{L}{w}|_{w=\hat{w}} & = w - \s \alpha_i y_i x_i = 0 & \implies \hat{w} = \s \alpha_i y_i x_i \\
+  & \p{L}{\xi}|_{\xi=\hat{\xi}} & = \frac{1}{2\lambda}1 - \alpha - \beta = 0 & \implies \alpha + \beta = \frac{1}{2\lambda}1 \\
+\end{CMath}
+After substituing the previous result back into the Lagrangian, we can get the dual function:
+\begin{CMath}
+  \tilde{L}(\alpha, \beta) &= \frac{1}{2} w^T \s \alpha_i y_i x_i + \frac{1}{2\lambda}1^T\xi + \s \alpha_i - \s \alpha_i y_i w^T x_i - \s \alpha_i \xi_i - \beta^T\xi \\
+                           &= \frac{1}{2} w^T \s \alpha_i y_i x_i - w^T \s \alpha_i y_i x_i + \alpha^T1 + \frac{1}{2\lambda}1^T\xi - \alpha^T\xi - \beta^T\xi \\
+                           &= -\frac{1}{2} w^T \s \alpha_i y_i x_i + \alpha^T1 + (\frac{1}{2\lambda}1 - \alpha - \beta)^T\xi \\
+                           &= -\frac{1}{2} \s \alpha_i y_i x_i^T \s \alpha_i y_i x_i + \alpha^T1 + 0^T\xi \\
+                           &= -\frac{1}{2} \alpha^T K \alpha + \alpha^T1 \\
+  \tilde{L}(\alpha)        &= -\frac{1}{2} \alpha^T K \alpha + \alpha^T1 \\
+\end{CMath}
+On the other hand, from $\alpha + \beta = \frac{1}{2\lambda}1$ and $\alpha \geq 0$, $\beta \geq 0$, we have $0 \leq \alpha \leq \frac{1}{2\lambda}1$
+\begin{CMath}
+  maximize_{\alpha} \quad & -\frac{1}{2} \alpha^T K \alpha + \alpha^T1 \\
+  subject \; to     \quad & 0 \leq \alpha \leq \frac{1}{2\lambda}1 \\
+\end{CMath}
+To get the exactly same result in the question, only one thing need to do is rescaling $\alpha$:
+\begin{CMath}
+  maximize_{\alpha} \quad & -\frac{1}{2} \frac{1}{2\lambda}\alpha^T K \frac{1}{2\lambda}\alpha + \frac{1}{2\lambda}\alpha^T1 \\
+  subject \; to     \quad & 0 \leq \alpha \leq 1 \\
+  maximize_{\alpha} \quad & -\frac{1}{4\lambda} \alpha^T K \alpha + \alpha^T1 \\
+  subject \; to     \quad & 0 \leq \alpha \leq 1 \\
+\end{CMath}
 
 
 \section*{Problem 8}
@@ -177,6 +216,8 @@ and the distance of other points must be less or equal than $\lambda$, rewrite t
   subject \; to \; & x_i^2 - 2 x x_i + y_i^2 - 2 y_i y <= \lambda
 \end{CMath}
 
+\section*{Feedback}
 
+Thank you for your excellent lecture. I also want to learn second-order optimization methods, such as Hessian-free methods, K-FAC, and so on. Another topic is HMM, I think this method is widely used in speech.
 
 \end{document}
