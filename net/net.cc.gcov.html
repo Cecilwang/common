@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2021-07-27 03:24:31</td>
+            <td class="headerValue">2021-08-02 13:02:04</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">32</td>
@@ -88,9 +88,9 @@
 <a name="26"><span class="lineNum">      26 </span>            : namespace common {</a>
 <a name="27"><span class="lineNum">      27 </span>            : namespace net {</a>
 <a name="28"><span class="lineNum">      28 </span>            : </a>
-<a name="29"><span class="lineNum">      29 </span><span class="lineCov">        163 : IP::IP(const char* ip, IPType type) : ip_(ip), type_(type) {}</span></a>
+<a name="29"><span class="lineNum">      29 </span><span class="lineCov">        161 : IP::IP(const char* ip, IPType type) : ip_(ip), type_(type) {}</span></a>
 <a name="30"><span class="lineNum">      30 </span>            : </a>
-<a name="31"><span class="lineNum">      31 </span><span class="lineCov">      13543 : const std::string&amp; IP::ip() const { return ip_; }</span></a>
+<a name="31"><span class="lineNum">      31 </span><span class="lineCov">      13536 : const std::string&amp; IP::ip() const { return ip_; }</span></a>
 <a name="32"><span class="lineNum">      32 </span>            : </a>
 <a name="33"><span class="lineNum">      33 </span><span class="lineCov">        225 : IPType IP::type() const { return type_; }</span></a>
 <a name="34"><span class="lineNum">      34 </span>            : </a>
@@ -99,20 +99,20 @@
 <a name="37"><span class="lineNum">      37 </span>            : </a>
 <a name="38"><span class="lineNum">      38 </span><span class="lineNoCov">          0 : IP::operator std::string() const { return ToString(); }</span></a>
 <a name="39"><span class="lineNum">      39 </span>            : </a>
-<a name="40"><span class="lineNum">      40 </span><span class="lineCov">        161 : std::ostream&amp; operator&lt;&lt;(std::ostream&amp; os, const IP&amp; self) {</span></a>
-<a name="41"><span class="lineNum">      41 </span><span class="lineCov">        322 :   return os &lt;&lt; self.ToString();</span></a>
+<a name="40"><span class="lineNum">      40 </span><span class="lineCov">        159 : std::ostream&amp; operator&lt;&lt;(std::ostream&amp; os, const IP&amp; self) {</span></a>
+<a name="41"><span class="lineNum">      41 </span><span class="lineCov">        318 :   return os &lt;&lt; self.ToString();</span></a>
 <a name="42"><span class="lineNum">      42 </span>            : }</a>
 <a name="43"><span class="lineNum">      43 </span>            : </a>
 <a name="44"><span class="lineNum">      44 </span>            : //------------------------------------------------------------------------------</a>
 <a name="45"><span class="lineNum">      45 </span>            : </a>
-<a name="46"><span class="lineNum">      46 </span><span class="lineCov">        136 : IPv4::IPv4(const char* ip, uint32_t n_mask) : IP(ip, IPType::kIPv4) {</span></a>
+<a name="46"><span class="lineNum">      46 </span><span class="lineCov">        134 : IPv4::IPv4(const char* ip, uint32_t n_mask) : IP(ip, IPType::kIPv4) {</span></a>
 <a name="47"><span class="lineNum">      47 </span>            :   in_addr addr;</a>
-<a name="48"><span class="lineNum">      48 </span><span class="lineCov">        136 :   inet_pton(AF_INET, ip_.c_str(), &amp;addr);</span></a>
-<a name="49"><span class="lineNum">      49 </span><span class="lineCov">        136 :   val_ = ntohl(addr.s_addr);</span></a>
-<a name="50"><span class="lineNum">      50 </span><span class="lineCov">        136 :   n_mask = std::min(n_mask, 32u);</span></a>
-<a name="51"><span class="lineNum">      51 </span><span class="lineCov">        136 :   mask_ = n_mask ? ~((1u &lt;&lt; (32 - n_mask)) - 1) : 0;</span></a>
-<a name="52"><span class="lineNum">      52 </span><span class="lineCov">        136 :   subnetwork_ = val_ &amp; mask_;</span></a>
-<a name="53"><span class="lineNum">      53 </span><span class="lineCov">        136 : }</span></a>
+<a name="48"><span class="lineNum">      48 </span><span class="lineCov">        134 :   inet_pton(AF_INET, ip_.c_str(), &amp;addr);</span></a>
+<a name="49"><span class="lineNum">      49 </span><span class="lineCov">        134 :   val_ = ntohl(addr.s_addr);</span></a>
+<a name="50"><span class="lineNum">      50 </span><span class="lineCov">        134 :   n_mask = std::min(n_mask, 32u);</span></a>
+<a name="51"><span class="lineNum">      51 </span><span class="lineCov">        134 :   mask_ = n_mask ? ~((1u &lt;&lt; (32 - n_mask)) - 1) : 0;</span></a>
+<a name="52"><span class="lineNum">      52 </span><span class="lineCov">        134 :   subnetwork_ = val_ &amp; mask_;</span></a>
+<a name="53"><span class="lineNum">      53 </span><span class="lineCov">        134 : }</span></a>
 <a name="54"><span class="lineNum">      54 </span>            : </a>
 <a name="55"><span class="lineNum">      55 </span><span class="lineCov">          6 : void IPv4::set_mask(uint32_t mask) {</span></a>
 <a name="56"><span class="lineNum">      56 </span><span class="lineCov">          6 :   mask_ = mask;</span></a>
@@ -127,13 +127,13 @@
 <a name="65"><span class="lineNum">      65 </span><span class="lineCov">         85 :   return subnetwork_ == ipv4-&gt;subnetwork_;</span></a>
 <a name="66"><span class="lineNum">      66 </span>            : }</a>
 <a name="67"><span class="lineNum">      67 </span>            : </a>
-<a name="68"><span class="lineNum">      68 </span><span class="lineCov">        161 : std::string IPv4::ToString(bool verbose) const {</span></a>
-<a name="69"><span class="lineNum">      69 </span><span class="lineCov">        322 :   std::ostringstream ss;</span></a>
+<a name="68"><span class="lineNum">      68 </span><span class="lineCov">        159 : std::string IPv4::ToString(bool verbose) const {</span></a>
+<a name="69"><span class="lineNum">      69 </span><span class="lineCov">        318 :   std::ostringstream ss;</span></a>
 <a name="70"><span class="lineNum">      70 </span>            :   ss &lt;&lt; ip_;</a>
-<a name="71"><span class="lineNum">      71 </span><span class="lineCov">        161 :   if (verbose) {</span></a>
+<a name="71"><span class="lineNum">      71 </span><span class="lineCov">        159 :   if (verbose) {</span></a>
 <a name="72"><span class="lineNum">      72 </span><span class="lineNoCov">          0 :     ss &lt;&lt; &quot;[subnetwork: &quot; &lt;&lt; subnetwork_ &lt;&lt; &quot;]&quot;;</span></a>
 <a name="73"><span class="lineNum">      73 </span>            :   }</a>
-<a name="74"><span class="lineNum">      74 </span><span class="lineCov">        161 :   return ss.str();</span></a>
+<a name="74"><span class="lineNum">      74 </span><span class="lineCov">        159 :   return ss.str();</span></a>
 <a name="75"><span class="lineNum">      75 </span>            : }</a>
 <a name="76"><span class="lineNum">      76 </span>            : </a>
 <a name="77"><span class="lineNum">      77 </span>            : //------------------------------------------------------------------------------</a>
@@ -230,9 +230,9 @@
 <a name="168"><span class="lineNum">     168 </span><span class="lineCov">          2 :   return hostname;</span></a>
 <a name="169"><span class="lineNum">     169 </span>            : }</a>
 <a name="170"><span class="lineNum">     170 </span>            : </a>
-<a name="171"><span class="lineNum">     171 </span><span class="lineCov">        154 : bool IsIPv4(const char* ip) {</span></a>
+<a name="171"><span class="lineNum">     171 </span><span class="lineCov">        152 : bool IsIPv4(const char* ip) {</span></a>
 <a name="172"><span class="lineNum">     172 </span>            :   in_addr addr;</a>
-<a name="173"><span class="lineNum">     173 </span><span class="lineCov">        154 :   return inet_pton(AF_INET, ip, &amp;addr) == 1;</span></a>
+<a name="173"><span class="lineNum">     173 </span><span class="lineCov">        152 :   return inet_pton(AF_INET, ip, &amp;addr) == 1;</span></a>
 <a name="174"><span class="lineNum">     174 </span>            : }</a>
 <a name="175"><span class="lineNum">     175 </span>            : </a>
 <a name="176"><span class="lineNum">     176 </span><span class="lineCov">         23 : bool IsIPv6(const char* ip) {</span></a>
@@ -240,9 +240,9 @@
 <a name="178"><span class="lineNum">     178 </span><span class="lineCov">         23 :   return inet_pton(AF_INET6, ip, &amp;addr) == 1;</span></a>
 <a name="179"><span class="lineNum">     179 </span>            : }</a>
 <a name="180"><span class="lineNum">     180 </span>            : </a>
-<a name="181"><span class="lineNum">     181 </span><span class="lineCov">         95 : IP::Ptr CreateIP(const char* ip) {</span></a>
-<a name="182"><span class="lineNum">     182 </span><span class="lineCov">         95 :   if (IsIPv4(ip)) {</span></a>
-<a name="183"><span class="lineNum">     183 </span><span class="lineCov">         93 :     return IP::Ptr(new IPv4(ip));</span></a>
+<a name="181"><span class="lineNum">     181 </span><span class="lineCov">         93 : IP::Ptr CreateIP(const char* ip) {</span></a>
+<a name="182"><span class="lineNum">     182 </span><span class="lineCov">         93 :   if (IsIPv4(ip)) {</span></a>
+<a name="183"><span class="lineNum">     183 </span><span class="lineCov">         91 :     return IP::Ptr(new IPv4(ip));</span></a>
 <a name="184"><span class="lineNum">     184 </span><span class="lineCov">          2 :   } else if (IsIPv6(ip)) {</span></a>
 <a name="185"><span class="lineNum">     185 </span><span class="lineCov">          2 :     return IP::Ptr(new IPv6(ip));</span></a>
 <a name="186"><span class="lineNum">     186 </span>            :   }</a>
@@ -250,7 +250,7 @@
 <a name="188"><span class="lineNum">     188 </span>            :   return nullptr;</a>
 <a name="189"><span class="lineNum">     189 </span>            : }</a>
 <a name="190"><span class="lineNum">     190 </span>            : </a>
-<a name="191"><span class="lineNum">     191 </span><span class="lineCov">         90 : IP::Ptr CreateIP(const std::string&amp; ip) { return CreateIP(ip.c_str()); }</span></a>
+<a name="191"><span class="lineNum">     191 </span><span class="lineCov">         88 : IP::Ptr CreateIP(const std::string&amp; ip) { return CreateIP(ip.c_str()); }</span></a>
 <a name="192"><span class="lineNum">     192 </span>            : </a>
 <a name="193"><span class="lineNum">     193 </span><span class="lineCov">         52 : IP::Ptr CreateIP(const char* ip, uint32_t n_mask) {</span></a>
 <a name="194"><span class="lineNum">     194 </span><span class="lineCov">         52 :   if (IsIPv4(ip) &amp;&amp; n_mask &lt;= 32) {</span></a>
@@ -340,18 +340,18 @@
 <a name="278"><span class="lineNum">     278 </span>            : </a>
 <a name="279"><span class="lineNum">     279 </span>            : //------------------------------------------------------------------------------</a>
 <a name="280"><span class="lineNum">     280 </span>            : </a>
-<a name="281"><span class="lineNum">     281 </span><span class="lineCov">         86 : Address::Address(const std::string&amp; ip, uint16_t port)</span></a>
-<a name="282"><span class="lineNum">     282 </span><span class="lineCov">         86 :     : ip_(CreateIP(ip)), port_(port) {}</span></a>
+<a name="281"><span class="lineNum">     281 </span><span class="lineCov">         84 : Address::Address(const std::string&amp; ip, uint16_t port)</span></a>
+<a name="282"><span class="lineNum">     282 </span><span class="lineCov">         84 :     : ip_(CreateIP(ip)), port_(port) {}</span></a>
 <a name="283"><span class="lineNum">     283 </span>            : </a>
 <a name="284"><span class="lineNum">     284 </span><span class="lineNoCov">          0 : Address::Address(IP::ConstPtrRef ip, uint16_t port) : ip_(ip), port_(port) {}</span></a>
 <a name="285"><span class="lineNum">     285 </span>            : </a>
 <a name="286"><span class="lineNum">     286 </span><span class="lineCov">          4 : void Address::set_ip(const std::string&amp; ip) { ip_ = CreateIP(ip); }</span></a>
 <a name="287"><span class="lineNum">     287 </span>            : </a>
-<a name="288"><span class="lineNum">     288 </span><span class="lineCov">      13522 : IP::ConstPtrRef Address::ip() const { return ip_; }</span></a>
+<a name="288"><span class="lineNum">     288 </span><span class="lineCov">      13514 : IP::ConstPtrRef Address::ip() const { return ip_; }</span></a>
 <a name="289"><span class="lineNum">     289 </span>            : </a>
 <a name="290"><span class="lineNum">     290 </span><span class="lineCov">          4 : void Address::set_port(uint16_t port) { port_ = port; }</span></a>
 <a name="291"><span class="lineNum">     291 </span>            : </a>
-<a name="292"><span class="lineNum">     292 </span><span class="lineCov">      13520 : uint16_t Address::port() const { return port_; }</span></a>
+<a name="292"><span class="lineNum">     292 </span><span class="lineCov">      13517 : uint16_t Address::port() const { return port_; }</span></a>
 <a name="293"><span class="lineNum">     293 </span>            : </a>
 <a name="294"><span class="lineNum">     294 </span><span class="lineCov">          3 : bool Address::operator==(const Address&amp; other) const {</span></a>
 <a name="295"><span class="lineNum">     295 </span><span class="lineCov">          3 :   return port_ == other.port_ &amp;&amp; ((*ip_) == (*(other.ip_)));</span></a>
@@ -361,10 +361,10 @@
 <a name="299"><span class="lineNum">     299 </span><span class="lineCov">          2 :   return !(*this == other);</span></a>
 <a name="300"><span class="lineNum">     300 </span>            : }</a>
 <a name="301"><span class="lineNum">     301 </span>            : </a>
-<a name="302"><span class="lineNum">     302 </span><span class="lineCov">        160 : std::string Address::ToString() const {</span></a>
-<a name="303"><span class="lineNum">     303 </span><span class="lineCov">        320 :   std::ostringstream ss;</span></a>
-<a name="304"><span class="lineNum">     304 </span><span class="lineCov">        480 :   ss &lt;&lt; *ip_ &lt;&lt; &quot;:&quot; &lt;&lt; std::to_string(port_);</span></a>
-<a name="305"><span class="lineNum">     305 </span><span class="lineCov">        160 :   return ss.str();</span></a>
+<a name="302"><span class="lineNum">     302 </span><span class="lineCov">        158 : std::string Address::ToString() const {</span></a>
+<a name="303"><span class="lineNum">     303 </span><span class="lineCov">        316 :   std::ostringstream ss;</span></a>
+<a name="304"><span class="lineNum">     304 </span><span class="lineCov">        474 :   ss &lt;&lt; *ip_ &lt;&lt; &quot;:&quot; &lt;&lt; std::to_string(port_);</span></a>
+<a name="305"><span class="lineNum">     305 </span><span class="lineCov">        158 :   return ss.str();</span></a>
 <a name="306"><span class="lineNum">     306 </span>            : }</a>
 <a name="307"><span class="lineNum">     307 </span>            : </a>
 <a name="308"><span class="lineNum">     308 </span><span class="lineCov">          2 : Address::operator std::string() const { return ToString(); }</span></a>
