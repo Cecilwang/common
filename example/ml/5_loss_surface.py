@@ -20,129 +20,221 @@ def parse_args():
     parser.add_argument("sfc", type=str)
     parser.add_argument("traj", type=str)
     parser.add_argument("--e", type=int, default=10)
-    parser.add_argument("--batch_size", type=int, default=128)
+    parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--data", type=str, default="./.data")
     parser.add_argument("--log", type=str, default="./.log")
     parser.add_argument("--device", type=str, default="cpu")
-    parser.add_argument("--step", type=int, default=5)
+    parser.add_argument("--step", type=int, default=10)
+    parser.add_argument("--margin", type=float, default=0.3)
     return parser.parse_args()
 
 
-def random_color(i, n, name='hsv'):
-    #return plt.cm.get_cmap(name, n)(i)
+def random_color():
     return next(Color)
 
 
-def flatten_parameters(params):
-    return torch.cat([
-        p.view(p.numel()) if p.dim() > 1 else torch.FloatTensor(p)
-        for p in params
-    ])
+class Vector(object):
+
+    def __init__(self, arg):
+        if isinstance(arg, list):
+            params = arg
+            self.data = torch.cat([p.view(p.numel()) for p in params]).numpy()
+        elif isinstance(arg, np.ndarray):
+            self.data = arg
+        else:
+            raise NotImplementedError
+
+    def __getitem__(self, i):
+        return self.data[i]
+
+    def __len__(self):
+        return len(self.data)
+
+    def __add__(self, other):
+        return Vector(self.data + other.data)
+
+    def __sub__(self, other):
+        return Vector(self.data - other.data)
+
+    def __mul__(self, scalar):
+        return Vector(self.data * scalar)
+
+    def dot(self, other):
+        return np.dot(self.data, other.data)
+
+    def norm(self):
+        return np.linalg.norm(self.data)
+
+    def angle(self, other):
+        return self.dot(other) / (self.norm() * other.norm())
+
+    def project(self, space):
+        x = self.dot(space.d1) / space.d1.norm()
+        y = self.dot(space.d2) / space.d2.norm()
+        return Point(x, y, 0)
+
+    def assign_to(self, model):
+        i = 0
+        for p in model.parameters():
+            p.data = torch.tensor(self[i:i + p.numel()]).view(p.size())
+            i += p.numel()
+        assert i == len(self)
 
 
-def direction2parameters(direction, params_like):
-    params = copy.deepcopy(params_like)
-    i = 0
-    for p in params:
-        p.copy_(torch.tensor(direction[i:i + p.numel()]).view(p.size()))
-        i += p.numel()
-    assert i == len(direction)
-    return params
+class Space(object):
+
+    def __init__(self, d1, d2):
+        self.d1 = d1
+        self.d2 = d2
+
+    def project(self, point):
+        return self.d1 * point.x + self.d2 * point.y
 
 
-def angle(x, y):
-    return np.dot(x, y) / (np.linalg.norm(x) * np.linalg.norm(y))
+class Point(object):
+
+    def __init__(self, x, y, z):
+        self.x = x
+        self.y = y
+        self.z = z
+
+    def __str__(self):
+        return "({}, {}, {})".format(self.x, self.y, self.z)
 
 
-def get_directions(final_model, traj_files):
-    p1 = [p.data for p in final_model.parameters()]
+class Contour(object):
 
+    def __init__(self):
+        self.u = 0
+        self.b = 0
+        self.l = 0
+        self.r = 0
+
+    def update(self, point):
+        self.u = min(self.u, point.x)
+        self.b = max(self.b, point.x)
+        self.l = min(self.l, point.y)
+        self.r = max(self.r, point.y)
+
+    def round(self):
+        self.u = np.int32(self.u)
+        self.b = np.int32(self.b)
+        self.l = np.int32(self.l)
+        self.r = np.int32(self.r)
+
+    def __str__(self):
+        return "({}, {}), ({}, {})".format(self.u, self.l, self.b, self.r)
+
+    def __imul__(self, scalar):
+        self.u -= (self.b - self.u) * scalar
+        self.b += (self.b - self.u) * scalar
+        self.l -= (self.r - self.l) * scalar
+        self.r += (self.r - self.l) * scalar
+        return self
+
+
+class Trajectory(object):
+
+    def __init__(self, name):
+        self.name = name
+        self.points = []
+
+    def append(self, point):
+        self.points.append(point)
+
+    def __len__(self):
+        return len(self.points)
+
+    def __getitem__(self, i):
+        return self.points[i]
+
+
+def model_dist(x, y):
+    x = Vector([p.data for p in x.parameters()])
+    y = Vector([p.data for p in y.parameters()])
+    return x - y
+
+
+def get_space(final_model, traj_files):
     matrix = []
     curr_model = copy.deepcopy(final_model)
-    for model_files in traj_files:
+    for _, model_files in traj_files.items():
         for f in model_files:
             M.load(curr_model, f)
-            p2 = [p.data for p in curr_model.parameters()]
-            d = [y - x for x, y in zip(p1, p2)]
-            matrix.append(flatten_parameters(d).numpy())
+            matrix.append(model_dist(curr_model, final_model).data)
 
     pca = PCA(n_components=2)
     pca.fit(np.array(matrix))
-    d1 = np.array(pca.components_[0])
-    d2 = np.array(pca.components_[1])
-    print("Angle between directions: {}".format(angle(d1, d2)))
-    return d1, d2
+    d1 = Vector(np.array(pca.components_[0]))
+    d2 = Vector(np.array(pca.components_[1]))
+    print("Angle between directions: {}".format(d1.angle(d2)))
+    return Space(d1, d2)
 
 
-def project(final_model, traj_files, d1, d2, loss_fn):
-    p1 = [p.data for p in final_model.parameters()]
-
-    xs, ys, losses = [], [], []
+def project(final_model, traj_files, space, loss_fn):
+    trajectories = {}
     curr_model = copy.deepcopy(final_model)
-    for model_files in traj_files:
-        _xs, _ys, _losses = [], [], []
+    for name, model_files in traj_files.items():
+        trajectories[name] = Trajectory(name)
         for f in model_files:
             M.load(curr_model, f)
-            p2 = [p.data for p in curr_model.parameters()]
-            d = [y - x for x, y in zip(p1, p2)]
-            d = flatten_parameters(d).numpy()
-
-            x = np.dot(d, d1) / np.linalg.norm(d1)
-            y = np.dot(d, d2) / np.linalg.norm(d2)
-            loss = loss_fn(curr_model)
-            d = np.linalg.norm(d1 * x + d2 * y - d)
-
-            print("{} at({}, {}) {} {}".format(f, x, y, d, loss))
-
-            _xs.append(int(x))
-            _ys.append(int(y))
-            _losses.append(loss)
-        xs.append(_xs)
-        ys.append(_ys)
-        losses.append(_losses)
-
-    return np.array(xs), np.array(ys), np.array(losses)
+            p = model_dist(curr_model, final_model).project(space)
+            p.z = loss_fn(curr_model)
+            d = (space.project(p) - model_dist(curr_model, final_model)).norm()
+            print("{} at {} {}".format(f, p, d))
+            trajectories[name].append(p)
+    return trajectories
 
 
-def get_surface(final_model, d1, d2, xs, ys, loss_fn, step):
-    x_max = int(np.max([np.max(xs), 0]) + 1)
-    x_min = int(np.min([np.min(xs), 0]))
-    y_max = int(np.max([np.max(ys), 0]) + 1)
-    y_min = int(np.min([np.min(ys), 0]))
-    print("({}, {}), ({}, {})".format(x_min, y_min, x_max, y_max))
+def get_surface_scope(trajectories, margin, step):
+    contour = Contour()
+    for _, traj in trajectories.items():
+        for i in range(len(traj)):
+            contour.update(traj[i])
+    contour *= margin
+    contour.round()
+    print(contour)
 
-    x_stride = (x_max - x_min) // step
-    y_stride = (y_max - y_min) // step
+    x_stride = (contour.b - contour.u) // step
+    y_stride = (contour.r - contour.l) // step
+    X = [i for i in range(contour.u, contour.b + 1, x_stride)]
+    Y = [i for i in range(contour.l, contour.r + 1, y_stride)]
+    return X, Y
 
-    X = [i for i in range(x_min, x_max, x_stride)]
-    Y = [i for i in range(y_min, y_max, y_stride)]
 
+def get_surface(final_model, loss_fn, space, scope):
     curr_model = copy.deepcopy(final_model)
-    p = [p.data for p in curr_model.parameters()]
-    final_point = flatten_parameters(p).numpy()
-    loss = []
-    for i in X:
-        column = []
-        for j in Y:
-            p = direction2parameters(d1 * i + d2 * j + final_point, p)
-            for x, y in zip(curr_model.parameters(), p):
-                x.data = y
-            column.append(loss_fn(curr_model))
-        loss.append(column)
-    loss = np.array(loss)
+    center = Vector([p.data for p in curr_model.parameters()])
+    X, Y = scope[0], scope[1]
+    loss = np.ndarray([len(X), len(Y)])
+    for i in range(len(X)):
+        for j in range(len(Y)):
+            (space.project(Point(X[i], Y[j], 0)) + center).assign_to(curr_model)
+            loss[i, j] = loss_fn(curr_model)
 
     Y, X = np.meshgrid(Y, X)
     return X, Y, loss
 
 
-def get_traj_files(args):
-    files = []
-    for x in args.traj.split(","):
-        traj = []
-        for i in range(args.e + 1):
-            traj.append("{}/{}-{}.pkl".format(args.log, x, i))
-        files.append(traj)
-    return files
+def draw(surface, trajectories):
+    fig = plt.figure()
+    ax = plt.axes(projection="3d")
+
+    ax.set_title("Loss Surface")
+    ax.plot_surface(*surface, alpha=0.8)
+
+    for name, traj in trajectories.items():
+        x = [traj[i].x for i in range(len(traj))]
+        y = [traj[i].y for i in range(len(traj))]
+        z = [traj[i].z for i in range(len(traj))]
+        ax.plot3D(x, y, z, label=name, color=random_color())
+    ax.legend()
+
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    ax.set_zlabel("loss")
+
+    plt.show()
 
 
 def wrap_loss_fn(loss_fn, loader, device):
@@ -153,31 +245,20 @@ def wrap_loss_fn(loss_fn, loader, device):
             input, target = input.to(device), target.to(device)
             output = model(input)
             loss += loss_fn(output, target).item()
-        return loss / i + 1
+            break
+        return loss / (i + 1)
 
     return _loss
 
 
-def draw(surface, trajectories):
-    fig = plt.figure()
-    ax = plt.axes(projection="3d")
-    ax.set_title("Loss Surface")
-    ax.plot_surface(*surface, alpha=0.8)
-
-    traj = args.traj.split(",")
-    for i, x in enumerate(traj):
-        ax.plot3D(trajectories[0][i],
-                  trajectories[1][i],
-                  trajectories[2][i],
-                  label=x,
-                  color=random_color(i, len(traj)))
-    ax.legend()
-
-    ax.set_xlabel("x")
-    ax.set_ylabel("y")
-    ax.set_zlabel("loss")
-
-    plt.show()
+def get_traj_files(args):
+    files = {}
+    for x in args.traj.split(","):
+        traj = []
+        for i in range(args.e + 1):
+            traj.append("{}/{}-{}.pkl".format(args.log, x, i))
+        files[x] = traj
+    return files
 
 
 def main(args):
@@ -187,9 +268,10 @@ def main(args):
     loss_fn = wrap_loss_fn(_loss_fn, loader, args.device)
 
     traj_files = get_traj_files(args)
-    d1, d2 = get_directions(final_model, traj_files)
-    trajectories = project(final_model, traj_files, d1, d2, loss_fn)
-    surface = get_surface(final_model, d1, d2, xs, ys, loss_fn, args.step)
+    space = get_space(final_model, traj_files)
+    trajectories = project(final_model, traj_files, space, loss_fn)
+    scope = get_surface_scope(trajectories, args.margin, args.step)
+    surface = get_surface(final_model, loss_fn, space, scope)
 
     draw(surface, trajectories)
 
