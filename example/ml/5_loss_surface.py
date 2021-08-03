@@ -4,7 +4,7 @@ from itertools import cycle
 
 import matplotlib.pyplot as plt
 import numpy as np
-from sklearn.decomposition import PCA
+from sklearn import decomposition
 import torch
 
 from python import util
@@ -24,6 +24,8 @@ def parse_args():
     parser.add_argument("--data", type=str, default="./.data")
     parser.add_argument("--log", type=str, default="./.log")
     parser.add_argument("--device", type=str, default="cpu")
+    parser.add_argument("--decomposition", type=str, default="svd")
+    parser.add_argument("--matrix", type=str, default="diff")
     parser.add_argument("--step", type=int, default=10)
     parser.add_argument("--margin", type=float, default=0.3)
     return parser.parse_args()
@@ -38,9 +40,10 @@ class Vector(object):
     def __init__(self, arg):
         if isinstance(arg, list):
             params = arg
-            self.data = torch.cat([p.view(p.numel()) for p in params]).numpy()
+            self.data = torch.cat([p.view(p.numel()) for p in params])
+            self.data = self.data.numpy().astype(np.float32)
         elif isinstance(arg, np.ndarray):
-            self.data = arg
+            self.data = arg.astype(np.float32)
         else:
             raise NotImplementedError
 
@@ -155,18 +158,32 @@ def model_dist(x, y):
     return x - y
 
 
-def get_space(final_model, traj_files):
+def get_space(final_model, traj_files, matrix_type, decomposition_method):
     matrix = []
     curr_model = copy.deepcopy(final_model)
     for _, model_files in traj_files.items():
         for f in model_files:
             M.load(curr_model, f)
-            matrix.append(model_dist(curr_model, final_model).data)
+            if matrix_type == "diff":
+                matrix.append(model_dist(curr_model, final_model).data)
+            elif matrix_type == "original":
+                column = Vector([p.data for p in curr_model.parameters()]).data
+                matrix.append(column)
+            else:
+                raise NotImplementedError
 
-    pca = PCA(n_components=2)
-    pca.fit(np.array(matrix))
-    d1 = Vector(np.array(pca.components_[0]))
-    d2 = Vector(np.array(pca.components_[1]))
+    if decomposition_method == "pca":
+        method = decomposition.PCA(n_components=2)
+    elif decomposition_method == "svd":
+        method = decomposition.TruncatedSVD(n_components=2)
+    else:
+        #method = decomposition.FactorAnalysis(n_components=2)
+        #method = decomposition.FastICA(n_components=2)
+        raise NotImplementedError
+
+    method.fit(np.array(matrix))
+    d1 = Vector(np.array(method.components_[0]))
+    d2 = Vector(np.array(method.components_[1]))
     print("Angle between directions: {}".format(d1.angle(d2)))
     return Space(d1, d2)
 
@@ -268,7 +285,7 @@ def main(args):
     loss_fn = wrap_loss_fn(_loss_fn, loader, args.device)
 
     traj_files = get_traj_files(args)
-    space = get_space(final_model, traj_files)
+    space = get_space(final_model, traj_files, args.matrix, args.decomposition)
     trajectories = project(final_model, traj_files, space, loss_fn)
     scope = get_surface_scope(trajectories, args.margin, args.step)
     surface = get_surface(final_model, loss_fn, space, scope)
