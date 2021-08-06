@@ -36,24 +36,42 @@
 
 % Code
 \lstnewenvironment{Code}[1][]{
-  \lstset{basicstyle=\ttfamily\tiny,
+  \lstset{basicstyle=\ttfamily,
           escapeinside={@}{@},
-          title={\tiny #1}}
+          title={#1}}
 }{
 }
 
 \lstnewenvironment{CPPCode}[1][]{
   \lstset{language=C++,
-          basicstyle=\ttfamily\tiny,
+          basicstyle=\ttfamily,
           keywordstyle=\color{blue}\ttfamily,
           commentstyle=\color{green}\ttfamily,
           escapeinside={@}{@},
-          title={\tiny #1}}
+          title={#1}}
 }{
 }
 
 \lstnewenvironment{PYCode}[1][]{
   \lstset{language=Python,
+          basicstyle=\ttfamily,
+          keywordstyle=\color{blue}\ttfamily,
+          commentstyle=\color{green}\ttfamily,
+          title={#1}}
+}{
+}
+
+\lstnewenvironment{JavaCode}[1][]{
+  \lstset{language=Java,
+          basicstyle=\ttfamily,
+          keywordstyle=\color{blue}\ttfamily,
+          commentstyle=\color{green}\ttfamily,
+          title={#1}}
+}{
+}
+
+\lstnewenvironment{ScalaCode}[1][]{
+  \lstset{language=Scala,
           basicstyle=\ttfamily,
           keywordstyle=\color{blue}\ttfamily,
           commentstyle=\color{green}\ttfamily,

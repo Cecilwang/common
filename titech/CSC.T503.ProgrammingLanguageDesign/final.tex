@@ -1,0 +1,237 @@
+\documentclass{article}
+
+\usepackage[a4paper, total={6.5in, 11in}]{geometry}
+
+\usepackage[%
+    colorlinks=true,
+    pdfborder={0 0 0},
+    linkcolor=red
+]{hyperref}
+
+\usepackage{latex/common}
+
+\title{Final Report}
+\date{2021 August}
+\author{Sixue Wang 21M30927\\Tokyo Institute of Technology}
+
+\begin{document}
+
+\maketitle
+
+\section{Wildcard}
+I rarely used Java before, but I am very familiar with C++, and I especially like "Template" because it can significantly improve my development efficiency. When we discuss "Generic Types" in the lecture, it reminded me "Template" all the time. And when you mentioned "Wildcard", doesn't this provide a similar function to "std::enable\_if" in C++? They can all restrict generic type to a range. But before that, I didn’t know how to write template-like functions in Java, let alone the interesting "Wildcard".
+
+Before demonstrating the wildcard, I still want to compare the Java Generics and C++ Template. In my cognition, the "Template" will generate different code for different template parameters during compilation. These codes actually exist, which means that the binary file will increase with the increase of the template parameters applied. This is a bit hateful because they are almost same. So Java Generics uses type erasure to overcome this shortcoming. All the generics share the same code and the safety is guaranteed by the type checking during compilation time. (I'm so sorry I could not explain how Java works detaily, but this is the basic idea.) Are we happy now? What will happen if we want to optimize one special generic. It sounds impossible in Java, but in C++ we can thanks to different code for different type parameters and it's called template specialization. The bloated way of C++ also gives us more flexibility. All in all, I don't want to explain who is better, but the most important thing is to choose the most appropriate method when we have a good understanding of their mechanism.
+
+Now let's talk about "Wildcard". Image that we want to write a simple "print" function which accepts a list of "Printable" objects. Unfortunately, all objects are stored in subclass-typed containers, which means that we have to implement corresponding functions for each subclass, and "Wildcard" can avoid this tedious work.
+
+\begin{minipage}[t]{0.48\textwidth}
+\begin{JavaCode}[class]
+abstract class Printable {
+  public abstract void print();
+}
+
+class A extends Printable {
+  public void print() {
+    System.out.println("A");
+  }
+}
+
+class B extends Printable {
+  public void print() {
+    System.out.println("B");
+  }
+}
+\end{JavaCode}
+\end{minipage}
+\begin{minipage}[t]{0.48\textwidth}
+\begin{JavaCode}[compile error]
+void print(List<Printable> objs) {
+  for (Printable x : objs) {
+    x.print();
+  }
+}
+
+public static void main(String[] args) {
+  ArrayList<A> as = new ArraysList();
+  // error: incompatible types: ArrayList<A>
+  // cannot be converted to List<Printable>
+  print(as);
+  ArrayList<B> bs = new ArraysList();
+  // error: incompatible types: ArrayList<B>
+  // cannot be converted to List<Printable>
+  print(bs);
+}
+\end{JavaCode}
+\end{minipage}
+\begin{minipage}[t]{0.48\textwidth}
+\begin{JavaCode}[without wildcard]
+void printA(List<A> objs) {}
+void printB(List<B> objs) {}
+// we must assign these two function
+// with different names, otherwise
+// it will cause an error: name
+// clash: print(List<B>) and
+// print(List<A>) have the same
+// erasure
+\end{JavaCode}
+\end{minipage}
+\begin{minipage}[t]{0.48\textwidth}
+\begin{JavaCode}[with wildcard]
+void print(List<? extends Printable> objs) {}
+\end{JavaCode}
+\end{minipage}
+
+Remember what I said "std::enable\_if" previously? Actually, it is not appropriate to use it compared with "Wildcard", because they solve different problems. But I still want to use it to show the template specialization in C++. Assume that there is a uniform function which can add elements to any STL containers(such as vector, set, map, etc.). In this case, the template can complete the work better, because none of the classes in C++ are all STL containers' superclasses and provide methods for adding. But a rough implementation may lead to as many template specialization implementations as template parameter kinds, it seems no difference with normal function overriding. Here, "std::enable\_if" can help us aggregate containers with the same function signature into one implementation.
+
+\begin{minipage}[t]{0.48\textwidth}
+    \begin{CPPCode}[vanilla template specialization]
+template <typename E, typename C>
+void Push(C* c, E e);
+
+template <>
+void Push<int, vector<int>>
+  (vector<int>* c, int e) {
+  c->push_back(e);
+}
+
+template <>
+void Push<float, vector<float>>
+  (vector<float>* c, float e) {
+  c->push_back(e);
+}
+
+template <>
+void Push<int, deque<int>>
+  (deque<int>* c, int e) {
+  c->push_back(e);
+}
+
+template <>
+void Push<int, set<int>>
+  (set<int>* c, int e) {
+  c->insert(e);
+}
+\end{CPPCode}
+\end{minipage}
+\begin{minipage}[t]{0.48\textwidth}
+\begin{CPPCode}[with enable\_if]
+template <
+    typename E, typename C,
+    typename enable_if<
+        is_same<C, vector<E>>::value ||
+        is_same<C, deque<E>>::value>
+          ::type* = nullptr>
+void Push(C* c, E e) {
+  c->push_back(e);
+}
+
+template <typename E, typename C,
+          typename enable_if<is_same<
+              C, set<E>>::value>
+            ::type* = nullptr>
+void Push(C* c, E e) {
+  c->insert(e);
+}
+\end{CPPCode}
+\end{minipage}
+
+\section{Mixin}
+The diamond problem is one of my most annoying problems, so I always avoid multiple inheritance as much as possible and try to use composition instead of it. I have to say it's interesting when I know that mixin can be used to solve it. The basic idea of mixin is that other classes can directly use the function which is provided by mixin class without inheritance. It sounds like a combination but we don't need to create mixin instance explicitly thanks to the internal mechanism.
+
+Suppose we need to implement a piece counting system, the Worker class has a Work() method, and the counter will increase by 1 each time it is called. Now there are 3 types of workers, among which A handles int, B handles float, and C can handle int and float. Then, let's see how the diamond problem occurs.
+
+\begin{minipage}[t]{0.48\textwidth}
+\begin{CPPCode}[Counting System]
+class Worker {
+ public:
+  int count_ = 0;
+  int count() { return count_; }
+  void add() { ++count_; }
+};
+
+class A : public Worker {
+ public:
+  void Work(int _) {
+    // do sth with int
+    add();
+  }
+};
+\end{CPPCode}
+\end{minipage}
+\begin{minipage}[t]{0.48\textwidth}
+\begin{CPPCode}[Counting System]
+class B : public Worker {
+ public:
+  void Work(float _) {
+    // do sth with float
+    add();
+  }
+};
+
+class C : public A, public B {};
+\end{CPPCode}
+\end{minipage}
+
+This code can't even compile with clang-12: "non-static member 'count' found in multiple base-class subobjects of type 'Worker'". But we can give two different solutions.
+
+\begin{minipage}[t]{0.48\textwidth}
+\begin{CPPCode}[Virtual Inheritance]
+class A : virtual public Worker {
+  ...
+};
+
+class B : virtual public Worker {
+  ...
+};
+
+class C : public A, public B {};
+\end{CPPCode}
+\end{minipage}
+\begin{minipage}[t]{0.48\textwidth}
+\begin{CPPCode}[Composition]
+void Work(int) { ... }
+void Work(float) { ... }
+
+class A : public Worker {
+  void Work(int _) { ::Work(_); add(); }
+};
+
+class B : public Worker {
+  void Work(float _) { ::Work(_); add(); }
+};
+
+class C : public Worker {
+  void Work(int _) { ::Work(_); add(); }
+  void Work(float _) { ::Work(_); add(); }
+};
+\end{CPPCode}
+\end{minipage}
+
+The fisrt solution is using virtual inheritance. C++ will avoid to create multiple superclass under this setting(To be honest, I have no idea how C++ does). The second solution is using composition which means C will not inherite from A and B. It's obvious that composition involves more code! This is exactly where mixin can jump in. So let's see the same example in Scala.
+
+\begin{ScalaCode}[mixin]
+trait Work {
+  var count: Int = 0
+  def add() = { count = count + 1 }
+}
+
+trait IntWork extends Work {
+  def work(x: Int) = { add() }
+}
+
+trait FloatWork extends Work {
+  def work(x: Float) = { add() }
+}
+
+class A extends IntWork {}
+
+class B extends FloatWork {}
+
+class C extends IntWork with FloatWork {}
+\end{ScalaCode}
+
+\section{Feedback}
+First of all, thank you for the carefully prepared lecture, which really gave me a lot of different perspectives on programming, especially in type system which I have never heard of. Regarding programming languages, I would rather be able to use some popular programming languages. Some of languages introduced in the lecture are very niche, and I don’t think I will encounter them again in my life. In addition, when I saw Programming Language Design at course registration system, I thought we would develop a programming language, but this is obviously different. In fact, I'm also very interested in some compilation technologies such as JIT, etc. I think this is also related to Programming Language Design, so maybe you can give it a try in the future. But thank you again anyway.
+
+\end{document}
