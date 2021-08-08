@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2021-08-06 07:25:40</td>
+            <td class="headerValue">2021-08-08 14:43:45</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">53</td>
@@ -153,23 +153,23 @@
 <a name="91"><span class="lineNum">      91 </span><span class="lineCov">         19 :   void RunThread() override {</span></a>
 <a name="92"><span class="lineNum">      92 </span><span class="lineCov">         38 :     thread_ = std::thread([this] {</span></a>
 <a name="93"><span class="lineNum">      93 </span><span class="lineCov">         37 :       SleepForMS(Uniform(0, delay_ ? t_() : 0));</span></a>
-<a name="94"><span class="lineNum">      94 </span><span class="lineCov">       2641 :       for (; running();) {</span></a>
-<a name="95"><span class="lineNum">      95 </span><span class="lineCov">       2622 :         f_();</span></a>
+<a name="94"><span class="lineNum">      94 </span><span class="lineCov">       2640 :       for (; running();) {</span></a>
+<a name="95"><span class="lineNum">      95 </span><span class="lineCov">       2621 :         f_();</span></a>
 <a name="96"><span class="lineNum">      96 </span>            :       }</a>
 <a name="97"><span class="lineNum">      97 </span>            :     });</a>
 <a name="98"><span class="lineNum">      98 </span><span class="lineCov">         19 :   }</span></a>
 <a name="99"><span class="lineNum">      99 </span>            : </a>
-<a name="100"><span class="lineNum">     100 </span><span class="lineCov">       2641 :   bool running() override {</span></a>
+<a name="100"><span class="lineNum">     100 </span><span class="lineCov">       2640 :   bool running() override {</span></a>
 <a name="101"><span class="lineNum">     101 </span>            :     bool ret;</a>
 <a name="102"><span class="lineNum">     102 </span>            :     {</a>
-<a name="103"><span class="lineNum">     103 </span><span class="lineCov">       2641 :       std::unique_lock&lt;std::mutex&gt; lock(mutex_);</span></a>
-<a name="104"><span class="lineNum">     104 </span><span class="lineCov">       5282 :       cv_.wait_for(lock, std::chrono::milliseconds(t_()),</span></a>
-<a name="105"><span class="lineNum">     105 </span><span class="lineCov">       5280 :                    [this] { return !running_; });</span></a>
-<a name="106"><span class="lineNum">     106 </span><span class="lineCov">       7927 :       cv_.wait(lock, [this] { return c_() || !running_; });</span></a>
-<a name="107"><span class="lineNum">     107 </span><span class="lineCov">       2641 :       ret = running_;</span></a>
+<a name="103"><span class="lineNum">     103 </span><span class="lineCov">       2640 :       std::unique_lock&lt;std::mutex&gt; lock(mutex_);</span></a>
+<a name="104"><span class="lineNum">     104 </span><span class="lineCov">       5280 :       cv_.wait_for(lock, std::chrono::milliseconds(t_()),</span></a>
+<a name="105"><span class="lineNum">     105 </span><span class="lineCov">       5278 :                    [this] { return !running_; });</span></a>
+<a name="106"><span class="lineNum">     106 </span><span class="lineCov">       7924 :       cv_.wait(lock, [this] { return c_() || !running_; });</span></a>
+<a name="107"><span class="lineNum">     107 </span><span class="lineCov">       2640 :       ret = running_;</span></a>
 <a name="108"><span class="lineNum">     108 </span>            :     }</a>
-<a name="109"><span class="lineNum">     109 </span><span class="lineCov">       2641 :     cv_.notify_all();</span></a>
-<a name="110"><span class="lineNum">     110 </span><span class="lineCov">       2641 :     return ret;</span></a>
+<a name="109"><span class="lineNum">     109 </span><span class="lineCov">       2640 :     cv_.notify_all();</span></a>
+<a name="110"><span class="lineNum">     110 </span><span class="lineCov">       2640 :     return ret;</span></a>
 <a name="111"><span class="lineNum">     111 </span>            :   }</a>
 <a name="112"><span class="lineNum">     112 </span>            : </a>
 <a name="113"><span class="lineNum">     113 </span>            :  private:</a>
