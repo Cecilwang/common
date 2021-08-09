@@ -14,7 +14,7 @@ def main():
     print("y = {}".format(y(x)))
 
     x = torch.tensor([1., 1.])
-    loss = -y(x) + torch.log(torch.exp(y(x)) + torch.exp(1.0 - y(x)))
+    loss = -(1.0 - y(x)) + torch.log(torch.exp(y(x)) + torch.exp(1.0 - y(x)))
     loss.backward()
     print("loss = {}".format(loss))
     print("gw = {}".format(w.grad))
