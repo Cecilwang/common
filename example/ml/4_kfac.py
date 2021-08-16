@@ -1,6 +1,7 @@
 import argparse
 
 import torch
+import wandb
 
 from common.py.ml.kfac import classification_sampling
 from common.py.ml.kfac import KFAC
@@ -57,22 +58,27 @@ def train(model, loader, loss_fn, opt, metrics, device, epoch, args):
         loss.backward()
         opt.step()
         metrics += (output, target)
+        wandb.log({"train_loss": metrics[1](), "train_acc": metrics[2]()})
         if i % args.log_intvl == 0 or i == len(loader) - 1:
             print("Epoch {} Train: {}".format(epoch, metrics))
 
 
 def test(model, loader, metrics, epoch, device):
     model.eval()
+    metrics.reset()
     with torch.no_grad():
         for input, target in loader:
             input, target = input.to(device), target.to(device)
             output = model(input)
             metrics += (output, target)
+    wandb.log({"test_loss": metrics[1](), "test_acc": metrics[2]()})
     cprint("red")("Epoch {} Test: {}".format(epoch, metrics))
 
 
 def main():
     args = parse_args()
+    wandb.init(project="kfac")
+    wandb.run.name = "{}-{}-{}".format(args.model, args.opt, wandb.run.id)
 
     model, train_loader, test_loader, loss = MNIST(**vars(args))
     model.to(args.device)

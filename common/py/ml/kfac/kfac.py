@@ -9,12 +9,12 @@ log = logger("KFAC")
 
 
 def linear_forward_hook(m, input, output):
-    A = torch.einsum("bi,bj->bij", input[0], input[0]).mean(0)
+    A = input[0].T @ input[0]
     m.weight.A = 0.95 * m.weight.A + 0.05 * A if hasattr(m.weight, "A") else A
 
 
 def linear_backward_hook(m, g_input, g_output):
-    G = torch.einsum("bi,bj->bij", g_output[0], g_output[0]).mean(0)
+    G = g_output[0].T @ g_output[0]
     m.weight.G = 0.95 * m.weight.G + 0.05 * G if hasattr(m.weight, "G") else G
 
 
@@ -24,17 +24,16 @@ def conv2d_forward_hook(m, input, output):
                  padding=m.padding,
                  stride=m.stride)  # BxCKxL
     A = A.transpose(1, 2)  # BxLxCK
-    A *= A.shape[1]
     A = A.reshape(-1, A.shape[-1])  # BLxCK
-    A = torch.einsum("bi,bj->bij", A, A).mean(0)
+    A = A.T @ A
     m.weight.A = 0.95 * m.weight.A + 0.05 * A if hasattr(m.weight, "A") else A
 
 
 def conv2d_backward_hook(m, g_input, g_output):
     G = g_output[0].transpose(1, 2).transpose(2, 3)  # BxHxWxC
-    G *= G.shape[1] * G.shape[2]
+    T = G.shape[1] * G.shape[2]
     G = G.reshape(-1, G.shape[-1])  # BHWxC
-    G = torch.einsum("bi,bj->bij", G, G).mean(0)
+    G = G.T @ G / T
     m.weight.G = 0.95 * m.weight.G + 0.05 * G if hasattr(m.weight, "G") else G
 
 

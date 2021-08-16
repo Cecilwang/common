@@ -15,3 +15,5 @@ bazel-testlogs
 tags
 
 .cache
+
+wandb

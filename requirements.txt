@@ -7,3 +7,4 @@ torch
 torchvision
 backpack-for-pytorch
 sklearn
+wandb

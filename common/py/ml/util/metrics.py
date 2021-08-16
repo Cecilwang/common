@@ -5,6 +5,10 @@ class Metric(object):
         self.n = 0
         self.val = 0
 
+    def reset(self):
+        self.n = 0
+        self.val = 0
+
     def calc(self, output, target):
         raise NotImplementedError
 
@@ -13,6 +17,9 @@ class Metric(object):
         self.n += n
         self.val += val
         return self
+
+    def __call__(self):
+        return self.val / self.n
 
     def __str__(self):
         return "{}: {}".format(self.name, self.val / self.n)
@@ -24,6 +31,9 @@ class Progress(Metric):
         Metric.__init__(self)
         self.name = "Progress"
         self.n = n
+
+    def reset(self):
+        self.val = 0
 
     def calc(self, output, target):
         return 0, 1
@@ -71,10 +81,17 @@ class Metrics(object):
     def __init__(self, metrics):
         self.metrics = metrics
 
+    def reset(self):
+        for x in self.metrics:
+            x.reset()
+
     def __iadd__(self, update):
         for x in self.metrics:
             x += update
         return self
+
+    def __getitem__(self, i):
+        return self.metrics[i]
 
     def __str__(self):
         return ", ".join([str(x) for x in self.metrics])
