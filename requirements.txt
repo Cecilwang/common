@@ -2,7 +2,8 @@ numpy
 matplotlib
 cvxpy
 cvxopt
-jax[cpu]
+jax
 torch
 torchvision
 backpack-for-pytorch
+sklearn

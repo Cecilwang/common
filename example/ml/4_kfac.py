@@ -2,16 +2,15 @@ import argparse
 
 import torch
 
-from python.ml.kfac import classification_sampling
-from python.ml.kfac import KFAC
-from python.ml.util.metrics import Accuracy
-from python.ml.util.metrics import Loss
-from python.ml.util.metrics import Progress
-from python.ml.util.metrics import Metrics
-from python.util import cprint
-
-from model import save
-from problem import MNIST
+from common.py.ml.kfac import classification_sampling
+from common.py.ml.kfac import KFAC
+from common.py.ml.util.metrics import Accuracy
+from common.py.ml.util.metrics import Loss
+from common.py.ml.util.metrics import Progress
+from common.py.ml.util.metrics import Metrics
+from common.py.ml.util.models import save
+from common.py.ml.util.problems import MNIST
+from common.py.util import cprint
 
 
 def parse_args():
@@ -88,10 +87,10 @@ def main():
     train_M = Metrics([Progress(len(train_loader)), Loss(loss), Accuracy()])
     test_M = Metrics([Progress(len(test_loader)), Loss(loss), Accuracy()])
     for i in range(args.e):
-        save(model, args.log + "/{}-{}.pkl".format(args.opt, i))
+        save(model, args.log + "/{}-{}-{}.pkl".format(args.model, args.opt, i))
         train(model, train_loader, loss, opt, train_M, args.device, i, args)
         test(model, test_loader, test_M, i, args.device)
-    save(model, args.log + "/{}-{}.pkl".format(args.opt, args.e))
+    save(model, args.log + "/{}-{}-{}.pkl".format(args.model, args.opt, args.e))
 
 
 if __name__ == "__main__":

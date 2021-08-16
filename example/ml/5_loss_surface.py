@@ -7,16 +7,18 @@ import numpy as np
 from sklearn import decomposition
 import torch
 
-from python import util
-
-import model as M
-from problem import MNIST
+from common.py.ml.util import models as M
+from common.py.ml.util.problems import MNIST
 
 Color = cycle("bgrcmk")
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description="loss_surface")
+    parser.add_argument("--model",
+                        type=str,
+                        default="cnn",
+                        choices=["mlp", "cnn"])
     parser.add_argument("sfc", type=str)
     parser.add_argument("traj", type=str)
     parser.add_argument("--e", type=int, default=10)
@@ -273,7 +275,7 @@ def get_traj_files(args):
     for x in args.traj.split(","):
         traj = []
         for i in range(args.e + 1):
-            traj.append("{}/{}-{}.pkl".format(args.log, x, i))
+            traj.append("{}/{}-{}-{}.pkl".format(args.log, args.model, x, i))
         files[x] = traj
     return files
 
@@ -281,7 +283,8 @@ def get_traj_files(args):
 def main(args):
     final_model, loader, _, _loss_fn = MNIST(**vars(args))
     final_model.eval()
-    M.load(final_model, "{}/{}-{}.pkl".format(args.log, args.sfc, args.e))
+    M.load(final_model, "{}/{}-{}-{}.pkl".format(args.log, args.model, args.sfc,
+                                                 args.e))
     loss_fn = wrap_loss_fn(_loss_fn, loader, args.device)
 
     traj_files = get_traj_files(args)
