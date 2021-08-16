@@ -4,7 +4,6 @@ import torch
 
 from python.ml.kfac import classification_sampling
 from python.ml.kfac import KFAC
-from python.ml.kfac import EKFAC
 from python.ml.util.metrics import Accuracy
 from python.ml.util.metrics import Loss
 from python.ml.util.metrics import Progress
@@ -17,6 +16,10 @@ from problem import MNIST
 
 def parse_args():
     parser = argparse.ArgumentParser(description="kfac")
+    parser.add_argument("--model",
+                        type=str,
+                        default="cnn",
+                        choices=["mlp", "cnn"])
     parser.add_argument("--lr", type=float, default=0.5)
     parser.add_argument("--damping", type=float, default=1.0)
     parser.add_argument("--batch_size", type=int, default=32)
@@ -32,7 +35,7 @@ def parse_args():
     parser.add_argument("--opt",
                         type=str,
                         default="kfac",
-                        choices=["kfac", "ekfac", "sgd"])
+                        choices=["kfac", "sgd"])
     parser.add_argument("--log", type=str, default="./.log")
     return parser.parse_args()
 
@@ -40,13 +43,13 @@ def parse_args():
 def train(model, loader, loss_fn, opt, metrics, device, epoch, args):
     model.train()
     for i, (input, target) in enumerate(loader):
-        if isinstance(opt, (KFAC, EKFAC)) and opt.steps % opt.cov_intvl == 0:
+        if isinstance(opt, (KFAC,)) and opt.steps % opt.cov_intvl == 0:
             opt.hook_on = True
         input, target = input.to(device), target.to(device)
         opt.zero_grad()
         output = model(input)
         loss = loss_fn(output, target)
-        if isinstance(opt, (KFAC, EKFAC)) and opt.steps % opt.cov_intvl == 0:
+        if isinstance(opt, (KFAC,)) and opt.steps % opt.cov_intvl == 0:
             with torch.no_grad():
                 sampled_y = classification_sampling(output)
             loss_fn(output, sampled_y).backward(retain_graph=True)
@@ -80,10 +83,6 @@ def main():
     elif args.opt == "kfac":
         opt = KFAC(model.parameters(), args.lr, args.damping, args.cov_intvl,
                    args.inv_intvl)
-        opt.register(model)
-    elif args.opt == "ekfac":
-        opt = EKFAC(model.parameters(), args.lr, args.damping, args.cov_intvl,
-                    args.inv_intvl)
         opt.register(model)
 
     train_M = Metrics([Progress(len(train_loader)), Loss(loss), Accuracy()])

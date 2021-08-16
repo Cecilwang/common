@@ -11,7 +11,6 @@ def MNIST(**kargs):
     transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((0.1307,), (0.3081,)),
-        transforms.Lambda(lambda x: torch.flatten(x))
     ])
     train_datasets = datasets.MNIST(data,
                                     train=True,

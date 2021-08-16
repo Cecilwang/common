@@ -1,10 +1,13 @@
 import torch.nn as nn
 
-import model
+import model as M
 import dataset
 
 
 def MNIST(**kargs):
-    mlp = model.MLP(784, 10)
+    model = {
+        "cnn": M.CNN((1, 28, 28), 10),
+        "mlp": M.MLP(784, 10)
+    }[kargs["model"]]
     train_loader, test_loader = dataset.MNIST(**kargs)
-    return mlp, train_loader, test_loader, nn.CrossEntropyLoss()
+    return model, train_loader, test_loader, nn.CrossEntropyLoss()

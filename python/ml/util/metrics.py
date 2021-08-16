@@ -28,6 +28,11 @@ class Progress(Metric):
     def calc(self, output, target):
         return 0, 1
 
+    def __iadd__(self, update):
+        super().__iadd__(update)
+        if self.val > self.n:
+            self.val %= self.n
+
     def __str__(self):
         width = len(str(self.n))
         return "{{}}:{{:>{0}}}/{{}}({{:3.0f}}%)".format(width).format(

@@ -10,19 +10,32 @@ log = logger("KFAC")
 
 def linear_forward_hook(m, input, output):
     A = torch.einsum("bi,bj->bij", input[0], input[0]).mean(0)
-    if hasattr(m.weight, "A"):
-        m.weight.A = 0.95 * m.weight.A + 0.05 * A
-    else:
-        m.weight.A = A
+    m.weight.A = 0.95 * m.weight.A + 0.05 * A if hasattr(m.weight, "A") else A
 
 
 def linear_backward_hook(m, g_input, g_output):
-    d = g_output[0]
-    G = torch.einsum('bi,bj->ij', d, d)
-    if hasattr(m.weight, "G"):
-        m.weight.G = 0.95 * m.weight.G + 0.05 * G
-    else:
-        m.weight.G = G
+    G = torch.einsum("bi,bj->bij", g_output[0], g_output[0]).mean(0)
+    m.weight.G = 0.95 * m.weight.G + 0.05 * G if hasattr(m.weight, "G") else G
+
+
+def conv2d_forward_hook(m, input, output):
+    A = F.unfold(input[0],
+                 kernel_size=m.kernel_size,
+                 padding=m.padding,
+                 stride=m.stride)  # BxCKxL
+    A = A.transpose(1, 2)  # BxLxCK
+    A *= A.shape[1]
+    A = A.reshape(-1, A.shape[-1])  # BLxCK
+    A = torch.einsum("bi,bj->bij", A, A).mean(0)
+    m.weight.A = 0.95 * m.weight.A + 0.05 * A if hasattr(m.weight, "A") else A
+
+
+def conv2d_backward_hook(m, g_input, g_output):
+    G = g_output[0].transpose(1, 2).transpose(2, 3)  # BxHxWxC
+    G *= G.shape[1] * G.shape[2]
+    G = G.reshape(-1, G.shape[-1])  # BHWxC
+    G = torch.einsum("bi,bj->bij", G, G).mean(0)
+    m.weight.G = 0.95 * m.weight.G + 0.05 * G if hasattr(m.weight, "G") else G
 
 
 def classification_sampling(model_output):
@@ -51,6 +64,7 @@ def classification_sampling(model_output):
 
 Hooks = {
     nn.Linear: (linear_forward_hook, linear_backward_hook),
+    nn.Conv2d: (conv2d_forward_hook, conv2d_backward_hook),
 }
 
 
@@ -103,7 +117,10 @@ class KFAC(torch.optim.Optimizer):
 
     def calc_natural_gradient(self, p):
         if hasattr(p, "invG") and hasattr(p, "invA"):
-            return p.invG @ p.grad @ p.invA
+            shape = p.grad.shape
+            ng = (p.invG @ p.grad.view(p.invG.shape[1], -1)).view(shape)
+            ng = (ng.view(-1, p.invA.shape[0]) @ p.invA).view(shape)
+            return ng
         else:
             return p.grad
 
@@ -114,22 +131,3 @@ class KFAC(torch.optim.Optimizer):
                     self.calc_inverse(p)
                 p.data -= self.lr * self.calc_natural_gradient(p)
         self.steps += 1
-
-
-class EKFAC(KFAC):
-
-    def __init__(self, *args, **kargs):
-        super().__init__(*args, **kargs)
-
-    def calc_inverse(self, p):
-        pass
-
-    def calc_natural_gradient(self, p):
-        if hasattr(p, "A") and hasattr(p, "G"):
-            Dg, Pg = torch.linalg.eigh(p.G)
-            Da, Pa = torch.linalg.eigh(p.A)
-            V = Pg.T @ p.grad @ Pa
-            V = V / (torch.outer(Dg, Da) + self.damping)
-            return Pg @ V @ Pa.T
-        else:
-            return p.grad
