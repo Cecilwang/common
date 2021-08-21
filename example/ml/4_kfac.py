@@ -36,7 +36,7 @@ def parse_args():
     parser_sgd = subparsers.add_parser("sgd", help="SGD")
     parser_sgd.set_defaults(opt="sgd")
     parser_sgd.add_argument("--lr", type=float, default=1e-3)
-    parser_sgd.add_argument("--damping", type=float, default=1.0)
+    parser_sgd.add_argument("--damping", type=float, default=0.01)
 
     parser_kfac = subparsers.add_parser("kfac", help="K-FAC")
     parser_kfac.set_defaults(opt="kfac")
