@@ -1,4 +1,5 @@
 import argparse
+from datetime import datetime
 
 import torch
 import wandb
@@ -20,23 +21,30 @@ def parse_args():
                         type=str,
                         default="cnn",
                         choices=["mlp", "cnn"])
-    parser.add_argument("--lr", type=float, default=0.5)
-    parser.add_argument("--damping", type=float, default=1.0)
+    parser.add_argument("--data", type=str, default="./.data")
     parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--shuffle", dest="shuffle", action="store_true")
     parser.add_argument("--no-shuffle", dest="shuffle", action="store_false")
-    parser.set_defaults(shuffle=False)
+    parser.set_defaults(shuffle=True)
     parser.add_argument("--e", type=int, default=10)
     parser.add_argument("--log_intvl", type=int, default=500)
-    parser.add_argument("--cov_intvl", type=int, default=10)
-    parser.add_argument("--inv_intvl", type=int, default=100)
-    parser.add_argument("--data", type=str, default="./.data")
     parser.add_argument("--device", type=str, default="cpu")
-    parser.add_argument("--opt",
-                        type=str,
-                        default="kfac",
-                        choices=["kfac", "sgd"])
     parser.add_argument("--log", type=str, default="./.log")
+
+    subparsers = parser.add_subparsers()
+
+    parser_sgd = subparsers.add_parser("sgd", help="SGD")
+    parser_sgd.set_defaults(opt="sgd")
+    parser_sgd.add_argument("--lr", type=float, default=1e-3)
+    parser_sgd.add_argument("--damping", type=float, default=1.0)
+
+    parser_kfac = subparsers.add_parser("kfac", help="K-FAC")
+    parser_kfac.set_defaults(opt="kfac")
+    parser_kfac.add_argument("--lr", type=float, default=1e-2)
+    parser_kfac.add_argument("--damping", type=float, default=1.0)
+    parser_kfac.add_argument("--cov_intvl", type=int, default=10)
+    parser_kfac.add_argument("--inv_intvl", type=int, default=100)
+
     return parser.parse_args()
 
 
@@ -58,9 +66,9 @@ def train(model, loader, loss_fn, opt, metrics, device, epoch, args):
         loss.backward()
         opt.step()
         metrics += (output, target)
-        wandb.log({"train_loss": metrics[1](), "train_acc": metrics[2]()})
         if i % args.log_intvl == 0 or i == len(loader) - 1:
             print("Epoch {} Train: {}".format(epoch, metrics))
+    wandb.log({"train_loss": metrics[1](), "train_acc": metrics[2]()})
 
 
 def test(model, loader, metrics, epoch, device):
@@ -78,23 +86,25 @@ def test(model, loader, metrics, epoch, device):
 def main():
     args = parse_args()
     wandb.init(project="kfac")
-    wandb.run.name = "{}-{}-{}".format(args.model, args.opt, wandb.run.id)
+    wandb.run.name = "{}-{}-{}".format(args.model, args.opt, datetime.now())
 
-    model, train_loader, test_loader, loss = MNIST(**vars(args))
+    model, train_loader, test_loader, loss_fn = MNIST(**vars(args))
     model.to(args.device)
 
     if args.opt == "sgd":
-        opt = torch.optim.SGD(model.parameters(), lr=args.lr)
+        opt = torch.optim.SGD(model.parameters(),
+                              lr=args.lr,
+                              weight_decay=args.damping)
     elif args.opt == "kfac":
         opt = KFAC(model.parameters(), args.lr, args.damping, args.cov_intvl,
                    args.inv_intvl)
         opt.register(model)
 
-    train_M = Metrics([Progress(len(train_loader)), Loss(loss), Accuracy()])
-    test_M = Metrics([Progress(len(test_loader)), Loss(loss), Accuracy()])
+    train_M = Metrics([Progress(len(train_loader)), Loss(loss_fn), Accuracy()])
+    test_M = Metrics([Progress(len(test_loader)), Loss(loss_fn), Accuracy()])
     for i in range(args.e):
         save(model, args.log + "/{}-{}-{}.pkl".format(args.model, args.opt, i))
-        train(model, train_loader, loss, opt, train_M, args.device, i, args)
+        train(model, train_loader, loss_fn, opt, train_M, args.device, i, args)
         test(model, test_loader, test_M, i, args.device)
     save(model, args.log + "/{}-{}-{}.pkl".format(args.model, args.opt, args.e))
 

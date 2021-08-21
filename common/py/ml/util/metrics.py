@@ -51,13 +51,13 @@ class Progress(Metric):
 
 class Loss(Metric):
 
-    def __init__(self, loss):
+    def __init__(self, loss_fn):
         Metric.__init__(self)
         self.name = "Loss"
-        self.loss = loss
+        self.loss_fn = loss_fn
 
     def calc(self, output, target):
-        return len(output), self.loss(output, target) * len(output)
+        return len(output), self.loss_fn(output, target) * len(output)
 
     def __str__(self):
         return "{}: {:.5f}".format(self.name, self.val / self.n)
