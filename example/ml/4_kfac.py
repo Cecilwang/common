@@ -86,7 +86,8 @@ def test(model, loader, metrics, epoch, device):
 def main():
     args = parse_args()
     wandb.init(project="kfac")
-    wandb.run.name = "{}-{}-{}".format(args.model, args.opt, datetime.now())
+    wandb.run.name = "{}-{}-{}-{}".format(args.model, args.opt, args.lr,
+                                          datetime.now())
 
     model, train_loader, test_loader, loss_fn = MNIST(**vars(args))
     model.to(args.device)
