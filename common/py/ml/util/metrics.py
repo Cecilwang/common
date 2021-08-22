@@ -57,7 +57,7 @@ class Loss(Metric):
         self.loss_fn = loss_fn
 
     def calc(self, output, target):
-        return len(output), self.loss_fn(output, target) * len(output)
+        return len(output), self.loss_fn(output, target).item() * len(output)
 
     def __str__(self):
         return "{}: {:.5f}".format(self.name, self.val / self.n)

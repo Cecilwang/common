@@ -87,7 +87,8 @@ class KFAC(torch.optim.Optimizer):
 
         def _wrapper(m, input, output):
             if self.hook_on:
-                impl(m, input, output)
+                with torch.no_grad():
+                    impl(m, input, output)
 
         return _wrapper
 
@@ -109,8 +110,8 @@ class KFAC(torch.optim.Optimizer):
             NG = p.G.shape[0]
             NA = p.A.shape[0]
             pi = torch.trace(p.A) / torch.trace(p.G) * NG / NA
-            regG = torch.eye(NG) * torch.sqrt(self.damping / pi)
-            regA = torch.eye(NA) * torch.sqrt(self.damping * pi)
+            regG = torch.eye(NG).to(p.G.get_device()) * torch.sqrt(self.damping / pi)
+            regA = torch.eye(NA).to(p.A.get_device()) * torch.sqrt(self.damping * pi)
             p.invG = (p.G + regG).inverse()
             p.invA = (p.A + regA).inverse()
 
