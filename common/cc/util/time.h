@@ -27,7 +27,15 @@ uint64_t TimePointToMS(const T& tp) {
       .count();
 }
 
+template <class T>
+uint64_t TimePointToUS(const T& tp) {
+  return std::chrono::duration_cast<std::chrono::microseconds>(
+             tp.time_since_epoch())
+      .count();
+}
+
 uint64_t NowInMS();
+uint64_t NowInUS();
 void SleepForMS(uint64_t ms);
 
 }  // namespace util

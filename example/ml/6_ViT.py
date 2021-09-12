@@ -264,9 +264,14 @@ def main():
 
     loss_fn = nn.CrossEntropyLoss()
 
-    opt = torch.optim.SGD(model.parameters(),
-                          lr=args.lr,
-                          weight_decay=args.damping)
+    if args.opt == "sgd":
+        opt = torch.optim.SGD(model.parameters(),
+                              lr=args.lr,
+                              weight_decay=args.damping)
+    elif args.opt == "kfac":
+        opt = KFAC(model.parameters(), args.lr, args.damping, args.cov_intvl,
+                   args.inv_intvl)
+        opt.register(model)
 
     train_M = Metrics([Progress(len(train_loader)), Loss(loss_fn), Accuracy()])
     test_M = Metrics([Progress(len(test_loader)), Loss(loss_fn), Accuracy()])
