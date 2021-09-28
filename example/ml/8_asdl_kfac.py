@@ -130,7 +130,7 @@ def test(model, loader, metrics, epoch, device):
 def main():
     args = parse_args()
     wandb.init(project="kfac")
-    wandb.run.name = "asdl-{}-lr{}-wd{}-damping{}".format(
+    wandb.run.name = "asdl-kfac-{}-lr{}-wd{}-damping{}".format(
         args.model, args.lr, args.wd, args.damping)
 
     model, train_loader, test_loader, loss_fn = MNIST(**vars(args))
