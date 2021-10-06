@@ -4,6 +4,7 @@ from datetime import datetime
 import torch
 import wandb
 import asdfghjkl as asdl
+from asdfghjkl.precondition import KFAC
 
 from common.py.ml.util.metrics import Accuracy
 from common.py.ml.util.metrics import Loss
@@ -40,7 +41,9 @@ def parse_args():
 
 
 def update_stat(model, inputs, targets):
-    mgr = asdl.fisher_for_cross_entropy(model, [asdl.COV], [asdl.SHAPE_KRON],
+    mgr = asdl.fisher_for_cross_entropy(model,
+                                        fisher_type=asdl.FISHER_EMP,
+                                        fisher_shapes=[asdl.SHAPE_KRON],
                                         inputs=inputs,
                                         targets=targets)
     mgr.accumulate_matrices('kfac', smoothing_weight=0.05)
@@ -60,9 +63,10 @@ def calc_inverse_of_stat(A, B, args):
 
 def calc_inverse_of_model(model, args):
     for layer in model.children():
-        if (hasattr(layer, 'cov')):
-            invA, invB = calc_inverse_of_stat(layer.kfac_cov.kron.A,
-                                              layer.kfac_cov.kron.B, args)
+        if (hasattr(layer, 'kfac_fisher_emp')):
+            invA, invB = calc_inverse_of_stat(layer.kfac_fisher_emp.kron.A,
+                                              layer.kfac_fisher_emp.kron.B,
+                                              args)
             setattr(layer, 'invA', invA)
             setattr(layer, 'invB', invB)
 
@@ -87,7 +91,7 @@ def precondition_layer(layer):
 
 def precondition_model(model):
     for layer in model.children():
-        if (hasattr(layer, 'cov')):
+        if (hasattr(layer, 'kfac_fisher_emp')):
             precondition_layer(layer)
 
 
@@ -97,7 +101,10 @@ def train(model, loader, loss_fn, opt, metrics, device, epoch, args):
         inputs, targets = inputs.to(device), targets.to(device)
 
         if i % args.stat_intvl == 0:
-            update_stat(model, inputs, targets)
+            #update_stat(model, inputs, targets)
+            opt.kfac.update_curvature(inputs, targets)
+            opt.kfac.accumulate_curvature(smoothing_weight=0.05,
+                                          to_pre_inv=True)
 
         opt.zero_grad()
         output = model(inputs)
@@ -105,14 +112,17 @@ def train(model, loader, loss_fn, opt, metrics, device, epoch, args):
         loss.backward()
 
         if i % args.inv_intvl == 0:
-            calc_inverse_of_model(model, args)
+            #calc_inverse_of_model(model, args)
+            opt.kfac.update_inv()
 
-        precondition_model(model)
+        #precondition_model(model)
+        opt.kfac.precondition()
         opt.step()
         metrics += (output, targets)
         if i % args.log_intvl == 0 or i == len(loader) - 1:
             print("Epoch {} Train: {}".format(epoch, metrics))
-    wandb.log({"train_loss": metrics[1](), "train_acc": metrics[2]()})
+    kmetrics = {"train_loss": metrics[1](), "train_acc": metrics[2]()}
+    wandb.log(kmetrics, commit=False)
 
 
 def test(model, loader, metrics, epoch, device):
@@ -130,13 +140,18 @@ def test(model, loader, metrics, epoch, device):
 def main():
     args = parse_args()
     wandb.init(project="kfac")
-    wandb.run.name = "asdl-kfac-{}-lr{}-wd{}-damping{}".format(
+    wandb.run.name = "asdl0.1-kfac-{}-lr{}-wd{}-damping{}".format(
         args.model, args.lr, args.wd, args.damping)
 
     model, train_loader, test_loader, loss_fn = MNIST(**vars(args))
     model.to(args.device)
 
     opt = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.wd)
+    kfac = KFAC(model,
+                fisher_type=asdl.FISHER_EMP,
+                pre_inv_postfix="acc",
+                damping=args.damping**2)
+    setattr(opt, "kfac", kfac)
 
     train_M = Metrics([Progress(len(train_loader)), Loss(loss_fn), Accuracy()])
     test_M = Metrics([Progress(len(test_loader)), Loss(loss_fn), Accuracy()])
