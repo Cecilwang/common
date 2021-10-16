@@ -1,0 +1,28 @@
+\documentclass{article}
+
+\usepackage[a4paper, total={6.5in, 11in}]{geometry}
+
+\usepackage{latex/common}
+
+\title{FTDA 2021 - Homework 1}
+\author{Sixue Wang\\Tokyo Institute of Technology}
+
+\begin{document}
+
+\maketitle
+
+\section{Safety or Liveness}
+  \begin{itemize}
+    \item Termination is liveness: If the process nevery decides the value then the algorithm wil not stop.
+    \item Validity is safety: If the decided value was not proposed then the algorithm will give a wrong result.
+    \item Agreement is safety: If different processess decide different values then there is no consensus.
+  \end{itemize}
+
+\section{Need all three properties}
+  \begin{itemize}
+    \item Without Termination: Only the first process decides its proposal. This satisfies that the value was proposed and there is no differences. But it is not the consensus. For example, we want to obtain the minimum value in all processes. If the value of the first process is not the minimum value, then we will get the wrong result.
+    \item Without Validity: All processes always decide ``1'' directly. This satisfies that every process eventually decides and their decision are the same, but this answer is useless because ``1'' may be invalid. For example, we want to answer a question by boolean value, then ``1'' is meaningless.
+    \item Without Agreement: All processes always decide their own proposals. It satisfies the every process eventually decides and all values were proposed. However, different processes decide different values, which means that it contradicts consensus. If we want to elect a leader then there will be multiple leaders.
+  \end{itemize}
+
+\end{document}
