@@ -1,0 +1,19 @@
+\documentclass{article}
+
+\usepackage[a4paper, total={6.5in, 11in}]{geometry}
+
+\PassOptionsToPackage{linesnumbered, boxed, noline}{algorithm2e}
+\usepackage{latex/common}
+
+\begin{document}
+
+
+\subsection{Lemma 1 Eventually every node is visited.}
+1. All the processes are connected.\\
+2. The root sends the token to all neighbors.\\
+3. Other processes forward the token through all the edges.\\
+4. Eventually every process receives the token.\\
+5. Eventually every node is visited.\\
+Q.E.D.
+
+\end{document}

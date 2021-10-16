@@ -8,3 +8,4 @@ torchvision
 backpack-for-pytorch
 sklearn
 wandb
+tokenizers

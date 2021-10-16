@@ -4,6 +4,10 @@ load("//:workspace.bzl", "common_deps")
 
 common_deps()
 
+load("//:workspace.bzl", "titech_deps")
+
+titech_deps()
+
 ################### CC ###################
 
 load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")

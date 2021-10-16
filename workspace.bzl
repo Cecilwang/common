@@ -1,5 +1,6 @@
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_file")
 load("//bazel:cmake_http_archive.bzl", "cmake_http_archive")
 load("//third_party/brpc:brpc_deps.bzl", "brpc_deps")
 load("//third_party/cpplint:cpplint_deps.bzl", "cpplint_deps")
@@ -83,4 +84,11 @@ def common_deps():
         name = "rules_python",
         url = "https://github.com/bazelbuild/rules_python/releases/download/0.2.0/rules_python-0.2.0.tar.gz",
         sha256 = "778197e26c5fbeb07ac2a2c5ae405b30f6cb7ad1f5510ea6fdac03bded96cc6f",
+    )
+
+def titech_deps():
+    http_file(
+        name = "bert-base-uncased-vocab",
+        downloaded_file_path = "bert-base-uncased-vocab.txt",
+        urls = ["https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-uncased-vocab.txt"],
     )
