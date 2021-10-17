@@ -3,17 +3,57 @@
 \usepackage[a4paper, total={6.5in, 11in}]{geometry}
 
 \PassOptionsToPackage{linesnumbered, boxed, noline}{algorithm2e}
+\usepackage{url}
 \usepackage{latex/common}
+
+\title{NLP - Homework 1}
+\author{Sixue Wang\\Tokyo Institute of Technology}
 
 \begin{document}
 
+\maketitle
 
-\subsection{Lemma 1 Eventually every node is visited.}
-1. All the processes are connected.\\
-2. The root sends the token to all neighbors.\\
-3. Other processes forward the token through all the edges.\\
-4. Eventually every process receives the token.\\
-5. Eventually every node is visited.\\
-Q.E.D.
+\section{}
+
+I used pre-trained ``BertWordPieceTokenizer'' from
+\url{https://github.com/huggingface/tokenizers} to extract tokens. Basically this tokenizer is a variety of wordpiece tokenizer. At the beginning, we need to train this tokenizer with a corpus based on frequency. Then we try to merge two basic tokens which could maximizes the likelihood of the training data.
+
+This kind of tokenizer could represent as many words as possible with a limited word type set. Although most words can be represented, there are still some symbols(emoji) outside of the vocabulary, which could be represented by ``[UNK]''. At the same time, this set is not just composed of simple characters(alphabet), so it can more accurately distinguish the meaning between word types.
+
+Its shortcomings are also obvious because it requires a corpus to train. Its performance also directly depends on the quality of the corpus. Constructing a tokenizer with strong generality requires a large and balanced corpus.
+
+The pre-trained ``BertWordPieceTokenizer'' does not remove punctuation, but I ignored them when counting n-grams.
+
+\medskip
+\begin{center}
+\begin{tabular}{|l|c|}
+\hline
+                      & 1984.txt \\ \hline
+number of word tokens & 131053   \\ \hline
+number of word types  & 8429     \\ \hline
+\end{tabular}
+\end{center}
+
+\medskip
+\begin{center}
+\begin{tabular}{|c|c|c|l|}
+\hline
+      & unigrams    & bigrams       & trigrams                    \\ \hline
+Top 1 & 'the', 6522 & 'of the', 775 & 'tel \#\#es \#\#creen', 108 \\ \hline
+Top 2 & 'of', 3493  & 'it was', 608 & 'there was a', 90           \\ \hline
+Top 3 & 'a', 2576   & 'in the', 599 & 'the tel \#\#es', 85        \\ \hline
+Top 4 & 'and', 2445 & 'he had', 355 & 'news \#\#pe \#\#ak', 84    \\ \hline
+Top 5 & 'to', 2350  & 'he was', 273 & 'of the party', 68          \\ \hline
+\end{tabular}
+\end{center}
+
+\section{}
+
+\lstset{language=Python,
+        basicstyle=\ttfamily\tiny,
+        keywordstyle=\color{blue}\ttfamily,
+        commentstyle=\color{green}\ttfamily}
+
+\lstinputlisting{titech/CSC.T459.NaturalLanguageProcessing/HW1/token.py}
 
 \end{document}
