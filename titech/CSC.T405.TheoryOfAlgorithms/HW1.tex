@@ -1,0 +1,101 @@
+\documentclass{article}
+
+\usepackage[a4paper, total={6.5in, 11in}]{geometry}
+
+\usepackage{latex/common}
+
+\title{Homework 1}
+\author{Sixue Wang\\21M30927}
+
+\setlength{\parindent}{0cm}
+\newcommand{\A}{\overset{\large \rightharpoonup}{\small{a}}}
+
+\begin{document}
+
+\maketitle
+
+\section*{A}
+
+Let's construct a transformation that maps a 3CNF formula $\phi$ to a E4CNF formula $\Phi$ such that $\phi \in $ 3SAT iff $\Phi \in$ E4CNF.
+For a 3CNF formula $\phi(x_1,...,x_n) = C_1 \wedge ... \wedge C_m$, there are three possible forms of $C_j$:
+\begin{itemize}
+  \item $C_j(x_{j1}) = l_{j1}$
+  \item $C_j(x_{j1}, x_{j2}) = l_{j1} \vee l_{j2}$
+  \item $C_j(x_{j1}, x_{j2}, x_{j3}) = l_{j1} \vee l_{j2} \vee l_{j3}$
+\end{itemize}
+where $l_{ji} \in \{x_{ji}, \overline{x_{ji}}\}$.
+
+Let's add a new variables $y_j$ to the clause $C_j$ and add a new clause:
+
+\begin{center}
+  $C^+_j(x_{j1},...,x_{jk},y_j) = (C_j(x_{j1},...,x_{jk}) \vee y_j) \wedge (C_j(x_{j1},...,x_{jk}) \vee \overline{y_j})$
+\end{center}
+
+where $1 \leq k \leq 3$ for each form of $C_j$.
+
+If $C_j = 1$ then $C^+_j = 1$ for any assignment $b \in \{0,1\}$ to variables $y_j$.
+\begin{center}
+  $C^+_j = (1 \vee 0) \wedge (1 \vee 1) = 1$ \\
+  $C^+_j = (1 \vee 1) \wedge (1 \vee 0) = 1$ \\
+\end{center}
+
+If $C_j = 0$ then $C^+_j = 0$ for any assignment $b \in \{0,1\}$ to variables $y_j$.
+\begin{center}
+  $C^+_j = (0 \vee 0) \wedge (0 \vee 1) = 0$ \\
+  $C^+_j = (0 \vee 1) \wedge (0 \vee 0) = 0$ \\
+\end{center}
+
+If $C^+_j$ is still not a E4CNF, we can repaet this transformation.
+
+On the other hand, Each $C_j$ is a function $f: \{0,1\}^k \rightarrow \{0, 1\}$ where $1 \leq k \leq 3$.
+Transform 3CNF to E4CNF means $f \rightarrow f'$, where $f'$ is a function $f': \{0, 1\}^4 \rightarrow \{0, 1\}$ such that:
+\begin{equation*}
+  f'(x) = \begin{cases}
+          1 & x \in 3SAT \\
+          0 & otherwise
+        \end{cases}
+\end{equation*}
+From Lemma 1.2, we can generate E4CNF (in constant time $4*2^4$).
+
+
+\section*{B}
+
+\subsection*{(1)}
+\begin{equation*}
+\begin{aligned}
+  \E[c(\A)] & = \sum_{j=1}^{2m}p(C_j(\A) = 1) \\
+            & = \sum_{j=1}^{m}p(C_j(\A) = 1) + \sum_{j=m+1}^{2m}p(C_j(\A) = 1) \\
+            & = m(1-\prod_{i=1}^{4}p(a_k=0) + 1-\prod_{i=1}^{4}p(a_k=0)) \quad 1 \leq k \leq n \\
+            & = m(2- \frac{1}{2}^4 - \frac{1}{2}^3) \\
+            & = \frac{29}{16}m
+\end{aligned}
+\end{equation*}
+
+\subsection*{(2)}
+Algorithm:
+\begin{enumerate}
+  \item Determine each variable one by one
+  \item For each $1 \leq i \leq n$
+    \begin{enumerate}
+      \item Calculate the expectation $\E_t$ under $x_1 = \A_1, ..., x_{i-1} = \A_{i-1}, x_i = True$
+      \item Calculate the expectation $\E_f$ under $x_1 = \A_1, ..., x_{i-1} = \A_{i-1}, x_i = False$
+      \item $\A_i = True$ if $\E_t \geq \E_f$ otherwise $\A_i = False$
+    \end{enumerate}
+\end{enumerate}
+
+For each $i$, we have:
+\begin{equation*}
+\begin{aligned}
+  \E[c(\A)] & = p(\A_i=True)\E[c(\A)|\A_i=True] + p(\A_i=False)\E[c(\A)|\A_i=False] \\
+            & = \frac{1}{2}(\E[c(\A)|\A_i=True]+\E[c(\A)|\A_i=False])
+\end{aligned}
+\end{equation*}
+then
+\begin{equation*}
+\begin{aligned}
+  \E[c(\A)|\A_i\;is\;greater\;one] \geq \E[c(\A)] = \frac{29}{16}m
+\end{aligned}
+\end{equation*}
+So if we decide $\A$ in this way, we can ganruentee that $c(\A) \geq \frac{29}{16}m$.
+
+\end{document}

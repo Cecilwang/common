@@ -4,6 +4,7 @@
 % Package
 \RequirePackage{algorithm2e}
 \RequirePackage{amsmath} % Used by Matrix
+\RequirePackage{amssymb}
 \RequirePackage{booktabs} % Allows the use of \toprule, \midrule and \bottomrule in tables
 \RequirePackage{caption}
 \RequirePackage[edges]{forest} % Used by Hierarchy
@@ -199,3 +200,7 @@
     $ \\
   \end{center}
 }
+
+\DeclareMathOperator{\E}{E}
+
+\renewcommand{\labelenumii}{\arabic{enumi}.\arabic{enumii}}
