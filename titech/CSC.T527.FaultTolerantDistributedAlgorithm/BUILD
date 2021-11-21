@@ -32,3 +32,14 @@ latex_pdf(
     ],
     deps = ["//latex:common"],
 )
+
+latex_pdf(
+    name = "hw4",
+    srcs = [
+        ":HW4.tex",
+    ],
+    data = [
+        ":hw4_1.png",
+    ],
+    deps = ["//latex:common"],
+)
