@@ -1,0 +1,46 @@
+\documentclass{article}
+
+\usepackage[a4paper, total={6.5in, 11in}]{geometry}
+\usepackage{graphicx}
+\graphicspath{{titech/CSC.T527.FaultTolerantDistributedAlgorithm/}}
+
+\usepackage{latex/common}
+
+\setlength{\parindent}{0cm}
+
+\title{FTDA 2021 - Homework 5}
+\author{Sixue Wang\\Tokyo Institute of Technology}
+
+\begin{document}
+
+\maketitle
+
+\section*{K=n}
+\subsection*{Question 1}
+
+Define the register of the machine as $r_i$.
+
+According to the ``other machin'' rule is transitive, we can define that $r_i$ is controlled if $r_i$ can be changed only after $r_{i-1}$ is changed and $r_i$ will be changed to the register value of who controlls it.
+
+Each time $r_0$ is changed, at lease one more register will be controlled if not all of them are controlled by $r_0$. Because when $r_0$ is changed to $y$, it’s also different with $r_{n-1}$. Suppose $r_j = y$ at the same time and passes $y$ to all $r_k, j<k<n$. Then $r_k, j \le k <n$ are be controlled.
+
+After $r_0$ is chagned $n-1$ times, all other registers are controlled by $r_0$. According to the ``bottom rule'', $r_0$ is in $[0, K-1]$, then all $r_i$ are in $[0,K-1]$.
+
+\subsection*{Question 2}
+From Question 1, after $r_0$ is chagned $n-1$ times, all other registers are controlled by $r_0$. Then no matter what kind of daemon is, only one machine has the privilege to take action. And the aciton rules guarantee there will be one privilege.
+
+\section*{K=3}
+\subsection*{Question 1}
+A state is legitimate iif $r_0 <> r_{n-1}$ and there is a $i, 0<i<n-1$ such that $r_j=r_0, j<i$ and $r_j=r_{n-1}, i\le j $.
+\begin{enumerate}
+  \item If the bottom machine has the privilege then the state is $(r_0,r_{n-1},...,r_{n-1})$ and $r_0$ is changed to $r_0-1\%3$. Because $r_1+1\%3<>r_0$, then $r_0-1\%3 <> r_1 = r_{n-1}$. It's still legitimate.
+
+  \item If the top machine has the privilege then the state is $(r_0,...,r_0,r_{n-1})$ and $r_0=r_{n-2}<>r_{n-2}+1\%3<>r_{n-1}$. It's still legitimate after change.
+
+  \item If other machine has the privilege the the state is $(r_0,...,r_0,r_{n-1},...,r_{n-1})$. According to pigeonhole principle, $abs(r_0-r_{n-1}) = 1$. No matter which rule is applied, the state is still legitimate.
+\end{enumerate}
+
+\subsection*{Question 2}
+According to pigeonhole principle again, all $r_i, 0<i<{n-1}$ tend to be the same otherwise they can apply one rule. Furthermore, all $r_i, 0<i<{n-1}$ cannot chagned iff they are the same and $r_0=r_{n-1}=r_i-1\%3$. At that time, the $r_0$ is changed to $r_i+1\%3$, and all other $r_i$ will be the same as $r_0$ which is legitimate.
+
+\end{document}

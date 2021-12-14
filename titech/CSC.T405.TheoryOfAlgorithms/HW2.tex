@@ -1,0 +1,125 @@
+\documentclass{article}
+
+\usepackage[a4paper, total={6.5in, 11in}]{geometry}
+
+\usepackage{latex/common}
+
+\title{Homework 2}
+\author{Sixue Wang\\21M30927}
+
+\setlength{\parindent}{0cm}
+\newcommand{\A}{\overset{\large \rightharpoonup}{\small{a}}}
+
+\begin{document}
+
+\maketitle
+
+\section*{A}
+Let's use induction to prove.
+
+For $n=2$, according to the definition of the tournament graph, there must be a directed edge between these two vertices, so it has a Hamiltonian path.
+
+For $n \geq 3$, split $E$ into two graphs.
+\begin{equation*}
+  G_1 = (V_1=\{1,...,n-1\}, E_1=\{(i,j) \in E, i \le n-1, j \le n-1\})
+\end{equation*}
+and
+\begin{equation*}
+  G_2 = (V_2=V, E_2^{out}= \{(n,i), i \in V\} \cup E_2^{in} = \{(i,n), i \in V\})
+\end{equation*}
+According to induction, there is a Hamiltonian path $(i_1,...,i_{n-1})$ in $G_1$.
+
+If $(n, i_1) \in E_2^{out}$, then add $(n, i_1)$ to the $G_1$'s Hamiltonian path.
+
+If $(i_{n-1}, n) \in E_2^{in}$, then add $(i_{n-1}, n)$ to the $G_1$'s Hamiltonian path.
+
+Otherwise, $E_2^{in}$ and $E_2^{out}$ are not empty, so there is an $j$ such that $(i_j, n) \in E_2^{out}$ and $(n, i_{j+1}) \in E_2^{in}$, then add $(i_j,n), (n, i_{j+1})$ to Hamiltonian path and remove $(i_j, i_{j+1})$ from Hamiltonian path.
+
+\section*{B}
+We construct the Hamiltonian path by adding vertex one by one.
+
+\begin{enumerate}
+  \item Add vertex $1$ into the Hamiltonian path. Let $Head = 1$ and $Tail = 1$.
+  \item For each vertex $2 \leq i \leq n$:
+    \begin{enumerate}
+      \item If $(i, Head) \in E$, then add $(i, Head)$ to the Hamiltonian path and update $Head = i$;
+      \item If $(Tail, i) \in E$, then add $(Tail, i)$ to the Hamiltonian path and update $Tail = i$;
+      \item Otherwise, for each vertex $Head \leq j \leq Tail$ (loop the Hamiltonian path):
+      \begin{enumerate}
+        \item If $(j, i) \in E$ and $(i, j+1) \in E$, then add $(j, i), (i, j+1)$ to the Hamiltonian path and remove $(j, j+1)$.
+      \end{enumerate}
+    \end{enumerate}
+\end{enumerate}
+
+\section*{C}
+Suppose there is a triple of distinct vertices $i,j,h \in V$ such that
+\begin{equation*}
+  w(i,j) > w(i,h)+w(h,j)
+\end{equation*}
+Because $w(i,j) \in [1, 2]$, we have
+\begin{equation*}
+\begin{aligned}
+  w(i,j) & >  w(i,h)+w(h,j) \\
+         & \ge 1 + 1 = 2 \\
+  w(i,j) & > 2
+\end{aligned}
+\end{equation*}
+It's contradiciton to the definition of 2-bounded weight function. So any triple of distinct vertices satisfies $w(i,j) \le w(i,h) + w(h,j)$.
+
+\section*{D}
+\subsection*{Solution I}
+According to the definition of b-bounded weight function. $b * w(T^*) \ge b * (n * 1) = n * b \ge w(T)$ for any tour $T$. The algorithm is constructing a tour $(1,2,...,n,1)$ directly. Furthermore, it connects the first vertex to the last vertex in order then connect the last vertex to the first vertex again.
+
+\subsection*{Solution II}
+The algorithm is based on Double algorithm.
+
+\begin{enumerate}
+  \item Find a minimum spanning tree $S^* \subseteq E$.
+  \item Create an empty tour $T'$.
+  \item For the minimum spanning tree $S^*$, start the inorder traversal at the root of the spanning tree.
+  \item In the inorder traversal, add the vertex to the $T'$ immediately when arriving at it. Then traverse its children. If it has traversed all children then go back to its parent. Add the vertex to the $T'$ again if going back.
+  \item Construct a tour $T$ by removing all but the first occurrence of each vertex $i \in V$ in $T'$.
+\end{enumerate}
+
+From b-bounded weight function, we have
+\begin{equation}
+  w(e_i) \le \frac{b}{2} * (w(e_j) + w(e_k))
+\end{equation}
+for any triple of distinct edges $e_i, e_j, e_k \in V$. We can proof this by contradiciton. If $w(e_i) > \frac{b}{2} * (w(e_j) + w(e_k)) \ge \frac{b}{2} * (1+1) = b$, but according the definition of b-bounded weight function, we have $w(e) \in [1,b], e \in E$.
+
+On the other hand, there is a subset $E'$ such that for any $e \in T$ and $e \in S$ we have $e \in E'$. Then we have
+\begin{equation*}
+\begin{aligned}
+  w(T) &=   w(E') + w(T \backslash E') \\
+       &\le w(E') + \frac{b}{2}w(T' \backslash E')    & because \; of \; (1) \\
+       &= w(E') + \frac{b}{2}w(2 * S \backslash E') & because \; of \; the \; inorder \; traversal \\
+       &= w(E') + \frac{b}{2}(2 * w(S) - w(E')) \\
+       &= b * w(S) + \frac{2-b}{2}w(E') \\
+       &\le b * w(S) & suppose \; b>=2 \\
+       &\le b * w(T^*)
+\end{aligned}
+\end{equation*}
+
+For $1 \le b<2$, I don't know how to proof.
+
+\section*{E}
+Algorithm:
+\begin{enumerate}
+  \item Construct a subgraph $G'=(V,E'=\{e | w(e)=1 \; and \; e \in E\})$ from $G$.
+  \item Applyting the algorithm from question B to $G'$, then there is a Hamiltonian path $H=(v_1,...,v_n)$;
+  \item Adding $edge(v_n, v_1)$ to $H$. Now it's a tour $T$.
+\end{enumerate}
+
+$G'$ is a tournament graph, so there is a Hamiltonian path and $w(H) = n-1$, so we have
+\begin{equation*}
+\begin{aligned}
+  w(T) &\le n-1+b \\
+       &= \frac{n-1+b}{n} * n \\
+       &= (1+\frac{b-1}{n}) * n \\
+       &\le (1+\frac{b-1}{n}) * w(T^*)
+\end{aligned}
+\end{equation*}
+
+
+
+\end{document}

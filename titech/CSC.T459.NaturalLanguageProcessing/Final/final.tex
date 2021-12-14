@@ -1,0 +1,34 @@
+\documentclass{article}
+
+\usepackage[a4paper, total={6.5in, 11in}]{geometry}
+
+\usepackage{url}
+
+\PassOptionsToPackage{linesnumbered, boxed, noline}{algorithm2e}
+\usepackage{latex/common}
+
+
+\title{Can computers understand human languages?\\\smaller{}From virtual assistants' perspective}
+\author{Sixue Wang}
+
+\begin{document}
+
+\maketitle
+
+A virtual assistant is a software that can provide information and services for users based on questions and tasks by natural language interaction (especially voice). For example, Sundar Pichai announced Google Duplex at 2018 Google I/O developers conference\footnote{https://www.youtube.com/watch?v=D5VN56jQMWM}. This demo showed how it helps people make restaurant reservations over the phone without any interaction from users. Apple Siri and Amazon Alexa are also typical representatives of such virtual assistants. No matter how they are implemented, NLP is at the center of these technologies. How much can they understand human languages leads directly how well they could do.
+
+At first, let’s retrospect a more traditional task --- SQL (Structured Query Language) which is designed for managing relational databases. Parsing SQL is the basic function mapping to the correct execution plan. Thanks to its literal "structure", we can use a rule-based shift-reduce approach to generate the syntax tree, each node of it will be converted into a corresponding operation. However, it doesn’t translate the phrase structure to the deep structure, and this is the reason why SQLs with the same effect have a significant difference in performance. In this scenario, the computer can understand human language precisely, but to compensate, humans must reach an agreement with computers - using a specific language (SQL).
+
+QA (question-answering) is another fundamental task in NLP and is also a basic feature of virtual assistant. The significant difference between QA and SQL is that questions described in natural language are various. One of most successful QA systems is Watson who won \$1M on a quiz show named Jeopardy\footnote{https://en.wikipedia.org/wiki/Watsons}. At this stage, computers must grasp the deep structure and extract the essential meaning of questions. It sounds like infeasible in a general setting, but all questions could be represented predefined events and variables if computers know or predict them belongs to a specific domain in advance. For example, no matter how people ask what’s the time, computers only need to respond with year, month, day, hour, minute, second, etc.
+
+Even Watson can answer most questions very well, it is also slow to respond to questions that are ambiguous or have too few clues. This shows that it does not have good inference ability. In fact, even humans cannot infer the complete meaning due to the lack of necessary information. As the result, humans will continue to ask to clarify the question. This is another important function of virtual assistant. To eliminate ambiguity and retrieve information through multiple rounds of dialogue, the virtual assistant must be guaranteed to grasp the context of the dialogue. To ensure that the question is meaningful, the virtual assistant also needs to maintain the state of the conversation and generate a plan to ask, otherwise, it will diverge from its goal. Usually, this kind of purposeful conversation can be completed in just a few rounds. In the example of a restaurant reservation, the virtual assistant only needs to know when, where, who.
+
+Google Duplex is available in 49 states in America by April 2021\footnote{https://www.theverge.com/2021/4/1/22361729/google-duplex-ai-reservation-availability-49-us-states} and there were 53.6 million Amazon Echo shipments worldwide in 2020\footnote{https://safeatlast.co/blog/amazon-alexa-statistics}. The virtual assistant is reaching unprecedented achievement because it can understand this limited natural language very well. Such limited problems always leave room for feasible solutions. It's like solving a problem with enumeration. But as the problem expands, enumeration becomes more and more impractical.
+
+One of the most representative open tasks is chatbots. It is different from multiple rounds of dialogue because chatting is endless. Humans can end a topic, but at the same time they will start a new one. The two seemingly unrelated may establish connection at some point in the future. For this incalculable contextual information, computers do not know how to deal with it. Just like, nobody will communicate with virtual assistants because they act like an “artificial idiot” not “artificial intelligent”.
+
+On the other hand, the state-of-the-art NLP technology is based on deep learning. Although it provides a very powerful ability to solve problem, people have never known how to control this black box. This is obviously very dangerous, because even if we know that it was wrong, we cannot correct it. We know that many models have problems with racism and sexism. However, we can only weaken them by balancing data, but we cannot restrict them through a system like the law.
+
+Human evolution has gone through tens of millions of years, while the development of linguistics and computers has only a few hundred years. Technology is constantly advancing. In the future, we will definitely be able to find a way to thoroughly understand human language. At that time, I believe that understanding the language of other animals can also be achieved.
+
+\end{document}

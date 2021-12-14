@@ -102,8 +102,8 @@ def train(model, loader, loss_fn, opt, metrics, device, epoch, args):
 
         if i % args.stat_intvl == 0:
             #update_stat(model, inputs, targets)
-            opt.kfac.update_curvature(inputs, targets)
-            opt.kfac.accumulate_curvature(to_pre_inv=True)
+            #opt.kfac.update_curvature(inputs, targets)
+            opt.kfac.accumulate_curvature(inputs, targets)
 
         opt.zero_grad()
         output = model(inputs)
@@ -146,11 +146,12 @@ def main():
     model.to(args.device)
 
     opt = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.wd)
-    kfac = KFAC(model,
-                fisher_type=asdl.FISHER_EMP,
-                pre_inv_postfix="acc",
-                damping=args.damping**2,
-                ema_decay=0.05)
+    kfac = KFAC(
+        model,
+        fisher_type=asdl.FISHER_EMP,
+        #pre_inv_postfix="acc",
+        damping=args.damping**2,
+        ema_decay=0.05)
     setattr(opt, "kfac", kfac)
 
     train_M = Metrics([Progress(len(train_loader)), Loss(loss_fn), Accuracy()])

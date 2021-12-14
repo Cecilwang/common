@@ -43,3 +43,11 @@ latex_pdf(
     ],
     deps = ["//latex:common"],
 )
+
+latex_pdf(
+    name = "hw5",
+    srcs = [
+        ":HW5.tex",
+    ],
+    deps = ["//latex:common"],
+)
