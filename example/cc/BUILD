@@ -23,4 +23,9 @@ cc_binary(
     ],
 )
 
+cc_binary(
+    name = "lazy_singleton",
+    srcs = ["lazy_singleton.cc"],
+)
+
 cpplint()

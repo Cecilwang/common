@@ -1,0 +1,29 @@
+\documentclass{article}
+
+\usepackage[a4paper, total={6.5in, 11in}]{geometry}
+\usepackage{graphicx}
+\graphicspath{{titech/CSC.T433.AdvancedComputerArchitecture/pipeline/}}
+
+\usepackage{latex/common}
+
+\title{ACA 2021 - Assignment 3}
+\author{Sixue Wang\\21M30927\\Tokyo Institute of Technology}
+
+\begin{document}
+
+\maketitle
+
+\section*{Block Diagram}
+\includegraphics[width=\textwidth]{pipeline_diagram}
+
+\section*{Source Code}
+\lstset{language=Verilog,
+        basicstyle=\ttfamily,
+        keywordstyle=\color{blue}\ttfamily,
+        commentstyle=\color{green}\ttfamily}
+\lstinputlisting{titech/CSC.T433.AdvancedComputerArchitecture/pipeline/pipeline.v}
+
+\section*{Wave}
+\includegraphics[width=\textwidth]{pipeline_wave}
+
+\end{document}
