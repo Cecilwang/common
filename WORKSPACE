@@ -43,11 +43,29 @@ scalatest_toolchain()
 load("@rules_jvm_external//:defs.bzl", "maven_install")
 
 maven_install(
+    name = "scalaneko_maven",
     artifacts = [
         "titech.c.coord:scalaneko_2.13:0.22.0",
     ],
     repositories = [
         "https://xdefago.github.io/ScalaNeko/sbt-repo/",
+        "https://repo1.maven.org/maven2",
+    ],
+)
+
+maven_install(
+    name = "cg_maven",
+    artifacts = [
+        "org.openjfx:javafx-base:11.0.2",
+        "org.openjfx:javafx-swing:11.0.2",
+        "org.openjfx:javafx-controls:11.0.2",
+        "org.openjfx:javafx-graphics:11.0.2",
+        "org.openjfx:javafx-fxml:11.0.2",
+        "org.bytedeco:opencv:4.5.3-1.5.6",
+        "org.bytedeco:openblas:0.3.9-1.5.3",
+        "org.bytedeco:javacv-platform:1.5.6",
+    ],
+    repositories = [
         "https://repo1.maven.org/maven2",
     ],
 )

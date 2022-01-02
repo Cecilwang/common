@@ -71,11 +71,14 @@ def common_deps():
 
     #################### MAVEN ####################
 
+    RULES_JVM_EXTERNAL_TAG = "4.2"
+    RULES_JVM_EXTERNAL_SHA = "cd1a77b7b02e8e008439ca76fd34f5b07aecb8c752961f9640dea15e9e5ba1ca"
+
     http_archive(
         name = "rules_jvm_external",
-        strip_prefix = "rules_jvm_external-4.0",
-        sha256 = "31701ad93dbfe544d597dbe62c9a1fdd76d81d8a9150c2bf1ecf928ecdf97169",
-        url = "https://github.com/bazelbuild/rules_jvm_external/archive/4.0.zip",
+        strip_prefix = "rules_jvm_external-%s" % RULES_JVM_EXTERNAL_TAG,
+        sha256 = RULES_JVM_EXTERNAL_SHA,
+        url = "https://github.com/bazelbuild/rules_jvm_external/archive/%s.zip" % RULES_JVM_EXTERNAL_TAG,
     )
 
     #################### PYTHON ####################
