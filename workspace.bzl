@@ -1,6 +1,7 @@
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_file")
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_jar")
 load("//bazel:cmake_http_archive.bzl", "cmake_http_archive")
 load("//third_party/brpc:brpc_deps.bzl", "brpc_deps")
 load("//third_party/cpplint:cpplint_deps.bzl", "cpplint_deps")
@@ -79,6 +80,13 @@ def common_deps():
         strip_prefix = "rules_jvm_external-%s" % RULES_JVM_EXTERNAL_TAG,
         sha256 = RULES_JVM_EXTERNAL_SHA,
         url = "https://github.com/bazelbuild/rules_jvm_external/archive/%s.zip" % RULES_JVM_EXTERNAL_TAG,
+    )
+
+    http_jar(
+        name = "jogamp-fat",
+        urls = [
+            "https://jogamp.org/deployment/archive/rc/v2.4.0-rc-20200307/fat/jogamp-fat.jar",
+        ],
     )
 
     #################### PYTHON ####################

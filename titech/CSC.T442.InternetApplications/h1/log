@@ -1,0 +1,45 @@
+telnet ftp.hpcl.titech.ac.jp 21
+220 necom830.hpcl.titech.ac.jp FTP server (Version 6.00LS) ready.
+HELP
+214- The following commands are recognized (* =>'s unimplemented).
+   USER    PORT    TYPE    MLFL*   MRCP*   DELE    SYST    XMKD    XCUP
+   PASS    LPRT    STRU    MAIL*   ALLO    CWD     FEAT    RMD     STOU
+   ACCT*   EPRT    MODE    MSND*   REST    XCWD    STAT    XRMD    SIZE
+   SMNT*   PASV    RETR    MSOM*   RNFR    LIST    HELP    PWD     MDTM
+   REIN*   LPSV    STOR    MSAM*   RNTO    NLST    NOOP    XPWD
+   QUIT    EPSV    APPE    MRSQ*   ABOR    SITE    MKD     CDUP
+USER anonymous
+331 Guest login ok, send your email address as password.
+PASS 1
+230- welcome to anonymous ftp service
+230 Guest login ok, access restrictions apply.
+CWD pub
+250 CWD command successful.
+PWD
+257 "/pub" is current directory.
+PASV
+227 Entering Passive Mode (131,112,32,131,239,230)
+STOR 21M30927
+150 Opening ASCII mode data connection for '21M30927.2'.
+226 Transfer complete (unique file name:21M30927.2).
+PASV
+227 Entering Passive Mode (131,112,32,131,193,99)
+RETR 21M30927.2
+150 Opening ASCII mode data connection for '21M30927.2' (10 bytes).
+226 Transfer complete.
+
+telnet 131.112.32.131 61414
+Trying 131.112.32.131...
+Connected to chacha.hpcl.titech.ac.jp.
+Escape character is '^]'.
+SixueWang
+^]
+telnet> quit
+Connection closed.
+
+telnet 131.112.32.131 49507
+Trying 131.112.32.131...
+Connected to chacha.hpcl.titech.ac.jp.
+Escape character is '^]'.
+SixueWang
+Connection closed by foreign host.

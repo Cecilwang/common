@@ -1,0 +1,25 @@
+telnet localhost 2500
+Trying 127.0.0.1...
+Connected to localhost.
+Escape character is '^]'.
+220 Welcome to MailSlurper!
+HELO gmail.com
+250 Hello. How very nice to meet you!
+MAIL FROM: <cecilwang95@gmail.com>
+250 Ok
+RCPT TO: <cecilwang95@gmail.com>
+250 Ok
+DATA
+354 End data with <CR><LF>.<CR><LF>
+From: Sixue Wang <cecilwang95@gmail.com>
+To: cecilwang <cecilwang95@gmail.com>
+Subject: test
+Content-Type: text/plain; charset="UTF-8"
+Date: Fri, 11 Feb 2022 13:17:08 +0900
+
+test
+.
+250 Ok
+
+221 Bye
+Connection closed by foreign host.

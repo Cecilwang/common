@@ -64,6 +64,8 @@ maven_install(
         "org.bytedeco:opencv:4.5.3-1.5.6",
         "org.bytedeco:openblas:0.3.9-1.5.3",
         "org.bytedeco:javacv-platform:1.5.6",
+        "org.jogamp.jogl:jogl-all-main:2.3.2",
+        "gov.nist.math:jama:1.0.3",
     ],
     repositories = [
         "https://repo1.maven.org/maven2",
