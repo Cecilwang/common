@@ -1,0 +1,30 @@
+kern.kernelcacheuuid: ACB0C3F2-1B2D-5E14-F815-70E37622EC05
+kern.namecache_disabled: 0
+kern.flush_cache_on_write: 0
+vm.vm_page_filecache_min: 365897
+vm.apple_protect_pager_cache_limit: 20
+vm.enforce_shared_cache_dir: 1
+vfs.generic.nfs.client.access_cache_timeout: 60
+vfs.generic.nfs.client.readlink_nocache: 0
+vfs.generic.nfs.server.reqcache_size: 64
+net.inet.ip.rtmaxcache: 128
+net.inet.tcp.init_rtt_from_cache: 1
+net.inet.tcp.clear_tfocache: 0
+net.inet6.ip6.rtmaxcache: 128
+debug.didevice_cache_fully_satisfied: 0
+debug.didevice_cache_spared_bytes: 0
+debug.didevice_cache_size_default: 33554432
+debug.didevice_enable_cache: 1
+hw.cacheconfig: 8 2 2 8 0 0 0 0 0 0
+hw.cachelinesize: 64
+hw.cachesize: 8589934592 32768 524288 6291456 0 0 0 0 0 0
+hw.l1dcachesize: 49152
+hw.l1icachesize: 32768
+hw.l2cachesize: 524288
+hw.l3cachesize: 6291456
+machdep.cpu.cache.L2_associativity: 8
+machdep.cpu.cache.linesize: 64
+machdep.cpu.cache.size: 256
+security.mac.asp.stats.cache_entry_count: 2168
+security.mac.asp.stats.cache_allocation_count: 12322
+security.mac.asp.stats.cache_release_count: 10154

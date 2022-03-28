@@ -43,8 +43,10 @@ nop
 nop
 END2:
 add  $t2, $zero, $s1       # copy A's address
-addi $t0, $t2, 800         # A[200]
 add  $s0, $zero, $zero     # sum = 0
+nop
+nop
+addi $t0, $t2, 800         # A[200]
 nop
 nop
 nop

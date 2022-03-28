@@ -14,7 +14,7 @@ module top();
 
   initial begin /* initialize the instruction & data memory  & regfile */
     p.imem.mem[0] = {6'h8, 5'd0, 5'd17, 16'd0};
-    p.imem.mem[1] = {6'h8, 5'd0, 5'd8, 16'd200};
+    p.imem.mem[1] = {6'h8, 5'd0, 5'd8, 16'hc8};
     p.imem.mem[2] = {6'h0, 5'd0, 5'd0, 5'd9, 5'd0, 6'h20};
     p.imem.mem[3] = {6'h0, 5'd0, 5'd0, 5'd0, 5'd0, 6'h20};
     p.imem.mem[4] = {6'h0, 5'd0, 5'd17, 5'd10, 5'd0, 6'h20};
@@ -24,8 +24,8 @@ module top();
     p.imem.mem[7] = {6'h0, 5'd0, 5'd0, 5'd0, 5'd0, 6'h20};
     p.imem.mem[8] = {6'h0, 5'd0, 5'd0, 5'd0, 5'd0, 6'h20};
     p.imem.mem[9] = {6'h2b, 5'd10, 5'd9, 16'h0};
-    p.imem.mem[10] = {6'h8, 5'd10, 5'd10, 16'd4};
-    p.imem.mem[11] = {6'h8, 5'd9, 5'd9, 16'd1};
+    p.imem.mem[10] = {6'h8, 5'd10, 5'd10, 16'h4};
+    p.imem.mem[11] = {6'h8, 5'd9, 5'd9, 16'h1};
     p.imem.mem[12] = {6'h2, 26'h6};
     p.imem.mem[13] = {6'h0, 5'd0, 5'd0, 5'd0, 5'd0, 6'h20};
     p.imem.mem[14] = {6'h0, 5'd0, 5'd0, 5'd0, 5'd0, 6'h20};
@@ -34,12 +34,12 @@ module top();
     p.imem.mem[16] = {6'h0, 5'd0, 5'd0, 5'd0, 5'd0, 6'h20};
     p.imem.mem[17] = {6'h0, 5'd0, 5'd0, 5'd0, 5'd0, 6'h20};
     p.imem.mem[18] = {6'h0, 5'd0, 5'd0, 5'd0, 5'd0, 6'h20};
-    p.imem.mem[19] = {6'h8, 5'd10, 5'd8, 16'd796};
+    p.imem.mem[19] = {6'h8, 5'd10, 5'd8, 16'h31c};
     p.imem.mem[20] = {6'h0, 5'd0, 5'd0, 5'd0, 5'd0, 6'h20};
     p.imem.mem[21] = {6'h0, 5'd0, 5'd0, 5'd0, 5'd0, 6'h20};
     p.imem.mem[22] = {6'h0, 5'd0, 5'd0, 5'd0, 5'd0, 6'h20};
     // L2
-    p.imem.mem[23] = {6'h4, 5'd8, 5'd10, 16'd16};
+    p.imem.mem[23] = {6'h4, 5'd8, 5'd10, 16'h10};
     p.imem.mem[24] = {6'h0, 5'd0, 5'd0, 5'd0, 5'd0, 6'h20};
     p.imem.mem[25] = {6'h0, 5'd0, 5'd0, 5'd0, 5'd0, 6'h20};
     p.imem.mem[26] = {6'h23, 5'd10, 5'd11, 16'h0};
@@ -52,32 +52,34 @@ module top();
     p.imem.mem[33] = {6'h0, 5'd0, 5'd0, 5'd0, 5'd0, 6'h20};
     p.imem.mem[34] = {6'h0, 5'd0, 5'd0, 5'd0, 5'd0, 6'h20};
     p.imem.mem[35] = {6'h2b, 5'd10, 5'd11, 16'h4};
-    p.imem.mem[36] = {6'h8, 5'd10, 5'd10, 16'd4};
+    p.imem.mem[36] = {6'h8, 5'd10, 5'd10, 16'h4};
     p.imem.mem[37] = {6'h2, 26'd23};
     p.imem.mem[38] = {6'h0, 5'd0, 5'd0, 5'd0, 5'd0, 6'h20};
     p.imem.mem[39] = {6'h0, 5'd0, 5'd0, 5'd0, 5'd0, 6'h20};
     // END2
     p.imem.mem[40] = {6'h0, 5'd0, 5'd17, 5'd10, 5'd0, 6'h20};
-    p.imem.mem[41] = {6'h8, 5'd10, 5'd8, 16'd800};
-    p.imem.mem[42] = {6'h0, 5'd0, 5'd0, 5'd16, 5'd0, 6'h20};
+    p.imem.mem[41] = {6'h0, 5'd0, 5'd0, 5'd16, 5'd0, 6'h20};
+    p.imem.mem[42] = {6'h0, 5'd0, 5'd0, 5'd0, 5'd0, 6'h20};
     p.imem.mem[43] = {6'h0, 5'd0, 5'd0, 5'd0, 5'd0, 6'h20};
-    p.imem.mem[44] = {6'h0, 5'd0, 5'd0, 5'd0, 5'd0, 6'h20};
+    p.imem.mem[44] = {6'h8, 5'd10, 5'd8, 16'h320};
     p.imem.mem[45] = {6'h0, 5'd0, 5'd0, 5'd0, 5'd0, 6'h20};
-    // L3
-    p.imem.mem[46] = {6'h4, 5'd8, 5'd10, 16'd11};
+    p.imem.mem[46] = {6'h0, 5'd0, 5'd0, 5'd0, 5'd0, 6'h20};
     p.imem.mem[47] = {6'h0, 5'd0, 5'd0, 5'd0, 5'd0, 6'h20};
-    p.imem.mem[48] = {6'h0, 5'd0, 5'd0, 5'd0, 5'd0, 6'h20};
-    p.imem.mem[49] = {6'h23, 5'd10, 5'd11, 16'h0};
+    // L3
+    p.imem.mem[48] = {6'h4, 5'd8, 5'd10, 16'hb};
+    p.imem.mem[49] = {6'h0, 5'd0, 5'd0, 5'd0, 5'd0, 6'h20};
     p.imem.mem[50] = {6'h0, 5'd0, 5'd0, 5'd0, 5'd0, 6'h20};
-    p.imem.mem[51] = {6'h0, 5'd0, 5'd0, 5'd0, 5'd0, 6'h20};
+    p.imem.mem[51] = {6'h23, 5'd10, 5'd11, 16'h0};
     p.imem.mem[52] = {6'h0, 5'd0, 5'd0, 5'd0, 5'd0, 6'h20};
-    p.imem.mem[53] = {6'h0, 5'd16, 5'd11, 5'd16, 5'd0, 6'h20};
-    p.imem.mem[54] = {6'h8, 5'd10, 5'd10, 16'd4};
-    p.imem.mem[55] = {6'h2, 26'd46};
-    p.imem.mem[56] = {6'h0, 5'd0, 5'd0, 5'd0, 5'd0, 6'h20};
-    p.imem.mem[57] = {6'h0, 5'd0, 5'd0, 5'd0, 5'd0, 6'h20};
+    p.imem.mem[53] = {6'h0, 5'd0, 5'd0, 5'd0, 5'd0, 6'h20};
+    p.imem.mem[54] = {6'h0, 5'd0, 5'd0, 5'd0, 5'd0, 6'h20};
+    p.imem.mem[55] = {6'h0, 5'd16, 5'd11, 5'd16, 5'd0, 6'h20};
+    p.imem.mem[56] = {6'h8, 5'd10, 5'd10, 16'h4};
+    p.imem.mem[57] = {6'h2, 26'd48};
+    p.imem.mem[58] = {6'h0, 5'd0, 5'd0, 5'd0, 5'd0, 6'h20};
+    p.imem.mem[59] = {6'h0, 5'd0, 5'd0, 5'd0, 5'd0, 6'h20};
     // END3
-    p.imem.mem[58] = {6'h0, 5'd16, 5'd0, 5'd16, 5'd0, 6'h20}; // show s0
+    p.imem.mem[60] = {6'h0, 5'd16, 5'd0, 5'd16, 5'd0, 6'h20}; // show s0
   end
   initial #30000 $finish();
 
