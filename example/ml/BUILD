@@ -42,8 +42,7 @@ py_binary(
     main = "4_kfac.py",
     deps = [
         requirement("torch"),
-        "//common/py/ml/kfac",
-        "//common/py/ml/util",
+        "//common/py/ml",
     ],
 )
 
@@ -56,6 +55,17 @@ py_binary(
         requirement("numpy"),
         requirement("sklearn"),
         requirement("matplotlib"),
-        "//common/py/ml/util",
+        "//common/py/ml",
+    ],
+)
+
+py_binary(
+    name = "6",
+    srcs = ["6_asdl_kfac.py"],
+    main = "6_asdl_kfac.py",
+    deps = [
+        requirement("torch"),
+        #requirement("asdl"),
+        "//common/py/ml",
     ],
 )

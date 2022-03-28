@@ -7,28 +7,26 @@ import numpy as np
 from sklearn import decomposition
 import torch
 
-from common.py.ml.util import models as M
-from common.py.ml.util.problems import MNIST
+from common.py.ml.kfac import classification_sampling
+from common.py.ml.kfac import KFAC
+from common.py.ml.datasets import MNIST
+from common.py.ml.models import MNISTToy
+from common.py.ml.util.dist import init_distributed_mode
+from common.py.ml.util.metrics import Metric
 
 Color = cycle("bgrcmk")
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description="loss_surface")
-    parser.add_argument("--model",
-                        type=str,
-                        default="cnn",
-                        choices=["mlp", "cnn"])
-    parser.add_argument("sfc", type=str)
-    parser.add_argument("traj", type=str)
-    parser.add_argument("--e", type=int, default=10)
-    parser.add_argument("--batch_size", type=int, default=32)
-    parser.add_argument("--data", type=str, default="./.data")
-    parser.add_argument("--log", type=str, default="./.log")
+    parser.add_argument('--data-path', default='/tmp', type=str)
+    parser.add_argument("--batch_size", type=int, default=256)
+    parser.add_argument("--val_batch_size", type=int, default=32)
+    parser.add_argument("--epochs", type=int, default=2)
     parser.add_argument("--device", type=str, default="cpu")
     parser.add_argument("--decomposition", type=str, default="svd")
     parser.add_argument("--matrix", type=str, default="diff")
-    parser.add_argument("--step", type=int, default=10)
+    parser.add_argument("--step", type=int, default=0.5)
     parser.add_argument("--margin", type=float, default=0.3)
     return parser.parse_args()
 
@@ -38,7 +36,6 @@ def random_color():
 
 
 class Vector(object):
-
     def __init__(self, arg):
         if isinstance(arg, list):
             params = arg
@@ -87,7 +84,6 @@ class Vector(object):
 
 
 class Space(object):
-
     def __init__(self, d1, d2):
         self.d1 = d1
         self.d2 = d2
@@ -97,7 +93,6 @@ class Space(object):
 
 
 class Point(object):
-
     def __init__(self, x, y, z):
         self.x = x
         self.y = y
@@ -108,7 +103,6 @@ class Point(object):
 
 
 class Contour(object):
-
     def __init__(self):
         self.u = 0
         self.b = 0
@@ -122,10 +116,13 @@ class Contour(object):
         self.r = max(self.r, point.y)
 
     def round(self):
-        self.u = np.int32(self.u)
-        self.b = np.int32(self.b)
-        self.l = np.int32(self.l)
-        self.r = np.int32(self.r)
+        def ceil(x):
+            return np.sign(x) * np.ceil(np.abs(x))
+
+        self.u = np.int32(ceil(self.u))
+        self.b = np.int32(ceil(self.b))
+        self.l = np.int32(ceil(self.l))
+        self.r = np.int32(ceil(self.r))
 
     def __str__(self):
         return "({}, {}), ({}, {})".format(self.u, self.l, self.b, self.r)
@@ -139,7 +136,6 @@ class Contour(object):
 
 
 class Trajectory(object):
-
     def __init__(self, name):
         self.name = name
         self.points = []
@@ -160,12 +156,10 @@ def model_dist(x, y):
     return x - y
 
 
-def get_space(final_model, traj_files, matrix_type, decomposition_method):
+def get_space(final_model, all_models, matrix_type, decomposition_method):
     matrix = []
-    curr_model = copy.deepcopy(final_model)
-    for _, model_files in traj_files.items():
-        for f in model_files:
-            M.load(curr_model, f)
+    for _, models in all_models.items():
+        for curr_model in models:
             if matrix_type == "diff":
                 matrix.append(model_dist(curr_model, final_model).data)
             elif matrix_type == "original":
@@ -190,17 +184,15 @@ def get_space(final_model, traj_files, matrix_type, decomposition_method):
     return Space(d1, d2)
 
 
-def project(final_model, traj_files, space, loss_fn):
+def project(final_model, all_models, space, criterion):
     trajectories = {}
-    curr_model = copy.deepcopy(final_model)
-    for name, model_files in traj_files.items():
+    for name, models in all_models.items():
         trajectories[name] = Trajectory(name)
-        for f in model_files:
-            M.load(curr_model, f)
+        for i, curr_model in enumerate(models):
             p = model_dist(curr_model, final_model).project(space)
-            p.z = loss_fn(curr_model)
+            p.z = criterion(curr_model)
             d = (space.project(p) - model_dist(curr_model, final_model)).norm()
-            print("{} at {} {}".format(f, p, d))
+            print(f"{name} {i} at {p} {d}")
             trajectories[name].append(p)
     return trajectories
 
@@ -214,22 +206,23 @@ def get_surface_scope(trajectories, margin, step):
     contour.round()
     print(contour)
 
-    x_stride = (contour.b - contour.u) // step
-    y_stride = (contour.r - contour.l) // step
+    x_stride = np.int32((contour.b - contour.u) // step)
+    y_stride = np.int32((contour.r - contour.l) // step)
     X = [i for i in range(contour.u, contour.b + 1, x_stride)]
     Y = [i for i in range(contour.l, contour.r + 1, y_stride)]
     return X, Y
 
 
-def get_surface(final_model, loss_fn, space, scope):
+def get_surface(final_model, criterion, space, scope):
     curr_model = copy.deepcopy(final_model)
     center = Vector([p.data for p in curr_model.parameters()])
     X, Y = scope[0], scope[1]
     loss = np.ndarray([len(X), len(Y)])
     for i in range(len(X)):
         for j in range(len(Y)):
-            (space.project(Point(X[i], Y[j], 0)) + center).assign_to(curr_model)
-            loss[i, j] = loss_fn(curr_model)
+            (space.project(Point(X[i], Y[j], 0)) +
+             center).assign_to(curr_model)
+            loss[i, j] = criterion(curr_model)
 
     Y, X = np.meshgrid(Y, X)
     return X, Y, loss
@@ -256,18 +249,19 @@ def draw(surface, trajectories):
     plt.show()
 
 
-def wrap_loss_fn(loss_fn, loader, device):
-
-    def _loss(model):
+def wrap_criterion(criterion, dataset, args):
+    def _criterion(model):
+        dataset.train()
         loss = 0.0
-        for i, (input, target) in enumerate(loader):
-            input, target = input.to(device), target.to(device)
-            output = model(input)
-            loss += loss_fn(output, target).item()
-            break
+        with torch.no_grad():
+            for i, (inputs, targets) in enumerate(dataset.loader):
+                inputs = inputs.to(args.device)
+                targets = targets.to(args.device)
+                outputs = model(inputs)
+                loss += criterion(outputs, targets).item()
         return loss / (i + 1)
 
-    return _loss
+    return _criterion
 
 
 def get_traj_files(args):
@@ -280,18 +274,65 @@ def get_traj_files(args):
     return files
 
 
-def main(args):
-    final_model, loader, _, _loss_fn = MNIST(**vars(args))
-    final_model.eval()
-    M.load(final_model, "{}/{}-{}-{}.pkl".format(args.log, args.model, args.sfc,
-                                                 args.e))
-    loss_fn = wrap_loss_fn(_loss_fn, loader, args.device)
+def train(epoch, dataset, model, criterion, opt, args):
+    model.train()
+    dataset.train()
+    if args.distributed:
+        dataset.sampler.set_epoch(epoch)
+    metric = Metric(args.device)
 
-    traj_files = get_traj_files(args)
-    space = get_space(final_model, traj_files, args.matrix, args.decomposition)
-    trajectories = project(final_model, traj_files, space, loss_fn)
+    for i, (inputs, targets) in enumerate(dataset.loader):
+        inputs = inputs.to(args.device)
+        targets = targets.to(args.device)
+        if isinstance(opt, (KFAC, )) and opt.steps % opt.cov_intvl == 0:
+            opt.hook_on = True
+        opt.zero_grad()
+        outputs = model(inputs)
+        loss = criterion(outputs, targets)
+        if isinstance(opt, (KFAC, )) and opt.steps % opt.cov_intvl == 0:
+            with torch.no_grad():
+                sampled_y = classification_sampling(outputs)
+            criterion(outputs, sampled_y).backward(retain_graph=True)
+            opt.zero_grad()
+            opt.hook_on = False
+        loss.backward()
+        opt.step()
+        metric.update(inputs.shape[0], loss, outputs, targets)
+    print("Epoch {} Train: {}".format(epoch, metric))
+
+
+def models(dataset, model, criterion, opt, args):
+    model = copy.deepcopy(model)
+    model.to(args.device)
+    if opt == "sgd":
+        opt = torch.optim.SGD(model.parameters(), lr=1e-3, weight_decay=0.01)
+    elif opt == "kfac":
+        opt = KFAC(model.parameters(), 1e-2, 1., 10, 100)
+        opt.register(model)
+    models = []
+    for e in range(args.epochs):
+        train(e, dataset, model, criterion, opt, args)
+        models.append(copy.deepcopy(model))
+    return models
+
+
+def main(args):
+    init_distributed_mode(args)
+
+    dataset = MNIST(args)
+    criterion = torch.nn.CrossEntropyLoss()
+    model = MNISTToy()
+    all_models = {
+        "sgd": models(dataset, model, criterion, "sgd", args),
+        "kfac": models(dataset, model, criterion, "kfac", args)
+    }
+    final_model = all_models["kfac"][-1]
+    criterion = wrap_criterion(criterion, dataset, args)
+
+    space = get_space(final_model, all_models, args.matrix, args.decomposition)
+    trajectories = project(final_model, all_models, space, criterion)
     scope = get_surface_scope(trajectories, args.margin, args.step)
-    surface = get_surface(final_model, loss_fn, space, scope)
+    surface = get_surface(final_model, criterion, space, scope)
 
     draw(surface, trajectories)
 

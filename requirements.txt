@@ -2,10 +2,11 @@ numpy
 matplotlib
 cvxpy
 cvxopt
-jax
+jax[cpu]
 torch
 torchvision
 backpack-for-pytorch
 sklearn
 wandb
 tokenizers
+einops
