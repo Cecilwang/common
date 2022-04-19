@@ -218,3 +218,5 @@ if __name__ == '__main__':
         test(e, dataset, model, criterion, args)
         torch.cuda.empty_cache()
         lr_scheduler.step()
+
+    torch.save(model.state_dict(), f"{args.dir}/{args.model}")
