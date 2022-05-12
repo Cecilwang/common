@@ -6,6 +6,7 @@ py_library(
     name = "util",
     srcs = [
         "dist.py",
+        "ifvp.py",
         "metrics.py",
     ],
     deps = [

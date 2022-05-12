@@ -5,7 +5,7 @@ from common.py.ml.datasets.datasets import Dataset
 
 
 class MNIST(Dataset):
-    def __init__(self, args):
+    def __init__(self, args, **kwargs):
         self.num_classes = 10
         self.mean = [0.1307]
         self.std = [0.3081]
@@ -23,4 +23,4 @@ class MNIST(Dataset):
                                           train=False,
                                           download=False,
                                           transform=transform)
-        super().__init__(args)
+        super().__init__(args, **kwargs)

@@ -23,8 +23,8 @@ def calc_mean_and_stddev(loader):
 
 
 class Dataset(object):
-    def __init__(self, args):
-        self.batch_size = args.batch_size
+    def __init__(self, args, batch_size=None):
+        self.batch_size = args.batch_size if batch_size is None else batch_size
         self.val_batch_size = args.val_batch_size
         self.num_workers = 4
         self.pin_memory = True
