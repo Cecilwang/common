@@ -137,9 +137,9 @@ class Prunner:
                     term = k.split('.')
                     m = '.'.join(term[:-3])
                     p = term[-2]
-                    state[f'{m}.{p}'] = getattr(self.modules[m], p)
+                    state[f'{m}.{p}'] = getattr(self.modules[m], p).clone()
             else:
-                state[k] = v
+                state[k] = v.clone()
         return state
 
     @property
