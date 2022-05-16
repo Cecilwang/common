@@ -144,6 +144,7 @@ if __name__ == '__main__':
 
     dataset = create_dataset(args)
     model = create_model(args)
+    best_model = create_model(args)
     pruner = create_pruner(
         args, model,
         (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d, nn.LayerNorm))
@@ -187,6 +188,6 @@ if __name__ == '__main__':
         'drop_rate': (best_acc - pretrained_acc) / pretrained_acc
     })
 
-    pruner.finalize()
-    torch.save(model.state_dict(), f"{args.dir}/model")
+    pruner.dump(best_model)
+    torch.save(best_model.state_dict(), f"{args.dir}/model")
     validate(args, dataset)

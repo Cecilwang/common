@@ -97,14 +97,13 @@ class ThresholdMask(ScoreMask):
 
 class Prunner:
     def __init__(self, model, ignore, without_bias=False):
-        self.modules = list_module(
-            model,
-            condition=lambda x:
-            (not isinstance(x, ignore)) and hasattr(x, 'weight'))
+        self.condition = lambda x: (not isinstance(x, ignore)) and hasattr(
+            x, 'weight')
+        self.modules = list_module(model, condition=self.condition)
+        self.without_bias = without_bias
         self.n = 0
         self._param = []
         self._mask = []
-        self.without_bias = without_bias
         print('Pruning Scope:')
         for k, x in self.modules.items():
             print(f'\t{k}.weight')
@@ -121,15 +120,19 @@ class Prunner:
                 self._mask.append(x.parametrizations.bias[0].mask)
 
     def finalize(self):
-        print('Finalizing')
-        for k, x in self.modules.items():
-            print(f'\t{k}.weight')
-            remove_parametrizations(x, 'weight')
-            if not self.without_bias and x.bias is not None:
-                print(f'\t{k}.bias')
-                remove_parametrizations(x, 'bias')
         self._param = []
         self._mask = []
+        for k, x in self.modules.items():
+            remove_parametrizations(x, 'weight')
+            if not self.without_bias and x.bias is not None:
+                remove_parametrizations(x, 'bias')
+
+    def dump(self, model):
+        modules = list_module(model, condition=self.condition)
+        for k, v in modules.items():
+            v.weight.data = self.modules[k].weight
+            if not self.without_bias and x.bias is not None:
+                v.bias.data = self.modules[k].bias
 
     @property
     def param(self):
@@ -261,11 +264,11 @@ class Movement():
             model,
             condition=lambda x:
             (not isinstance(x, ignore)) and hasattr(x, 'weight'))
+        self.without_bias = without_bias
+        self.n = 0
         self._sparsity = torch.tensor(0.0)
         self._threshold = torch.tensor(0.0)
         self._scores = []
-        self.n = 0
-        self.without_bias = without_bias
         print('Pruning Scope:')
         for k, x in self.modules.items():
             print(f'\t{k}.weight')
@@ -284,14 +287,11 @@ class Movement():
         self.update_threshold()
 
     def finalize(self):
-        print('Finalizing')
+        self._scores = []
         for k, x in self.modules.items():
-            print(f'\t{k}.weight')
             remove_parametrizations(x, 'weight')
             if not self.without_bias and x.bias is not None:
-                print(f'\t{k}.bias')
                 remove_parametrizations(x, 'bias')
-        self._scores = []
 
     @property
     def scores(self):
