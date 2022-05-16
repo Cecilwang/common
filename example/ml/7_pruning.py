@@ -149,7 +149,7 @@ if __name__ == '__main__':
 
     cie_weights = load(args.CIE_weights)
     cie_sampler = WeightedRandomSampler(cie_weights, len(cie_weights))
-    dataset = create_dataset(args, cie_sampler)
+    dataset = create_dataset(args, sampler=cie_sampler)
     model = create_model(args)
     pruner = create_pruner(
         args, model,
