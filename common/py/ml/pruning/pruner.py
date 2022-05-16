@@ -129,17 +129,18 @@ class Prunner:
             if not self.without_bias and x.bias is not None:
                 remove_parametrizations(x, 'bias')
 
-    def dump(self, model):
-        param = {k: v for k, v in self.model.named_parameters()}
-        for k, p in model.named_parameters():
-            module = '.'.join(k.split('.')[:-1])
-            if module in self.modules:
-                if k.endswith('weight'):
-                    p.data = self.modules[module].weight
-                elif not self.without_bias:
-                    p.data = self.modules[module].bias
+    def dump(self):
+        state = {}
+        for k, v in self.model.state_dict().items():
+            if 'parametrizations' in k:
+                if 'original' in k:
+                    term = k.split('.')
+                    m = '.'.join(term[:-3])
+                    p = term[-2]
+                    state[f'{m}.{p}'] = getattr(self.modules[m], p)
             else:
-                p.data = param[k].data
+                state[k] = v
+        return state
 
     @property
     def param(self):

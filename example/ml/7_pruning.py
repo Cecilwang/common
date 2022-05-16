@@ -144,7 +144,6 @@ if __name__ == '__main__':
 
     dataset = create_dataset(args)
     model = create_model(args)
-    best_model = create_model(args)
     pruner = create_pruner(
         args, model,
         (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d, nn.LayerNorm))
@@ -162,9 +161,10 @@ if __name__ == '__main__':
     pretrained_acc = test(0, dataset, model, args, 'Pretrained   ')
     wandb.log({'best_acc': pretrained_acc, 'sparsity': sparsity})
 
-    sparsity = 0.5
+    sparsity = 0.05
     prune(pruner, sparsity, args)
     best_acc = test(0, dataset, model, args, f'Pruning  {pruner.sparsity:.2f}')
+    best_model_state = pruner.dump()
     wandb.log({'best_acc': best_acc, 'sparsity': sparsity})
 
     for e in range(args.epochs):
@@ -176,12 +176,12 @@ if __name__ == '__main__':
             prune(pruner, sparsity, args)
             best_acc = test(e, dataset, model, args,
                             f'Pruning  {pruner.sparsity:.2f}')
-            pruner.dump(best_model)
+            best_model_state = pruner.dump()
         train(e, dataset, model, opt, pruner, args)
         acc = test(e, dataset, model, args, f'Training {pruner.sparsity:.2f}')
         if acc > best_acc:
             best_acc = acc
-            pruner.dump(best_model)
+            best_model_state = pruner.dump()
         lr_scheduler.step()
     wandb.log({
         'best_acc': best_acc,
@@ -190,6 +190,5 @@ if __name__ == '__main__':
         'drop_rate': (best_acc - pretrained_acc) / pretrained_acc
     })
 
-    pruner.dump(best_model)
-    torch.save(best_model.state_dict(), f"{args.dir}/model")
+    torch.save(best_model_state, f"{args.dir}/model")
     validate(args, dataset)
