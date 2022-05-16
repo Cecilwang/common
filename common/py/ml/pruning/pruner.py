@@ -131,7 +131,7 @@ class Prunner:
         modules = list_module(model, condition=self.condition)
         for k, v in modules.items():
             v.weight.data = self.modules[k].weight
-            if not self.without_bias and x.bias is not None:
+            if not self.without_bias and v.bias is not None:
                 v.bias.data = self.modules[k].bias
 
     @property

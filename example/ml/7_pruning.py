@@ -176,10 +176,12 @@ if __name__ == '__main__':
             prune(pruner, sparsity, args)
             best_acc = test(e, dataset, model, args,
                             f'Pruning  {pruner.sparsity:.2f}')
+            pruner.dump(best_model)
         train(e, dataset, model, opt, pruner, args)
-        best_acc = max(
-            best_acc,
-            test(e, dataset, model, args, f'Training {pruner.sparsity:.2f}'))
+        acc = test(e, dataset, model, args, f'Training {pruner.sparsity:.2f}')
+        if acc > best_acc:
+            best_acc = acc
+            pruner.dump(best_model)
         lr_scheduler.step()
     wandb.log({
         'best_acc': best_acc,
