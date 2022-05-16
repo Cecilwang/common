@@ -8,6 +8,7 @@ from common.py.ml.datasets import define_dataset_arguments, create_dataset
 from common.py.ml.models import define_model_arguments, create_model
 from common.py.ml.util.dist import init_distributed_mode
 from common.py.ml.util.metrics import Metric
+from common.py.util.io import save, load
 
 
 def parse_args():
@@ -74,5 +75,13 @@ if __name__ == '__main__':
     for i, x in enumerate(args.compressed_model_path):
         model = create_model(args, model_path=x)
         preds.append(test(0, dataset, model, args, f'compressed {i}'))
-    preds.vstack(preds)
+    preds = torch.vstack(preds)
     print(preds)
+    weights = torch.sum(preds[0] != preds[1:], 0)
+    weights = weights.to('cpu')
+    print(weights)
+    print(torch.sum(weights))
+    save(weights, f'{args.dir}/weights')
+    weights = load(f'{args.dir}/weights')
+    print(weights)
+    print(torch.sum(weights))
