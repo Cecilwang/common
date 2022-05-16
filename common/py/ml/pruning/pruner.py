@@ -130,6 +130,7 @@ class Prunner:
                 remove_parametrizations(x, 'bias')
 
     def dump(self, model):
+        param = {k: v for k, v in self.model.named_parameters()}
         for k, p in model.named_parameters():
             module = '.'.join(k.split('.')[:-1])
             if module in self.modules:
@@ -138,7 +139,7 @@ class Prunner:
                 elif not self.without_bias:
                     p.data = self.modules[module].bias
             else:
-                p.data = self.model.named_parameters()[k].data
+                p.data = param[k].data
 
     @property
     def param(self):
