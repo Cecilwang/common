@@ -97,9 +97,11 @@ class ThresholdMask(ScoreMask):
 
 class Prunner:
     def __init__(self, model, ignore, without_bias=False):
-        self.condition = lambda x: (not isinstance(x, ignore)) and hasattr(
-            x, 'weight')
-        self.modules = list_module(model, condition=self.condition)
+        self.model = model
+        self.modules = list_module(
+            model,
+            condition=lambda x:
+            (not isinstance(x, ignore)) and hasattr(x, 'weight'))
         self.without_bias = without_bias
         self.n = 0
         self._param = []
@@ -128,11 +130,15 @@ class Prunner:
                 remove_parametrizations(x, 'bias')
 
     def dump(self, model):
-        modules = list_module(model, condition=self.condition)
-        for k, v in modules.items():
-            v.weight.data = self.modules[k].weight
-            if not self.without_bias and v.bias is not None:
-                v.bias.data = self.modules[k].bias
+        for k, p in model.named_parameters():
+            module = '.'.join(k.split('.')[:-1])
+            if module in self.modules:
+                if k.endswith('weight'):
+                    p.data = self.modules[module].weight
+                elif not self.without_bias:
+                    p.data = self.modules[module].bias
+            else:
+                p.data = self.model.named_parameters()[k].data
 
     @property
     def param(self):
