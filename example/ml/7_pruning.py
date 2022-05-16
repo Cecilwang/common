@@ -4,6 +4,7 @@ import os
 import torch
 from torch import nn
 from torch.optim.lr_scheduler import MultiStepLR
+from torch.utils.data import WeightedRandomSampler
 import torchvision
 import wandb
 
@@ -13,6 +14,7 @@ from common.py.ml.pruning import define_pruning_arguments, create_pruner
 from common.py.ml.util.dist import init_distributed_mode
 from common.py.ml.util.metrics import Metric
 from common.py.ml.util.util import to_vector, list_module
+from common.py.util.io import load
 
 
 def parse_args():
@@ -34,6 +36,9 @@ def parse_args():
     parser.add_argument('--weight-decay', type=float, default=1e-4)
 
     define_pruning_arguments(parser)
+    parser.add_argument('--CIE-weights',
+                        type=str,
+                        default='data/MNISTToy_CIE_weights')
 
     return parser.parse_args()
 
@@ -142,7 +147,9 @@ if __name__ == '__main__':
         wandb.init(project='pruning')
         wandb.run.name = f'{args.name}'
 
-    dataset = create_dataset(args)
+    cie_weights = load(args.CIE_weights)
+    cie_sampler = WeightedRandomSampler(cie_weights, len(cie_weights))
+    dataset = create_dataset(args, cie_sampler)
     model = create_model(args)
     pruner = create_pruner(
         args, model,

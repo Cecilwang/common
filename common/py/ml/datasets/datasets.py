@@ -25,12 +25,14 @@ def calc_mean_and_stddev(loader):
 
 
 class Dataset(object):
-    def __init__(self, args, batch_size=None):
+    def __init__(self, args, batch_size=None, sampler=None):
         self.batch_size = args.batch_size if batch_size is None else batch_size
         self.val_batch_size = args.val_batch_size
         self.num_workers = 4
         self.pin_memory = True
-        if args.distributed:
+        if sampler is not None:
+            self.train_sampler = sampler
+        elif args.distributed:
             self.train_sampler = DistributedSampler(self.train_dataset)
         else:
             if args.shuffle:
