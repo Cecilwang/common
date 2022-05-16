@@ -34,19 +34,20 @@ def parse_args():
 
 
 def test(epoch, dataset, model, args, prefix=''):
-    dataset.eval()
+    dataset.train()
     if args.distributed:
         dataset.sampler.set_epoch(epoch)
     model.eval()
 
     metric = Metric(args.device)
-
+    preds = []
     with torch.inference_mode():
         for i, (inputs, targets) in enumerate(dataset.loader):
             inputs = inputs.to(args.device)
             targets = targets.to(args.device)
 
             outputs = model(inputs)
+            preds.append(torch.max(outputs, 1)[1])
             loss = dataset.criterion(outputs, targets)
 
             metric.update(inputs.shape[0], loss, outputs, targets)
@@ -54,20 +55,24 @@ def test(epoch, dataset, model, args, prefix=''):
     if args.distributed:
         metric.sync()
     print(f'Epoch {epoch} {prefix} Test {metric}')
-    return metric.accuracy
+    return torch.hstack(preds)
 
 
 if __name__ == '__main__':
     args = parse_args()
     args.name = f'{args.dataset}/{args.model}/CIE/{args.name}'
     args.dir = f'{args.dir}/{args.name}'
+    args.shuffle = False
     Path(args.dir).mkdir(parents=True, exist_ok=True)
     init_distributed_mode(args)
     print(args)
 
     dataset = create_dataset(args)
     model = create_model(args)
-    test(0, dataset, model, args, 'non-compressed')
+    preds = []
+    preds.append(test(0, dataset, model, args, 'non-compressed'))
     for i, x in enumerate(args.compressed_model_path):
         model = create_model(args, model_path=x)
-        test(0, dataset, model, args, f'compressed {i}')
+        preds.append(test(0, dataset, model, args, f'compressed {i}'))
+    preds.vstack(preds)
+    print(preds)

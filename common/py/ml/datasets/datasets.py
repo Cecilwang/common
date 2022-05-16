@@ -3,6 +3,7 @@ import PIL
 from torch import nn
 from torch.utils.data import DataLoader
 from torch.utils.data import RandomSampler
+from torch.utils.data import SequentialSampler
 from torch.utils.data.distributed import DistributedSampler
 from torchvision import transforms
 
@@ -32,7 +33,10 @@ class Dataset(object):
         if args.distributed:
             self.train_sampler = DistributedSampler(self.train_dataset)
         else:
-            self.train_sampler = RandomSampler(self.train_dataset)
+            if args.shuffle:
+                self.train_sampler = RandomSampler(self.train_dataset)
+            else:
+                self.train_sampler = SequentialSampler(self.train_dataset)
         self.train_loader = DataLoader(self.train_dataset,
                                        batch_size=self.batch_size,
                                        sampler=self.train_sampler,
