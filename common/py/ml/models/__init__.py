@@ -10,7 +10,7 @@ def define_model_arguments(parser):
                         type=str,
                         choices=['resnet50', 'MNISTToy'])
     parser.add_argument('--model-path',
-                        default='example/ml/MNISTToy',
+                        default='example/ml/data/MNISTToy',
                         type=str)
 
 

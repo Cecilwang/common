@@ -73,7 +73,7 @@ py_binary(
 py_binary(
     name = "7",
     srcs = ["7_pruning.py"],
-    data = ["MNISTToy"],
+    data = ["data/MNISTToy"],
     main = "7_pruning.py",
     deps = [
         requirement("torch"),
