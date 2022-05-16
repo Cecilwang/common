@@ -147,7 +147,8 @@ if __name__ == '__main__':
         wandb.init(project='pruning')
         wandb.run.name = f'{args.name}'
 
-    cie_weights = load(args.CIE_weights)
+    cie_weights = load(args.CIE_weights) * 10
+    cie_weights += 1
     cie_sampler = WeightedRandomSampler(cie_weights, len(cie_weights))
     dataset = create_dataset(args, sampler=cie_sampler)
     model = create_model(args)
