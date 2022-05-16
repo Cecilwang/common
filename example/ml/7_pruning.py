@@ -36,9 +36,7 @@ def parse_args():
     parser.add_argument('--weight-decay', type=float, default=1e-4)
 
     define_pruning_arguments(parser)
-    parser.add_argument('--CIE-weights',
-                        type=str,
-                        default='data/MNISTToy_CIE_weights')
+    parser.add_argument('--CIE-weights', type=str, default=None)
 
     return parser.parse_args()
 
@@ -147,9 +145,12 @@ if __name__ == '__main__':
         wandb.init(project='pruning')
         wandb.run.name = f'{args.name}'
 
-    cie_weights = load(args.CIE_weights) * 10
-    cie_weights += 1
-    cie_sampler = WeightedRandomSampler(cie_weights, len(cie_weights))
+    if args.CIE_weights is not None:
+        cie_weights = load(args.CIE_weights) * 10
+        cie_weights += 1
+        cie_sampler = WeightedRandomSampler(cie_weights, len(cie_weights))
+    else:
+        cie_sampler = None
     dataset = create_dataset(args, sampler=cie_sampler)
     model = create_model(args)
     pruner = create_pruner(
