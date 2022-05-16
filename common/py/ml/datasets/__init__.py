@@ -13,11 +13,11 @@ def define_dataset_arguments(parser):
     parser.add_argument('--label-smoothing', default=0.1, type=float)
 
 
-def create_dataset(args):
+def create_dataset(args, **kwargs):
     if args.dataset == 'IMAGENET':
-        dataset = IMAGENET(args)
+        dataset = IMAGENET(args, **kwargs)
     elif args.dataset == 'MNIST':
-        dataset = MNIST(args)
+        dataset = MNIST(args, **kwargs)
     else:
         raise ValueError(f'Unknown dataset {args.dataset}')
     return dataset

@@ -148,10 +148,8 @@ if __name__ == '__main__':
         args, model,
         (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d, nn.LayerNorm))
     if args.pruner == 'obs':
-        if args.dataset == 'IMAGENET':
-            fisher_dataset = IMAGENET(args, batch_size=args.fisher_batch_size)
-        elif args.dataset == 'MNIST':
-            fisher_dataset = MNIST(args, batch_size=args.fisher_batch_size)
+        fisher_dataset = create_dataset(args,
+                                        batch_size=args.fisher_batch_size)
         fisher_dataset.train()
     opt = torch.optim.SGD(model.parameters(),
                           lr=args.lr,
