@@ -8,25 +8,10 @@ import numpy as np
 import torch
 from torch import nn
 from torch.nn.utils.parametrize import register_parametrization
+from torch.nn.utils.parametrize import remove_parametrizations
 
-from asdfghjkl import fisher_for_cross_entropy
 from common.py.ml.util.ifvp import IFVPs
-
-
-def to_vector(parameters):
-    return nn.utils.parameters_to_vector(parameters)
-
-
-def list_module(module, prefix='', condition=lambda _: True):
-    modules = OrderedDict()
-    has_children = False
-    for name, x in module.named_children():
-        has_children = True
-        new_prefix = prefix + ('' if prefix == '' else '.') + name
-        modules.update(list_module(x, new_prefix, condition))
-    if not has_children and condition(module):
-        modules[prefix] = module
-    return modules
+from common.py.ml.util.util import to_vector, list_module
 
 
 def percentile(data, percentage):
@@ -119,20 +104,32 @@ class Prunner:
         self.n = 0
         self._param = []
         self._mask = []
+        self.without_bias = without_bias
         print('Pruning Scope:')
         for k, x in self.modules.items():
-            print(f'{k}.weight')
+            print(f'\t{k}.weight')
             self.device = x.weight.device
             self.n += x.weight.numel()
             register_parametrization(x, 'weight', StaticMask(x.weight))
             self._param.append(x.parametrizations.weight.original)
             self._mask.append(x.parametrizations.weight[0].mask)
-            if not without_bias and x.bias is not None:
-                print(f'{k}.bias')
+            if not self.without_bias and x.bias is not None:
+                print(f'\t{k}.bias')
                 self.n += x.bias.numel()
                 register_parametrization(x, 'bias', StaticMask(x.bias))
                 self._param.append(x.parametrizations.bias.original)
                 self._mask.append(x.parametrizations.bias[0].mask)
+
+    def finalize(self):
+        print('Finalizing')
+        for k, x in self.modules.items():
+            print(f'\t{k}.weight')
+            remove_parametrizations(x, 'weight')
+            if not self.without_bias and x.bias is not None:
+                print(f'\t{k}.bias')
+                remove_parametrizations(x, 'bias')
+        self._param = []
+        self._mask = []
 
     @property
     def param(self):
@@ -268,21 +265,33 @@ class Movement():
         self._threshold = torch.tensor(0.0)
         self._scores = []
         self.n = 0
+        self.without_bias = without_bias
         print('Pruning Scope:')
         for k, x in self.modules.items():
-            print(f'{k}')
+            print(f'\t{k}.weight')
             self.n += x.weight.numel()
             register_parametrization(
                 x, 'weight',
                 ThresholdMask(x.weight, init_score, self._threshold))
             self._scores.append(x.parametrizations.weight[0].scores)
-            if not without_bias and x.bias is not None:
+            if not self.without_bias and x.bias is not None:
+                print(f'\t{k}.bias')
                 self.n += x.bias.numel()
                 register_parametrization(
                     x, 'bias',
                     ThresholdMask(x.bias, init_score, self._threshold))
                 self._scores.append(x.parametrizations.bias[0].scores)
         self.update_threshold()
+
+    def finalize(self):
+        print('Finalizing')
+        for k, x in self.modules.items():
+            print(f'\t{k}.weight')
+            remove_parametrizations(x, 'weight')
+            if not self.without_bias and x.bias is not None:
+                print(f'\t{k}.bias')
+                remove_parametrizations(x, 'bias')
+        self._scores = []
 
     @property
     def scores(self):

@@ -8,6 +8,7 @@ py_library(
         "dist.py",
         "ifvp.py",
         "metrics.py",
+        "util.py",
     ],
     deps = [
         requirement("torch"),

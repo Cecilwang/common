@@ -1,5 +1,6 @@
 import PIL
 
+from torch import nn
 from torch.utils.data import DataLoader
 from torch.utils.data import RandomSampler
 from torch.utils.data.distributed import DistributedSampler
@@ -48,6 +49,8 @@ class Dataset(object):
                                      pin_memory=True)
         self.sampler = None
         self.loader = None
+        self._criterion = nn.CrossEntropyLoss(
+            label_smoothing=args.label_smoothing)
 
     def train(self):
         self.sampler = self.train_sampler
@@ -56,3 +59,6 @@ class Dataset(object):
     def eval(self):
         self.sampler = self.val_sampler
         self.loader = self.val_loader
+
+    def criterion(self, *args, **kwargs):
+        return self._criterion(*args, **kwargs)
