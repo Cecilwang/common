@@ -14,15 +14,18 @@ def define_model_arguments(parser):
                         type=str)
 
 
-def create_model(args):
+def create_model(args, model_path=None):
     if args.model == 'resnet50':
         model = torchvision.models.resnet50(num_classes=dataset.num_classes)
     elif args.model == 'MNISTToy':
         model = MNISTToy()
     else:
         raise ValueError(f'Unknown model {args.model}')
-    if hasattr(args, 'model_path') and args.model_path is not None:
-        model.load_state_dict(torch.load(args.model_path))
+    if model_path is not None:
+        model.load_state_dict(torch.load(model_path, map_location=args.device))
+    elif hasattr(args, 'model_path') and args.model_path is not None:
+        model.load_state_dict(
+            torch.load(args.model_path, map_location=args.device))
     model.to(args.device)
     if args.distributed:
         model = DistributedDataParallel(model, device_ids=[args.gpu])

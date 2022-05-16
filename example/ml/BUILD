@@ -81,3 +81,21 @@ py_binary(
         "//common/py/ml",
     ],
 )
+
+py_binary(
+    name = "10",
+    srcs = ["10_CIE.py"],
+    data = [
+        "data/CompressedMNISTToy.map.92.1",
+        "data/CompressedMNISTToy.map.92.2",
+        "data/CompressedMNISTToy.map.92.3",
+        "data/CompressedMNISTToy.map.92.4",
+        "data/CompressedMNISTToy.map.92.5",
+        "data/MNISTToy",
+    ],
+    main = "10_CIE.py",
+    deps = [
+        requirement("torch"),
+        "//common/py/ml",
+    ],
+)
