@@ -112,7 +112,7 @@ if __name__ == '__main__':
         wandb.init(project='survey')
         wandb.run.name = f'{args.dataset}/{args.model}/{args.name}'
 
-    dataset = create_dataset(args, sampler=cie_sampler)
+    dataset = create_dataset(args)
     model = create_model(args)
 
     # ========== OPTIMIZER ==========
