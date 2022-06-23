@@ -10,7 +10,8 @@ from torch.optim.lr_scheduler import MultiStepLR
 
 import wandb
 
-from common.py.ml.datasets import IMAGENET, MNIST, CIFAR10
+from common.py.ml.datasets import define_dataset_arguments, create_dataset
+from common.py.ml.models import define_model_arguments, create_model
 from common.py.ml.util.dist import init_distributed_mode
 from common.py.ml.util.metrics import Metric
 
@@ -18,23 +19,13 @@ from common.py.ml.util.metrics import Metric
 def parse_args():
     import argparse
 
-    parser = argparse.ArgumentParser(description='cifar10')
+    parser = argparse.ArgumentParser(description='survey')
     parser.add_argument('--dir', default='/tmp', type=str)
     parser.add_argument('--name', default='default', type=str)
     parser.add_argument('--device', default='cuda', type=str)
 
-    parser.add_argument('--dataset',
-                        default='CIFAR10',
-                        type=str,
-                        choices=['IMAGENET', 'MNIST', 'CIFAR10'])
-    parser.add_argument('--data-path', default='.data', type=str)
-    parser.add_argument('--batch-size', default=128, type=int)
-    parser.add_argument('--val-batch-size', default=2048, type=int)
-
-    parser.add_argument('--model',
-                        default='resnet18',
-                        type=str,
-                        choices=['resnet50', 'resnet18'])
+    define_dataset_arguments(parser)
+    define_model_arguments(parser)
 
     parser.add_argument('--epochs', type=int, default=200)
     parser.add_argument('--lr', type=float, default=0.1)
@@ -118,40 +109,17 @@ if __name__ == '__main__':
     print(args)
 
     if args.rank == 0:
-        wandb.init(project='cifar10')
+        wandb.init(project='survey')
         wandb.run.name = f'{args.dataset}/{args.model}/{args.name}'
 
-    # ========== DATA ==========
-    if args.dataset == 'IMAGENET':
-        dataset = IMAGENET(args)
-        criterion = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing)
-    elif args.dataset == 'MNIST':
-        dataset = MNIST(args)
-        criterion = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing)
-    elif args.dataset == 'CIFAR10':
-        dataset = CIFAR10(args)
-        #criterion = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing)
-        criterion = nn.CrossEntropyLoss()
-    else:
-        raise ValueError(f'Unknown dataset {args.dataset}')
-
-    # ========== MODEL ==========
-    if args.model == 'resnet50':
-        model = torchvision.models.resnet50(num_classes=dataset.num_classes)
-    elif args.model == 'resnet18':
-        model = torchvision.models.resnet18(num_classes=dataset.num_classes)
-    else:
-        raise ValueError(f'Unknown model {args.model}')
-    model.to(args.device)
+    dataset = create_dataset(args, sampler=cie_sampler)
+    model = create_model(args)
 
     # ========== OPTIMIZER ==========
     opt = torch.optim.SGD(model.parameters(),
                           lr=args.lr,
                           momentum=args.momentum,
                           weight_decay=args.weight_decay)
-
-    if args.distributed:
-        model = DistributedDataParallel(model, device_ids=[args.gpu])
 
     # ========== LEARNING RATE SCHEDULER ==========
     lr_scheduler = MultiStepLR(opt, args.lr_decay_epoch, gamma=0.2)

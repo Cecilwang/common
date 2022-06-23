@@ -8,15 +8,15 @@ def define_model_arguments(parser):
     parser.add_argument('--model',
                         default='MNISTToy',
                         type=str,
-                        choices=['resnet50', 'MNISTToy'])
-    parser.add_argument('--model-path',
-                        default='example/ml/data/MNISTToy',
-                        type=str)
+                        choices=['resnet50', 'resnet18', 'MNISTToy'])
+    parser.add_argument('--model-path', default=None, type=str)
 
 
 def create_model(args, model_path=None):
     if args.model == 'resnet50':
-        model = torchvision.models.resnet50(num_classes=dataset.num_classes)
+        model = torchvision.models.resnet50(num_classes=args.num_classes)
+    if args.model == 'resnet18':
+        model = torchvision.models.resnet18(num_classes=args.num_classes)
     elif args.model == 'MNISTToy':
         model = MNISTToy()
     else:
