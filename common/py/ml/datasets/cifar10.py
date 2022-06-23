@@ -20,14 +20,12 @@ class CIFAR10(Dataset):
                 transforms.ToTensor(),
                 transforms.Normalize(self.mean, self.std)
             ]))
-        self.val_dataset = datasets.CIFAR10(
-            args.data_path,
-            train=False,
-            download=False,
-            transform=transforms.Compose([
-                transforms.RandomCrop(self.img_size, padding=4),
-                transforms.RandomHorizontalFlip(),
-                transforms.ToTensor(),
-                transforms.Normalize(self.mean, self.std)
-            ]))
+        self.val_dataset = datasets.CIFAR10(args.data_path,
+                                            train=False,
+                                            download=False,
+                                            transform=transforms.Compose([
+                                                transforms.ToTensor(),
+                                                transforms.Normalize(
+                                                    self.mean, self.std)
+                                            ]))
         super().__init__(args, **kwargs)
