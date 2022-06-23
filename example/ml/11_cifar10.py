@@ -51,6 +51,7 @@ def train(epoch, dataset, model, opt, args):
     for i, (inputs, targets) in enumerate(dataset.loader):
         inputs = inputs.to(args.device)
         targets = targets.to(args.device)
+        opt.zero_grad()
 
         outputs = model(inputs)
         loss = dataset.criterion(outputs, targets)
