@@ -10,7 +10,7 @@ class CIFAR10(Dataset):
         self.mean = [0.4914, 0.4822, 0.4465]
         self.std = [0.2023, 0.1994, 0.2010]
         self.img_size = 32
-        self.train_dataset = datasets.MNIST(
+        self.train_dataset = datasets.CIFAR10(
             args.data_path,
             train=True,
             download=True,
@@ -20,7 +20,7 @@ class CIFAR10(Dataset):
                 transforms.ToTensor(),
                 transforms.Normalize(self.mean, self.std)
             ]))
-        self.val_dataset = datasets.MNIST(
+        self.val_dataset = datasets.CIFAR10(
             args.data_path,
             train=False,
             download=False,

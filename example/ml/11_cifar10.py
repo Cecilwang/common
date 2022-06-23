@@ -40,7 +40,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def train(epoch, dataset, model, criterion, opt, kfac, args):
+def train(epoch, dataset, model, opt, args):
     dataset.train()
     if args.distributed:
         dataset.sampler.set_epoch(epoch)
@@ -53,7 +53,7 @@ def train(epoch, dataset, model, criterion, opt, kfac, args):
         targets = targets.to(args.device)
 
         outputs = model(inputs)
-        loss = criterion(outputs, targets)
+        loss = dataset.criterion(outputs, targets)
         loss.backward()
 
         opt.step()
@@ -74,7 +74,7 @@ def train(epoch, dataset, model, criterion, opt, kfac, args):
         }, epoch)
 
 
-def test(epoch, dataset, model, criterion, args):
+def test(epoch, dataset, model, args):
     dataset.eval()
     if args.distributed:
         dataset.sampler.set_epoch(epoch)
@@ -88,7 +88,7 @@ def test(epoch, dataset, model, criterion, args):
             targets = targets.to(args.device)
 
             outputs = model(inputs)
-            loss = criterion(outputs, targets)
+            loss = dataset.criterion(outputs, targets)
 
             metric.update(inputs.shape[0], loss, outputs, targets)
 
@@ -126,8 +126,8 @@ if __name__ == '__main__':
 
     # ========== TRAINING ==========
     for e in range(args.epochs):
-        train(e, dataset, model, criterion, opt, kfac, args)
-        test(e, dataset, model, criterion, args)
+        train(e, dataset, model, opt, args)
+        test(e, dataset, model, args)
         lr_scheduler.step()
 
     torch.save(model.state_dict(), f"{args.dir}/{args.model}")
