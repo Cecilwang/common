@@ -115,6 +115,14 @@ if __name__ == '__main__':
 
     dataset = create_dataset(args)
     model = create_model(args)
+    if args.model.startswith('resnet') and args.dataset == 'CIFAR10':
+        model.conv1 = nn.Conv2d(3,
+                                64,
+                                kernel_size=3,
+                                stride=1,
+                                padding=1,
+                                bias=False)
+        model.to(args.device)
 
     # ========== OPTIMIZER ==========
     opt = torch.optim.SGD(model.parameters(),
@@ -123,7 +131,8 @@ if __name__ == '__main__':
                           weight_decay=args.weight_decay)
 
     # ========== LEARNING RATE SCHEDULER ==========
-    lr_scheduler = MultiStepLR(opt, args.lr_decay_epoch, gamma=0.2)
+    #lr_scheduler = MultiStepLR(opt, args.lr_decay_epoch, gamma=0.2)
+    lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=200)
 
     # ========== TRAINING ==========
     for e in range(args.epochs):
