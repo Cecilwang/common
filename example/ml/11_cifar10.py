@@ -7,6 +7,7 @@ from torch import nn
 from torch.nn.parallel import DistributedDataParallel
 import torch.distributed as dist
 from torch.optim.lr_scheduler import MultiStepLR
+from torch.optim.lr_scheduler import CosineAnnealingLR
 
 import wandb
 
@@ -28,7 +29,16 @@ def parse_args():
     define_model_arguments(parser)
 
     parser.add_argument('--epochs', type=int, default=200)
+    parser.add_argument('--opt',
+                        type=str,
+                        default='sgd',
+                        choices=['sgd', 'adam'])
     parser.add_argument('--lr', type=float, default=0.1)
+    parser.add_argument('--lr-sche',
+                        type=str,
+                        default='cos',
+                        choices=['cos', 'step'])
+    parser.add_argument('--lr-decay-rate', type=float, default=0.2)
     parser.add_argument('--lr-decay-epoch',
                         nargs='+',
                         type=int,
@@ -125,14 +135,27 @@ if __name__ == '__main__':
         model.to(args.device)
 
     # ========== OPTIMIZER ==========
-    opt = torch.optim.SGD(model.parameters(),
-                          lr=args.lr,
-                          momentum=args.momentum,
-                          weight_decay=args.weight_decay)
+    if args.opt == 'sgd':
+        opt = torch.optim.SGD(model.parameters(),
+                              lr=args.lr,
+                              momentum=args.momentum,
+                              weight_decay=args.weight_decay)
+    elif args.opt == 'adam':
+        opt = torch.optim.Adam(model.parameters(),
+                               lr=args.lr,
+                               weight_decay=args.weight_decay)
+    else:
+        raise ValueError(f'Unknown optimizer {args.opt}')
 
     # ========== LEARNING RATE SCHEDULER ==========
-    #lr_scheduler = MultiStepLR(opt, args.lr_decay_epoch, gamma=0.2)
-    lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=200)
+    if args.lr_sche == 'step':
+        lr_scheduler = MultiStepLR(opt,
+                                   args.lr_decay_epoch,
+                                   gamma=args.lr_decay_rate)
+    elif args.lr_sche == 'cos':
+        lr_scheduler = CosineAnnealingLR(opt, T_max=args.epochs)
+    else:
+        raise ValueError(f'Unknown learning rate scheduler {args.lr_sche}')
 
     # ========== TRAINING ==========
     for e in range(args.epochs):
