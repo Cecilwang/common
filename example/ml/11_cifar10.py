@@ -16,8 +16,6 @@ from common.py.ml.models import define_model_arguments, create_model
 from common.py.ml.util.dist import init_distributed_mode
 from common.py.ml.util.metrics import Metric
 
-from resnet import ResNet18
-
 
 def parse_args():
     import argparse
@@ -127,16 +125,6 @@ if __name__ == '__main__':
 
     dataset = create_dataset(args)
     model = create_model(args)
-    if args.model.startswith('resnet') and args.dataset == 'CIFAR10':
-        model.conv1 = nn.Conv2d(3,
-                                64,
-                                kernel_size=3,
-                                stride=1,
-                                padding=1,
-                                bias=False)
-        model.to(args.device)
-    model = ResNet18()
-    model.to(args.device)
 
     # ========== OPTIMIZER ==========
     if args.opt == 'sgd':

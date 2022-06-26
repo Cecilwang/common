@@ -3,6 +3,7 @@ import torchvision
 
 from common.py.ml.models.mnist_toy import MNISTToy
 from common.py.ml.models.vit import ViT
+from common.py.ml.models import resnet
 
 
 def define_model_arguments(parser):
@@ -14,10 +15,12 @@ def define_model_arguments(parser):
 
 
 def create_model(args, model_path=None):
-    if args.model == 'resnet50':
-        model = torchvision.models.resnet50(num_classes=args.num_classes)
-    if args.model == 'resnet18':
-        model = torchvision.models.resnet18(num_classes=args.num_classes)
+    if args.model.startswith('resnet'):
+        if args.dataset == 'CIFAR10':
+            model = getattr(resnet, args.model)(num_classes=args.num_classes)
+        else:
+            model = getattr(torchvision.models,
+                            args.model)(num_classes=args.num_classes)
     elif args.model == 'MNISTToy':
         model = MNISTToy()
     else:
