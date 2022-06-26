@@ -16,6 +16,8 @@ from common.py.ml.models import define_model_arguments, create_model
 from common.py.ml.util.dist import init_distributed_mode
 from common.py.ml.util.metrics import Metric
 
+from resnet import ResNet18
+
 
 def parse_args():
     import argparse
@@ -121,7 +123,7 @@ if __name__ == '__main__':
 
     if args.rank == 0:
         wandb.init(project='survey')
-        wandb.run.name = f'{args.dataset}/{args.model}/{args.name}'
+        wandb.run.name = f'{args.dataset}/{args.model}/{args.opt}/{args.lr_sche}/{args.lr}/{args.name}'
 
     dataset = create_dataset(args)
     model = create_model(args)
@@ -133,12 +135,15 @@ if __name__ == '__main__':
                                 padding=1,
                                 bias=False)
         model.to(args.device)
+    model = ResNet18()
+    model.to(args.device)
 
     # ========== OPTIMIZER ==========
     if args.opt == 'sgd':
         opt = torch.optim.SGD(model.parameters(),
                               lr=args.lr,
                               momentum=args.momentum,
+                              nesterov=True,
                               weight_decay=args.weight_decay)
     elif args.opt == 'adam':
         opt = torch.optim.Adam(model.parameters(),
