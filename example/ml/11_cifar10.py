@@ -54,6 +54,7 @@ def parse_args():
     parser.add_argument('--inv-update-freq', type=int, default=100)
     parser.add_argument('--ema-decay', type=float, default=0.05)
     parser.add_argument('--damping', type=float, default=0.001)
+    parser.add_argument('--kl-clip', type=float, default=0.001)
 
     return parser.parse_args()
 
@@ -84,7 +85,13 @@ def train(epoch, dataset, model, opt, kfac, args):
         if kfac is not None and i % args.inv_update_freq == 0:
             kfac.update_inv(args.damping)
 
+        grad = to_vector([p.grad for p in kfac.parameters_for(SHAPE_KRON)])
         kfac.precondition()
+        ng = to_vector([p.grad for p in kfac.parameters_for(SHAPE_KRON)])
+        vg_sum = ((ng * grad).sum() * lr**2).item()
+        nu = min(1.0, (args.kl_clip / abs(vg_sum))**0.5)
+        for p in kfac.parameters_for(SHAPE_KRON):
+            p.grad.data *= nu
         opt.step()
 
         metric.update(inputs.shape[0], loss, outputs, targets)
