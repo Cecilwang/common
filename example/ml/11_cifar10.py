@@ -8,6 +8,8 @@ from torch.nn.parallel import DistributedDataParallel
 import torch.distributed as dist
 from torch.optim.lr_scheduler import MultiStepLR
 from torch.optim.lr_scheduler import CosineAnnealingLR
+from torch.optim.lr_scheduler import LinearLR
+from torch.optim.lr_scheduler import SequentialLR
 
 import wandb
 
@@ -42,6 +44,8 @@ def parse_args():
                         type=str,
                         default='step',
                         choices=['cos', 'step'])
+    parser.add_argument('--warmup-factor', type=float, default=0.125)
+    parser.add_argument('--warmup-epochs', type=float, default=5)
     parser.add_argument('--lr-decay-rate', type=float, default=0.2)
     parser.add_argument('--lr-decay-epoch',
                         nargs='+',
@@ -185,6 +189,12 @@ if __name__ == '__main__':
         raise ValueError(f'Unknown optimizer {args.opt}')
 
     # ========== LEARNING RATE SCHEDULER ==========
+    lr_warmup_sche = None
+    if args.warmup_epochs > 0:
+        lr_warmup_sche = LinearLR(opt,
+                                  args.warmup_factor,
+                                  total_iters=args.warmup_epochs)
+
     if args.lr_sche == 'step':
         lr_scheduler = MultiStepLR(opt,
                                    args.lr_decay_epoch,
@@ -193,6 +203,10 @@ if __name__ == '__main__':
         lr_scheduler = CosineAnnealingLR(opt, T_max=args.epochs)
     else:
         raise ValueError(f'Unknown learning rate scheduler {args.lr_sche}')
+
+    if lr_warmup_sche is not None:
+        lr_scheduler = SequentialLR(opt, [lr_warmup_sche, lr_scheduler],
+                                    [args.warmup_epochs])
 
     # ========== TRAINING ==========
     for e in range(args.epochs):
