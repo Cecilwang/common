@@ -40,12 +40,12 @@ def parse_args():
                         default='sgd',
                         choices=['sgd', 'adam', 'adamw', 'kfac'])
     parser.add_argument('--lr', type=float, default=0.1)
+    parser.add_argument('--warmup-factor', type=float, default=0.125)
+    parser.add_argument('--warmup-epochs', type=float, default=5)
     parser.add_argument('--lr-sche',
                         type=str,
                         default='step',
                         choices=['cos', 'step'])
-    parser.add_argument('--warmup-factor', type=float, default=0.125)
-    parser.add_argument('--warmup-epochs', type=float, default=5)
     parser.add_argument('--lr-decay-rate', type=float, default=0.2)
     parser.add_argument('--lr-decay-epoch',
                         nargs='+',
