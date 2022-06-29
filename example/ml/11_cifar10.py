@@ -78,7 +78,7 @@ def train(epoch, dataset, model, opt, kfac, args):
                                                       calc_emp_loss_grad=True)
         else:
             outputs = model(inputs)
-            loss = criterion(outputs, targets)
+            loss = dataset.criterion(outputs, targets)
             loss.backward()
 
         if kfac is not None and i % args.inv_update_freq == 0:
