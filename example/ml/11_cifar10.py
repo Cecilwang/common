@@ -11,6 +11,10 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 
 import wandb
 
+from asdfghjkl import KFAC
+from asdfghjkl import SHAPE_KRON
+from asdfghjkl.fisher import LOSS_CROSS_ENTROPY
+
 from common.py.ml.datasets import define_dataset_arguments, create_dataset
 from common.py.ml.models import define_model_arguments, create_model
 from common.py.ml.util.dist import init_distributed_mode
@@ -32,7 +36,7 @@ def parse_args():
     parser.add_argument('--opt',
                         type=str,
                         default='sgd',
-                        choices=['sgd', 'adam', 'adamw'])
+                        choices=['sgd', 'adam', 'adamw', 'kfac'])
     parser.add_argument('--lr', type=float, default=0.1)
     parser.add_argument('--lr-sche',
                         type=str,
@@ -46,11 +50,15 @@ def parse_args():
 
     parser.add_argument('--momentum', type=float, default=0.9)
     parser.add_argument('--weight-decay', type=float, default=0.0005)
+    parser.add_argument('--cov-update-freq', type=int, default=10)
+    parser.add_argument('--inv-update-freq', type=int, default=100)
+    parser.add_argument('--ema-decay', type=float, default=0.05)
+    parser.add_argument('--damping', type=float, default=0.001)
 
     return parser.parse_args()
 
 
-def train(epoch, dataset, model, opt, args):
+def train(epoch, dataset, model, opt, kfac, args):
     dataset.train()
     if args.distributed:
         dataset.sampler.set_epoch(epoch)
@@ -61,12 +69,22 @@ def train(epoch, dataset, model, opt, args):
     for i, (inputs, targets) in enumerate(dataset.loader):
         inputs = inputs.to(args.device)
         targets = targets.to(args.device)
-        opt.zero_grad()
+        opt.zero_grad(set_to_none=True)
 
-        outputs = model(inputs)
-        loss = dataset.criterion(outputs, targets)
-        loss.backward()
+        if kfac is not None and i % args.cov_update_freq == 0:
+            loss, outputs = kfac.accumulate_curvature(inputs,
+                                                      targets,
+                                                      ema_decay=args.ema_decay,
+                                                      calc_emp_loss_grad=True)
+        else:
+            outputs = model(inputs)
+            loss = criterion(outputs, targets)
+            loss.backward()
 
+        if kfac is not None and i % args.inv_update_freq == 0:
+            kfac.update_inv(args.damping)
+
+        kfac.precondition()
         opt.step()
 
         metric.update(inputs.shape[0], loss, outputs, targets)
@@ -127,6 +145,7 @@ if __name__ == '__main__':
     model = create_model(args)
 
     # ========== OPTIMIZER ==========
+    kfac = None
     if args.opt == 'sgd':
         opt = torch.optim.SGD(model.parameters(),
                               lr=args.lr,
@@ -139,8 +158,18 @@ if __name__ == '__main__':
                                weight_decay=args.weight_decay)
     elif args.opt == 'adamw':
         opt = torch.optim.AdamW(model.parameters(),
-                               lr=args.lr,
-                               weight_decay=args.weight_decay)
+                                lr=args.lr,
+                                weight_decay=args.weight_decay)
+    elif args.opt == 'kfac':
+        opt = torch.optim.SGD(model.parameters(),
+                              lr=args.lr,
+                              momentum=args.momentum,
+                              nesterov=True,
+                              weight_decay=args.weight_decay)
+        kfac = KFAC(model,
+                    'fisher_emp',
+                    loss_type=LOSS_CROSS_ENTROPY,
+                    ignore_modules=[nn.BatchNorm1d, nn.BatchNorm2d])
     else:
         raise ValueError(f'Unknown optimizer {args.opt}')
 
@@ -156,7 +185,7 @@ if __name__ == '__main__':
 
     # ========== TRAINING ==========
     for e in range(args.epochs):
-        train(e, dataset, model, opt, args)
+        train(e, dataset, model, opt, kfac, args)
         test(e, dataset, model, args)
         lr_scheduler.step()
 
