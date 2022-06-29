@@ -59,6 +59,10 @@ def parse_args():
     return parser.parse_args()
 
 
+def to_vector(x):
+    return nn.utils.parameters_to_vector(x)
+
+
 def train(epoch, dataset, model, opt, kfac, args):
     dataset.train()
     if args.distributed:
