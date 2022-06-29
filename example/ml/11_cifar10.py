@@ -32,7 +32,7 @@ def parse_args():
     parser.add_argument('--opt',
                         type=str,
                         default='sgd',
-                        choices=['sgd', 'adam'])
+                        choices=['sgd', 'adam', 'adamw'])
     parser.add_argument('--lr', type=float, default=0.1)
     parser.add_argument('--lr-sche',
                         type=str,
@@ -135,6 +135,10 @@ if __name__ == '__main__':
                               weight_decay=args.weight_decay)
     elif args.opt == 'adam':
         opt = torch.optim.Adam(model.parameters(),
+                               lr=args.lr,
+                               weight_decay=args.weight_decay)
+    elif args.opt == 'adamw':
+        opt = torch.optim.AdamW(model.parameters(),
                                lr=args.lr,
                                weight_decay=args.weight_decay)
     else:
