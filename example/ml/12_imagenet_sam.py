@@ -30,7 +30,6 @@ def parse_args():
     parser.add_argument('--name', default='default', type=str)
     parser.add_argument('--device', default='cuda', type=str)
 
-    define_dataset_arguments(parser)
     parser.add_argument('--dataset',
                         default='IMAGENET',
                         type=str,
@@ -89,21 +88,21 @@ class IMAGENET(Dataset):
         self.train_dataset = datasets.ImageFolder(
             os.path.join(args.data_path, 'train'),
             transform=transforms.Compose([
-                transforms.Resize(224),
+                transforms.Resize((224, 224)),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=self.mean, std=self.std)
             ]))
         self.val_dataset = datasets.ImageFolder(
             os.path.join(args.data_path, 'val'),
             transform=transforms.Compose([
-                transforms.Resize(224),
+                transforms.Resize((224, 224)),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=self.mean, std=self.std)
             ]))
         super().__init__(args)
 
 
-def train(epoch, dataset, model, opt, kfac, args):
+def train(epoch, dataset, model, opt, args):
     dataset.train()
     if args.distributed:
         dataset.sampler.set_epoch(epoch)
@@ -119,14 +118,17 @@ def train(epoch, dataset, model, opt, kfac, args):
         enable_running_stats(model)  # <- this is the important line
         outputs = model(inputs)
         loss = dataset.criterion(outputs, targets)
-        with model.no_sync():  # <- this is the important line
+        if args.distributed:
+            with model.no_sync():  # <- this is the important line
+                loss.backward()
+        else:
             loss.backward()
         opt.first_step(zero_grad=True)
 
         # second forward-backward step
         disable_running_stats(model)  # <- this is the important line
         dataset.criterion(model(inputs), targets).backward()
-        optimizer.second_step(zero_grad=True)
+        opt.second_step(zero_grad=True)
 
         lr_scheduler.step()
 
@@ -204,9 +206,7 @@ if __name__ == '__main__':
                         dropout=0.1)
     else:
         raise ValueError(f'Unknown model {args.model}')
-    if model_path is not None:
-        model.load_state_dict(torch.load(model_path, map_location=args.device))
-    elif hasattr(args, 'model_path') and args.model_path is not None:
+    if args.model_path is not None:
         model.load_state_dict(
             torch.load(args.model_path, map_location=args.device))
     model.to(args.device)
@@ -221,7 +221,6 @@ if __name__ == '__main__':
     opt = SAM(model.parameters(),
               base_opt,
               lr=args.lr,
-              momentum=0.0,
               weight_decay=args.weight_decay)
 
     # ========== LEARNING RATE SCHEDULER ==========
@@ -238,7 +237,7 @@ if __name__ == '__main__':
 
     # ========== TRAINING ==========
     for e in range(args.epochs):
-        train(e, dataset, model, opt, kfac, args)
+        train(e, dataset, model, opt, args)
         test(e, dataset, model, args)
 
     torch.save(model.state_dict(), f"{args.dir}/{args.model}")
