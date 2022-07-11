@@ -1,3 +1,4 @@
+from datetime import datetime
 import math
 from pathlib import Path
 import os
@@ -8,6 +9,7 @@ from torch.nn.modules.batchnorm import _BatchNorm
 from torch.nn.parallel import DistributedDataParallel
 import torch.distributed as dist
 from torch.optim.lr_scheduler import OneCycleLR
+import torchvision
 from torchvision import datasets
 from torchvision import transforms
 
@@ -26,7 +28,7 @@ def parse_args():
     import argparse
 
     parser = argparse.ArgumentParser(description='imagenet-sam')
-    parser.add_argument('--dir', default='/tmp', type=str)
+    parser.add_argument('--dir', default='.log', type=str)
     parser.add_argument('--name', default='default', type=str)
     parser.add_argument('--device', default='cuda', type=str)
 
@@ -34,8 +36,8 @@ def parse_args():
                         default='IMAGENET',
                         type=str,
                         choices=['IMAGENET', 'CIFAR10'])
-    parser.add_argument('--data-path', default='/tmp', type=str)
-    parser.add_argument('--batch-size', default=4096, type=int)
+    parser.add_argument('--data-path', default='.data', type=str)
+    parser.add_argument('--batch-size', default=256, type=int)
     parser.add_argument('--val-batch-size', default=4096, type=int)
     parser.add_argument('--shuffle', default=True, type=bool)
     parser.add_argument('--label-smoothing', default=0.0, type=float)
@@ -43,20 +45,25 @@ def parse_args():
     parser.add_argument('--model',
                         default='vits16',
                         type=str,
-                        choices=['vits16'])
+                        choices=['vits16', 'resnet50'])
     parser.add_argument('--model-path', default=None, type=str)
+    parser.add_argument('--dropout', default=0.1, type=float)
 
     parser.add_argument('--epochs', type=int, default=300)
     parser.add_argument('--opt',
                         type=str,
                         default='adamw',
-                        choices=['sgd', 'adam', 'adamw'])
+                        choices=['sgd', 'adamw'])
+    parser.add_argument('--sam', dest='sam', action='store_true')
+    parser.add_argument('--no-sam', dest='sam', action='store_false')
+    parser.set_defaults(sam=False)
     parser.add_argument('--lr', type=float, default=3e-3)
     parser.add_argument('--warmup-steps', type=float, default=10000)
     parser.add_argument('--lr-sche', type=str, default='cos', choices=['cos'])
 
-    #parser.add_argument('--momentum', type=float, default=0.9)
+    parser.add_argument('--momentum', type=float, default=0.9)
     parser.add_argument('--weight-decay', type=float, default=0.3)
+    parser.add_argument('--clip', type=float, default=None)
 
     return parser.parse_args()
 
@@ -88,14 +95,16 @@ class IMAGENET(Dataset):
         self.train_dataset = datasets.ImageFolder(
             os.path.join(args.data_path, 'train'),
             transform=transforms.Compose([
-                transforms.Resize((224, 224)),
+                transforms.RandomResizedCrop(self.img_size),
+                transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=self.mean, std=self.std)
             ]))
         self.val_dataset = datasets.ImageFolder(
             os.path.join(args.data_path, 'val'),
             transform=transforms.Compose([
-                transforms.Resize((224, 224)),
+                transforms.Resize(256),
+                transforms.CenterCrop(self.img_size),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=self.mean, std=self.std)
             ]))
@@ -118,17 +127,26 @@ def train(epoch, dataset, model, opt, args):
         enable_running_stats(model)  # <- this is the important line
         outputs = model(inputs)
         loss = dataset.criterion(outputs, targets)
-        if args.distributed:
+        if args.distributed and args.sam:
             with model.no_sync():  # <- this is the important line
                 loss.backward()
         else:
             loss.backward()
-        opt.first_step(zero_grad=True)
 
-        # second forward-backward step
-        disable_running_stats(model)  # <- this is the important line
-        dataset.criterion(model(inputs), targets).backward()
-        opt.second_step(zero_grad=True)
+        if not args.sam:
+            opt.step()
+            opt.zero_grad()
+        else:
+            if args.clip is not None:
+                torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
+            opt.first_step(zero_grad=True)
+
+            # second forward-backward step
+            disable_running_stats(model)  # <- this is the important line
+            dataset.criterion(model(inputs), targets).backward()
+            if args.clip is not None:
+                torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
+            opt.second_step(zero_grad=True)
 
         lr_scheduler.step()
 
@@ -196,14 +214,16 @@ if __name__ == '__main__':
 
     # ========== MODEL ==========
     if args.model == 'vits16':
-        model = v = ViT(image_size=dataset.img_size,
+        model = ViT(image_size=dataset.img_size,
                         patch_size=16,
                         num_classes=dataset.num_classes,
                         dim=384,
                         depth=12,
                         heads=6,
                         mlp_dim=384,
-                        dropout=0.1)
+                        dropout=args.dropout)
+    elif args.model == 'resnet50':
+        model = torchvision.models.resnet50(num_classes=args.num_classes)
     else:
         raise ValueError(f'Unknown model {args.model}')
     if args.model_path is not None:
@@ -214,19 +234,39 @@ if __name__ == '__main__':
         model = DistributedDataParallel(model, device_ids=[args.gpu])
 
     # ========== OPTIMIZER ==========
-    if args.opt == 'adamw':
-        base_opt = torch.optim.AdamW
+    if args.opt == 'sgd':
+        if not args.sam:
+            opt = torch.optim.SGD(model.parameters(),
+                                  lr=args.lr,
+                                  momentum=args.momentum,
+                                  weight_decay=args.weight_decay)
+            base_opt = opt
+        else:
+            opt = SAM(model.parameters(),
+                      torch.optim.SGD,
+                      lr=args.lr,
+                      momentum=args.momentum,
+                      weight_decay=args.weight_decay)
+            base_opt = opt.base_optimizer
+    elif args.opt == 'adamw':
+        if not args.sam:
+            opt = torch.optim.AdamW(model.parameters(),
+                                    lr=args.lr,
+                                    weight_decay=args.weight_decay)
+            base_opt = opt
+        else:
+            opt = SAM(model.parameters(),
+                      torch.optim.AdamW,
+                      lr=args.lr,
+                      weight_decay=args.weight_decay)
+            base_opt = opt.base_optimizer
     else:
         raise ValueError(f'Unknown optimizer {args.opt}')
-    opt = SAM(model.parameters(),
-              base_opt,
-              lr=args.lr,
-              weight_decay=args.weight_decay)
 
     # ========== LEARNING RATE SCHEDULER ==========
     if args.lr_sche == 'cos':
         pct_warm = args.warmup_steps / len(dataset.train_loader) / args.epochs
-        lr_scheduler = OneCycleLR(opt.base_optimizer,
+        lr_scheduler = OneCycleLR(base_opt,
                                   max_lr=args.lr,
                                   anneal_strategy=args.lr_sche,
                                   steps_per_epoch=len(dataset.train_loader),
@@ -240,4 +280,8 @@ if __name__ == '__main__':
         train(e, dataset, model, opt, args)
         test(e, dataset, model, args)
 
-    torch.save(model.state_dict(), f"{args.dir}/{args.model}")
+    if args.rank == 0:
+        now = datetime.now()
+        timestamp = datetime.timestamp(now)
+        print(f'saving to {args.dir}/{timestamp}')
+        torch.save(model.state_dict(), f"{args.dir}/{timestamp}")

@@ -1,0 +1,42 @@
+#!/bin/bash
+#------- qsub option -----------
+#PBS -q SQUID-H
+#PBS --group=jh220009
+#PBS -N sam
+#PBS -j o
+#PBS -b 1
+#PBS -l gpunum_job=8
+#PBS -l elapstim_req=120:00:00
+
+module load BaseGPU/2021
+source /sqfs/home/z6b038/vir/py3/bin/activate
+
+export PYTHONPATH=$PYTHONPATH:/sqfs/home/z6b038/.local/lib/python3.8/site-packages
+export PYTHONPATH=$PYTHONPATH:/sqfs/home/z6b038/asdfghjkl
+export PYTHONPATH=$PYTHONPATH:/sqfs/home/z6b038/common
+export PYTHONPATH=$PYTHONPATH:/sqfs/home/z6b038/sam
+export PYTHONPATH=$PYTHONPATH:/sqfs/home/z6b038/vit-pytorch
+
+export http_proxy="http://ibgw1f-ib0:3128"
+export https_proxy="https://ibgw1f-ib0:3128"
+
+#export WANDB_MODE=offline
+
+cd $PBS_O_WORKDIR
+
+torchrun \
+  --standalone \
+  --nnodes=1 \
+  --nproc_per_node=8 \
+    12_imagenet_sam.py \
+      --data-path /sqfs/work/jh220009/data/ILSVRC2012 \
+      --batch-size 256 \
+      --val-batch-size 2048 \
+      --model resnet50 \
+      --opt sgd \
+      --no-sam \
+      --lr 0.8 \
+      --epochs 90 \
+      --warmup-steps 5000 \
+      --weight-decay 0.0001 \
+      --dropout 0.0
