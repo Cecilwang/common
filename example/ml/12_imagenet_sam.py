@@ -5,6 +5,7 @@ import os
 
 import torch
 from torch import nn
+import torch.nn.functional as F
 from torch.nn.modules.batchnorm import _BatchNorm
 from torch.nn.parallel import DistributedDataParallel
 import torch.distributed as dist
@@ -18,6 +19,8 @@ import wandb
 from vit_pytorch import ViT
 
 from sam import SAM
+
+from ivon import IVON
 
 from common.py.ml.datasets.datasets import Dataset
 from common.py.ml.util.dist import init_distributed_mode
@@ -64,6 +67,14 @@ def parse_args():
     parser.add_argument('--momentum', type=float, default=0.9)
     parser.add_argument('--weight-decay', type=float, default=0.3)
     parser.add_argument('--clip', type=float, default=None)
+
+    parser.add_argument('--mc_samples', default=1, type=int)
+    parser.add_argument('--test_mc_samples', default=16, type=int)
+    parser.add_argument('--momentum_grad', default=0.9, type=float)
+    parser.add_argument('--momentum_hess', type=float)
+    parser.add_argument('--prior_prec', default=2.0, type=float)
+    parser.add_argument('--dampening', default=0.01, type=float)
+    parser.add_argument('--hess_init', type=float)
 
     return parser.parse_args()
 
@@ -123,33 +134,42 @@ def train(epoch, dataset, model, opt, args):
         inputs = inputs.to(args.device)
         targets = targets.to(args.device)
 
-        # first forward-backward step
-        enable_running_stats(model)  # <- this is the important line
-        outputs = model(inputs)
-        loss = dataset.criterion(outputs, targets)
-        if args.distributed and args.sam:
-            with model.no_sync():  # <- this is the important line
-                loss.backward()
-        else:
-            loss.backward()
+        if args.opt == 'ivon':
 
-        if not args.sam:
-            opt.step()
-            opt.zero_grad()
-        else:
+            def closure():
+                opt.zero_grad()
+                outputs = model(inputs)
+                loss = dataset.criterion(outputs, targets)
+                loss.backward()
+                return loss, outputs
+
+            loss, outputs = opt.step(closure)
+        elif args.sam:
+            enable_running_stats(model)
+            outputs = model(inputs)
+            loss = dataset.criterion(outputs, targets)
+            if args.distributed:
+                with model.no_sync():
+                    loss.backward()
+            else:
+                loss.backward()
             if args.clip is not None:
                 torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
             opt.first_step(zero_grad=True)
 
-            # second forward-backward step
-            disable_running_stats(model)  # <- this is the important line
+            disable_running_stats(model)
             dataset.criterion(model(inputs), targets).backward()
             if args.clip is not None:
                 torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
             opt.second_step(zero_grad=True)
+        else:
+            outputs = model(inputs)
+            loss = dataset.criterion(outputs, targets)
+            loss.backward()
+            opt.step()
+            opt.zero_grad()
 
         lr_scheduler.step()
-
         metric.update(inputs.shape[0], loss, outputs, targets)
 
         if i % 100 == 0:
@@ -173,6 +193,7 @@ def test(epoch, dataset, model, args):
     model.eval()
 
     metric = Metric(args.device)
+    mc_metric = Metric(args.device)
 
     with torch.inference_mode():
         for i, (inputs, targets) in enumerate(dataset.loader):
@@ -184,13 +205,28 @@ def test(epoch, dataset, model, args):
 
             metric.update(inputs.shape[0], loss, outputs, targets)
 
+            if args.opt == 'ivon' and args.test_mc_samples > 0:
+                sampled_probs = []
+
+                for i in range(args.test_mc_samples):
+                    with opt.sampled_params():
+                        sampled_logits = model(inputs)
+                        sampled_probs.append(F.softmax(sampled_logits, dim=1))
+
+                sampled_probs = torch.mean(torch.stack(sampled_probs), dim=0)
+                mc_metric.update(inputs.shape[0], 0, sampled_probs, targets)
+
     if args.distributed:
         metric.sync()
+        mc_metric.sync()
     print(f'Epoch {epoch} Test {metric}')
     wandb.log({
         'test/loss': metric.loss,
         'test/accuracy': metric.accuracy
     }, epoch)
+    if args.opt == 'ivon':
+        print(f'Epoch {epoch} MC Test {mc_metric}')
+        wandb.log({'test/mc_accuracy': mc_metric.accuracy}, epoch)
 
 
 if __name__ == '__main__':
@@ -215,13 +251,13 @@ if __name__ == '__main__':
     # ========== MODEL ==========
     if args.model == 'vits16':
         model = ViT(image_size=dataset.img_size,
-                        patch_size=16,
-                        num_classes=dataset.num_classes,
-                        dim=384,
-                        depth=12,
-                        heads=6,
-                        mlp_dim=384,
-                        dropout=args.dropout)
+                    patch_size=16,
+                    num_classes=dataset.num_classes,
+                    dim=384,
+                    depth=12,
+                    heads=6,
+                    mlp_dim=384,
+                    dropout=args.dropout)
     elif args.model == 'resnet50':
         model = torchvision.models.resnet50(num_classes=args.num_classes)
     else:
@@ -260,6 +296,18 @@ if __name__ == '__main__':
                       lr=args.lr,
                       weight_decay=args.weight_decay)
             base_opt = opt.base_optimizer
+    elif args.opt == 'ivon':
+        torch.manual_seed(19950214)
+        opt = IVON(model.parameters(),
+                   lr=args.lr,
+                   data_size=len(dataset.train_dataset),
+                   mc_samples=args.mc_samples,
+                   momentum_grad=args.momentum_grad,
+                   momentum_hess=args.momentum_hess,
+                   prior_precision=args.prior_prec,
+                   dampening=args.dampening,
+                   hess_init=args.hess_init)
+        base_opt = opt
     else:
         raise ValueError(f'Unknown optimizer {args.opt}')
 
