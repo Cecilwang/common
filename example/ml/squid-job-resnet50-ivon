@@ -4,7 +4,7 @@
 #PBS --group=jh220009
 #PBS -N sam
 #PBS -j o
-#PBS -b 2
+#PBS -b 1
 #PBS -l gpunum_job=8
 #PBS -l elapstim_req=120:00:00
 
@@ -20,33 +20,26 @@ export PYTHONPATH=$PYTHONPATH:/sqfs/home/z6b038/vit-pytorch
 export http_proxy="http://ibgw1f-ib0:3128"
 export https_proxy="https://ibgw1f-ib0:3128"
 
-master_addr=$(cat $PBS_NODEFILE | head -n 1)
-export MASTER_ADDR=$master_addr
-export MASTER_PORT=19952
-#env
-echo "MASTER_ADDR="$MASTER_ADDR:$MASTER_PORT
-
 #export WANDB_MODE=offline
 
 cd $PBS_O_WORKDIR
 
 torchrun \
-   --nnodes=2 \
-   --nproc_per_node=8 \
-   --max_restarts=0 \
-   --rdzv_id=$LUSTRE_JOBSTAT \
-   --rdzv_backend=c10d \
-   --rdzv_endpoint=$MASTER_ADDR:$MASTER_PORT \
+  --standalone \
+  --nnodes=1 \
+  --nproc_per_node=8 \
     12_imagenet_sam.py \
       --data-path /sqfs/work/jh220009/data/ILSVRC2012 \
       --batch-size 256 \
-      --model vits16 \
-      --opt adamw \
-      --sam \
-      --rho 0.1 \
-      --lr 3e-3 \
-      --epochs 300 \
-      --warmup-steps 10000 \
-      --weight-decay 0.3 \
-      --dropout 0.1 \
-      --clip 1.0
+      --val-batch-size 2048 \
+      --model resnet50 \
+      --opt ivon \
+      --mc_samples 1 \
+      --test_mc_samples 16 \
+      --lr 1.6e-3 \
+      --epochs 90 \
+      --warmup-steps 5000 \
+      --prior_prec 133.3 \
+      --dampening 1e-4 \
+      --momentum_grad 0.9 \
+      --momentum_hess 0.999

@@ -56,9 +56,10 @@ def parse_args():
     parser.add_argument('--opt',
                         type=str,
                         default='adamw',
-                        choices=['sgd', 'adamw'])
+                        choices=['sgd', 'adamw', 'ivon'])
     parser.add_argument('--sam', dest='sam', action='store_true')
     parser.add_argument('--no-sam', dest='sam', action='store_false')
+    parser.add_argument('--rho', type=float, default=0.05)
     parser.set_defaults(sam=False)
     parser.add_argument('--lr', type=float, default=3e-3)
     parser.add_argument('--warmup-steps', type=float, default=10000)
@@ -294,6 +295,7 @@ if __name__ == '__main__':
             opt = SAM(model.parameters(),
                       torch.optim.AdamW,
                       lr=args.lr,
+                      rho=args.rho,
                       weight_decay=args.weight_decay)
             base_opt = opt.base_optimizer
     elif args.opt == 'ivon':
@@ -319,7 +321,8 @@ if __name__ == '__main__':
                                   anneal_strategy=args.lr_sche,
                                   steps_per_epoch=len(dataset.train_loader),
                                   epochs=args.epochs,
-                                  pct_start=pct_warm)
+                                  pct_start=pct_warm,
+                                  cycle_momentum=False)
     else:
         raise ValueError(f'Unknown learning rate scheduler {args.lr_sche}')
 
