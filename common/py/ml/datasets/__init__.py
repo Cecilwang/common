@@ -19,7 +19,7 @@ def define_dataset_arguments(parser):
 def create_dataset(args, **kwargs):
     if args.dataset == 'IMAGENET':
         dataset = IMAGENET(args, **kwargs)
-    if args.dataset == 'CIFAR10':
+    elif args.dataset == 'CIFAR10':
         dataset = CIFAR10(args, **kwargs)
     elif args.dataset == 'MNIST':
         dataset = MNIST(args, **kwargs)
