@@ -16,13 +16,14 @@ from torchvision import transforms
 
 import wandb
 
-from vit_pytorch import ViT
+#from vit_pytorch import ViT
 
-from sam import SAM
+#from sam import SAM
 
 from ivon import IVON
 
-from common.py.ml.datasets.datasets import Dataset
+from common.py.ml.datasets import define_dataset_arguments, create_dataset
+from common.py.ml.models import define_model_arguments, create_model
 from common.py.ml.util.dist import init_distributed_mode
 from common.py.ml.util.metrics import Metric
 
@@ -35,22 +36,9 @@ def parse_args():
     parser.add_argument('--name', default='default', type=str)
     parser.add_argument('--device', default='cuda', type=str)
 
-    parser.add_argument('--dataset',
-                        default='IMAGENET',
-                        type=str,
-                        choices=['IMAGENET', 'CIFAR10'])
-    parser.add_argument('--data-path', default='.data', type=str)
-    parser.add_argument('--batch-size', default=256, type=int)
-    parser.add_argument('--val-batch-size', default=4096, type=int)
-    parser.add_argument('--shuffle', default=True, type=bool)
-    parser.add_argument('--label-smoothing', default=0.0, type=float)
-    parser.add_argument('--da-factor', default=5, type=int)
-
-    parser.add_argument('--model',
-                        default='vits16',
-                        type=str,
-                        choices=['vits16', 'resnet50'])
-    parser.add_argument('--model-path', default=None, type=str)
+    define_dataset_arguments(parser)
+    define_model_arguments(parser)
+    parser.add_argument('--da-factor', default=1, type=int)
     parser.add_argument('--dropout', default=0.1, type=float)
 
     parser.add_argument('--epochs', type=int, default=300)
@@ -99,31 +87,6 @@ def enable_running_stats(model):
     model.apply(_enable)
 
 
-class IMAGENET(Dataset):
-    def __init__(self, args):
-        self.num_classes = 1000
-        self.mean = [0.5, 0.5, 0.5]
-        self.std = [0.5, 0.5, 0.5]
-        self.img_size = 224
-        self.train_dataset = datasets.ImageFolder(
-            os.path.join(args.data_path, 'train'),
-            transform=transforms.Compose([
-                transforms.RandomResizedCrop(self.img_size),
-                transforms.RandomHorizontalFlip(),
-                transforms.ToTensor(),
-                transforms.Normalize(mean=self.mean, std=self.std)
-            ]))
-        self.val_dataset = datasets.ImageFolder(
-            os.path.join(args.data_path, 'val'),
-            transform=transforms.Compose([
-                transforms.Resize(256),
-                transforms.CenterCrop(self.img_size),
-                transforms.ToTensor(),
-                transforms.Normalize(mean=self.mean, std=self.std)
-            ]))
-        super().__init__(args)
-
-
 def train(epoch, dataset, model, opt, args):
     dataset.train()
     if args.distributed:
@@ -142,7 +105,9 @@ def train(epoch, dataset, model, opt, args):
                 opt.zero_grad()
                 outputs = model(inputs)
                 loss = dataset.criterion(outputs, targets)
-                loss.backward()
+                if args.distributed:
+                    with model.no_sync():
+                        loss.backward()
                 return loss, outputs
 
             loss, outputs = opt.step(closure)
@@ -244,11 +209,7 @@ if __name__ == '__main__':
     print(args)
 
     # ========== DATASET ==========
-    if args.dataset == 'IMAGENET':
-        dataset = IMAGENET(args)
-    else:
-        raise ValueError(f'Unknown dataset {args.dataset}')
-    args.num_classes = dataset.num_classes
+    dataset = create_dataset(args)
 
     # ========== MODEL ==========
     if args.model == 'vits16':
@@ -260,16 +221,14 @@ if __name__ == '__main__':
                     heads=6,
                     mlp_dim=384,
                     dropout=args.dropout)
-    elif args.model == 'resnet50':
-        model = torchvision.models.resnet50(num_classes=args.num_classes)
+        if args.model_path is not None:
+            model.load_state_dict(
+                torch.load(args.model_path, map_location=args.device))
+        model.to(args.device)
+        if args.distributed:
+            model = DistributedDataParallel(model, device_ids=[args.gpu])
     else:
-        raise ValueError(f'Unknown model {args.model}')
-    if args.model_path is not None:
-        model.load_state_dict(
-            torch.load(args.model_path, map_location=args.device))
-    model.to(args.device)
-    if args.distributed:
-        model = DistributedDataParallel(model, device_ids=[args.gpu])
+        model = create_model(args)
 
     # ========== OPTIMIZER ==========
     if args.opt == 'sgd':
@@ -300,16 +259,16 @@ if __name__ == '__main__':
                       weight_decay=args.weight_decay)
             base_opt = opt.base_optimizer
     elif args.opt == 'ivon':
-        #torch.manual_seed(19950214)
         opt = IVON(model.parameters(),
                    lr=args.lr,
-                   data_size=len(dataset.train_dataset)*args.da_factor,
+                   data_size=len(dataset.train_dataset) * args.da_factor,
                    mc_samples=args.mc_samples,
                    momentum_grad=args.momentum_grad,
                    momentum_hess=args.momentum_hess,
                    prior_precision=args.prior_prec,
                    dampening=args.dampening,
-                   hess_init=args.hess_init)
+                   hess_init=args.hess_init,
+                   world_size=args.world_size)
         base_opt = opt
     else:
         raise ValueError(f'Unknown optimizer {args.opt}')

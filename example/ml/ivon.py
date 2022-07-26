@@ -2,31 +2,41 @@ from typing import Callable, Tuple, Optional, Sequence
 from contextlib import contextmanager
 import torch
 from torch import Tensor
+import torch.distributed as dist
 from torch.optim import Optimizer
-
 
 ClosureType = Callable[[], Tuple[Tensor, Tensor]]
 
 
 class VON(Optimizer):
-    def __init__(
-            self, params, lr, data_size: int, mc_samples: int = 1,
-            momentum_grad: float = 0.9, momentum_hess: Optional[float] = None,
-            prior_precision: float = 1.0, dampening: float = 0.0,
-            hess_init: Optional[float] = None):
+    def __init__(self,
+                 params,
+                 lr,
+                 data_size: int,
+                 mc_samples: int = 1,
+                 momentum_grad: float = 0.9,
+                 momentum_hess: Optional[float] = None,
+                 prior_precision: float = 1.0,
+                 dampening: float = 0.0,
+                 hess_init: Optional[float] = None,
+                 world_size: int = 1):
         assert lr > 0.0
         assert data_size >= 1
         assert mc_samples >= 1
         assert prior_precision > 0.0
         assert dampening >= 0.0
+        assert world_size >= 1
         if momentum_hess is None:
             momentum_hess = 1.0 - lr  # default follows theoretical derivation
         self.mc_samples = mc_samples
-        defaults = dict(
-            lr=lr, data_size=data_size, momentum_grad=momentum_grad,
-            momentum_hess=momentum_hess, prior_precision=prior_precision,
-            dampening=dampening)
+        defaults = dict(lr=lr,
+                        data_size=data_size,
+                        momentum_grad=momentum_grad,
+                        momentum_hess=momentum_hess,
+                        prior_precision=prior_precision,
+                        dampening=dampening)
         super().__init__(params, defaults)
+        self.world_size = world_size
         self._init_momentum_buffers(hess_init)
         self._reset_param_and_grad_samples()
 
@@ -126,8 +136,11 @@ class VON(Optimizer):
     def _update_momentum_grad_buffers(self, p, lamb, n, m):
         m_grad = self.state[p]['momentum_grad_buffer']
         p_avg = self.state[p]['param_average']
-        grad_avg = torch.mean(torch.stack(
-            self.state[p]['grad_samples'], dim=0), dim=0)
+        gs = torch.stack(self.state[p]['grad_samples'], dim=0)
+        grad_avg = torch.mean(gs, dim=0)
+        if self.world_size > 1:
+            dist.all_reduce(grad_avg, op=dist.ReduceOp.SUM)
+            grad_avg /= self.world_size
         self.state[p]['momentum_grad_buffer'] = \
             m * m_grad + (1 - m) * ((lamb / n) * p_avg + grad_avg)
 
@@ -135,14 +148,13 @@ class VON(Optimizer):
         m_hess = self.state[p]['momentum_hess_buffer']
         p_avg = self.state[p]['param_average']
         temp = [(ps - p_avg) * g for ps, g in zip(
-            self.state[p]['param_samples'],
-            self.state[p]['grad_samples'])]
+            self.state[p]['param_samples'], self.state[p]['grad_samples'])]
         # # won't work naively ...
         # new_mh = lamb / n + d + n * m_hess * torch.mean(
         #     torch.stack(temp, dim=0), dim=0)
         # ensure new hess has positive elements
-        new_mh = torch.relu(lamb / n + n * m_hess * torch.mean(
-            torch.stack(temp, dim=0), dim=0) + d)
+        new_mh = torch.relu(lamb / n + n * m_hess *
+                            torch.mean(torch.stack(temp, dim=0), dim=0) + d)
         self.state[p]['momentum_hess_buffer'] = h * m_hess + (1 - h) * new_mh
 
     def _update_param_averages(self, p, lr):
@@ -173,7 +185,6 @@ class VON(Optimizer):
 
 
 class IVON(VON):
-
     def _update(self):
         for group in self.param_groups:
             lr = group['lr']
@@ -192,9 +203,11 @@ class IVON(VON):
         m_hess = self.state[p]['momentum_hess_buffer']
         p_avg = self.state[p]['param_average']
         temp = [(ps - p_avg) * g for ps, g in zip(
-            self.state[p]['param_samples'],
-            self.state[p]['grad_samples'])]
-        gs = lamb / n + d - m_hess + n * m_hess * torch.mean(
-            torch.stack(temp, dim=0), dim=0)
+            self.state[p]['param_samples'], self.state[p]['grad_samples'])]
+        temp = torch.mean(torch.stack(temp, dim=0), dim=0)
+        if self.world_size > 1:
+            dist.all_reduce(temp, op=dist.ReduceOp.SUM)
+            temp /= self.world_size
+        gs = lamb / n + d - m_hess + n * m_hess * temp
         self.state[p]['momentum_hess_buffer'] = \
             m_hess + (1 - h) * gs + 0.5 * ((1 - h) ** 2) * (gs ** 2) / m_hess

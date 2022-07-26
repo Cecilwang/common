@@ -7,8 +7,12 @@ from common.py.ml.datasets.datasets import Dataset
 class CIFAR10(Dataset):
     def __init__(self, args, **kwargs):
         self.num_classes = 10
-        self.mean = [0.4914, 0.4822, 0.4465]
-        self.std = [0.2023, 0.1994, 0.2010]
+        if args.estimate_mean_and_std:
+            self.mean = [0.4914, 0.4822, 0.4465]
+            self.std = [0.2023, 0.1994, 0.2010]
+        else:
+            self.mean = [0.5, 0.5, 0.5]
+            self.std = [0.5, 0.5, 0.5]
         self.img_size = 32
         self.train_dataset = datasets.CIFAR10(
             args.data_path,

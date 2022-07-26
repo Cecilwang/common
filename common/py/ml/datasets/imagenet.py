@@ -7,8 +7,12 @@ from common.py.ml.datasets.datasets import Dataset
 class IMAGENET(Dataset):
     def __init__(self, args):
         self.num_classes = 1000
-        self.mean = [0.485, 0.456, 0.406]
-        self.std = [0.229, 0.224, 0.225]
+        if args.estimate_mean_and_std:
+            self.mean = [0.485, 0.456, 0.406]
+            self.std = [0.229, 0.224, 0.225]
+        else:
+            self.mean = [0.5, 0.5, 0.5]
+            self.std = [0.5, 0.5, 0.5]
         self.img_size = 224
         self.train_dataset = datasets.ImageFolder(
             os.path.join(args.data_path, 'train'),
