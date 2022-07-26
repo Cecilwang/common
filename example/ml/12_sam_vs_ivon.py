@@ -16,9 +16,9 @@ from torchvision import transforms
 
 import wandb
 
-#from vit_pytorch import ViT
+from vit_pytorch import ViT
 
-#from sam import SAM
+from sam import SAM
 
 from ivon import IVON
 
