@@ -44,6 +44,7 @@ def parse_args():
     parser.add_argument('--val-batch-size', default=4096, type=int)
     parser.add_argument('--shuffle', default=True, type=bool)
     parser.add_argument('--label-smoothing', default=0.0, type=float)
+    parser.add_argument('--da-factor', default=5, type=int)
 
     parser.add_argument('--model',
                         default='vits16',
@@ -299,10 +300,10 @@ if __name__ == '__main__':
                       weight_decay=args.weight_decay)
             base_opt = opt.base_optimizer
     elif args.opt == 'ivon':
-        torch.manual_seed(19950214)
+        #torch.manual_seed(19950214)
         opt = IVON(model.parameters(),
                    lr=args.lr,
-                   data_size=len(dataset.train_dataset),
+                   data_size=len(dataset.train_dataset)*args.da_factor,
                    mc_samples=args.mc_samples,
                    momentum_grad=args.momentum_grad,
                    momentum_hess=args.momentum_hess,
