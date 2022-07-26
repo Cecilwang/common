@@ -1,4 +1,5 @@
 import torch
+from torch.nn.parallel import DistributedDataParallel
 import torchvision
 
 from common.py.ml.models.mnist_toy import MNISTToy

@@ -108,6 +108,8 @@ def train(epoch, dataset, model, opt, args):
                 if args.distributed:
                     with model.no_sync():
                         loss.backward()
+                else:
+                    loss.backward()
                 return loss, outputs
 
             loss, outputs = opt.step(closure)
