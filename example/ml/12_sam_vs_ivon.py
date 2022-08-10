@@ -64,6 +64,8 @@ def parse_args():
     parser.add_argument('--momentum_hess', type=float)
     parser.add_argument('--prior_prec', default=2.0, type=float)
     parser.add_argument('--dampening', default=0.01, type=float)
+    parser.add_argument('--init_temp', default=0.01, type=float)
+    parser.add_argument('--temp_warmup_epochs', default=10, type=int)
     parser.add_argument('--hess_init', type=float)
 
     return parser.parse_args()
@@ -94,7 +96,9 @@ def train(epoch, dataset, model, opt, args):
     model.train()
 
     lr = opt.param_groups[0]['lr']
+    prior_precision = opt.param_groups[0]['prior_precision']
     metric = Metric(args.device)
+    avg_hess = 0
     for i, (inputs, targets) in enumerate(dataset.loader):
         inputs = inputs.to(args.device)
         targets = targets.to(args.device)
@@ -112,7 +116,7 @@ def train(epoch, dataset, model, opt, args):
                     loss.backward()
                 return loss, outputs
 
-            loss, outputs = opt.step(closure)
+            loss, outputs, avg_hess = opt.step(closure)
         elif args.sam:
             enable_running_stats(model)
             outputs = model(inputs)
@@ -151,7 +155,9 @@ def train(epoch, dataset, model, opt, args):
         {
             'train/loss': metric.loss,
             'train/accuracy': metric.accuracy,
-            'train/lr': lr
+            'train/lr': lr,
+            'train/prior_precision': prior_precision,
+            'train/avg_hess': avg_hess
         }, epoch)
 
 
@@ -290,11 +296,14 @@ if __name__ == '__main__':
 
     # ========== TRAINING ==========
     for e in range(args.epochs):
+        temp = args.init_temp + (1. - args.init_temp) / args.temp_warmup_epochs * min(e, args.temp_warmup_epochs)
+        for group in base_opt.param_groups:
+            group['prior_precsion'] = args.prior_prec * temp
         train(e, dataset, model, opt, args)
         test(e, dataset, model, args)
 
     if args.rank == 0:
         now = datetime.now()
         timestamp = datetime.timestamp(now)
-        print(f'saving to {args.dir}/{timestamp}')
-        torch.save(model.state_dict(), f"{args.dir}/{timestamp}")
+        #print(f'saving to {args.dir}/{timestamp}')
+        #torch.save(model.state_dict(), f"{args.dir}/{timestamp}")

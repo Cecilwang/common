@@ -12,7 +12,7 @@ def define_dataset_arguments(parser):
     parser.add_argument('--batch-size', default=256, type=int)
     parser.add_argument('--val-batch-size', default=2048, type=int)
     parser.add_argument('--shuffle', default=True, type=bool)
-    parser.add_argument('--label-smoothing', default=0.1, type=float)
+    parser.add_argument('--label-smoothing', default=0.0, type=float)
     parser.add_argument('--estimate_mean_and_std', default=True, type=bool)
 
 

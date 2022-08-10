@@ -80,13 +80,13 @@ class VON(Optimizer):
             outputs.append(output.detach())
             self._collect_grad_samples()
 
-        self._update()
+        avg_hess = self._update()
 
         self._restore_param_averages()
         self._reset_param_and_grad_samples()
         avg_loss = torch.mean(torch.stack(losses, dim=0), dim=0)
         avg_output = torch.mean(torch.stack(outputs, dim=0), dim=0)
-        return avg_loss, avg_output
+        return avg_loss, avg_output, avg_hess
 
     def _stash_param_averages(self):
         for group in self.param_groups:
@@ -193,11 +193,17 @@ class IVON(VON):
             d = group['dampening']
             m = group['momentum_grad']
             h = group['momentum_hess']
+            sum_hess = 0
+            n_hess = 0
             for p in group['params']:
                 if p.requires_grad:
                     self._update_momentum_grad_buffers(p, lamb, n, m)
                     self._update_param_averages(p, lr)
-                    self._update_momentum_hess_buffers(p, lamb, n, d, h)
+                    _s, _n = self._update_momentum_hess_buffers(p, lamb, n, d, h)
+                    sum_hess += _s
+                    n_hess += _n
+            avg_hess = sum_hess / n_hess
+        return avg_hess
 
     def _update_momentum_hess_buffers(self, p, lamb, n, d, h):
         m_hess = self.state[p]['momentum_hess_buffer']
@@ -211,3 +217,4 @@ class IVON(VON):
         gs = lamb / n + d - m_hess + n * m_hess * temp
         self.state[p]['momentum_hess_buffer'] = \
             m_hess + (1 - h) * gs + 0.5 * ((1 - h) ** 2) * (gs ** 2) / m_hess
+        return self.state[p]['momentum_hess_buffer'].sum(), self.state[p]['momentum_hess_buffer'].numel()
