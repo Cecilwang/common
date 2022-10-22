@@ -63,7 +63,9 @@ def parse_args():
     parser.add_argument('--momentum_grad', default=0.9, type=float)
     parser.add_argument('--momentum_hess', type=float)
     parser.add_argument('--prior_prec', default=2.0, type=float)
-    parser.add_argument('--dampening', default=0.01, type=float)
+    parser.add_argument('--init_dp', default=10, type=float)
+    parser.add_argument('--dp', default=0.001, type=float)
+    parser.add_argument('--dp_warmup_epochs', default=20, type=int)
     parser.add_argument('--init_temp', default=0.01, type=float)
     parser.add_argument('--temp_warmup_epochs', default=10, type=int)
     parser.add_argument('--hess_init', type=float)
@@ -96,9 +98,8 @@ def train(epoch, dataset, model, opt, args):
     model.train()
 
     lr = opt.param_groups[0]['lr']
-    prior_precision = opt.param_groups[0]['prior_precision']
+    dp = opt.param_groups[0]['dampening']
     metric = Metric(args.device)
-    avg_hess = 0
     for i, (inputs, targets) in enumerate(dataset.loader):
         inputs = inputs.to(args.device)
         targets = targets.to(args.device)
@@ -116,7 +117,7 @@ def train(epoch, dataset, model, opt, args):
                     loss.backward()
                 return loss, outputs
 
-            loss, outputs, avg_hess = opt.step(closure)
+            loss, outputs = opt.step(closure)
         elif args.sam:
             enable_running_stats(model)
             outputs = model(inputs)
@@ -151,14 +152,24 @@ def train(epoch, dataset, model, opt, args):
     if args.distributed:
         metric.sync()
     print(f'Epoch {epoch} Train {metric} LR: {lr}')
-    wandb.log(
-        {
-            'train/loss': metric.loss,
-            'train/accuracy': metric.accuracy,
-            'train/lr': lr,
-            'train/prior_precision': prior_precision,
-            'train/avg_hess': avg_hess
-        }, epoch)
+    metric = {
+        'train/loss': metric.loss,
+        'train/accuracy': metric.accuracy,
+        'train/lr': lr
+    }
+    if args.opt == 'ivon':
+        v = 0.
+        n = 0.
+        group = opt.param_groups[0]
+        for p in group['params']:
+            if p.requires_grad:
+                v += opt.state[p]['momentum_hess_buffer'].sum()
+                n += opt.state[p]['momentum_hess_buffer'].numel()
+        metric['train/avg_hess'] = v / n
+        metric['train/dampening'] = dp
+        metric['train/p_avg_norm'] = opt.p_avg_norm
+        metric['train/p_noise_norm'] = opt.p_noise_norm
+    wandb.log(metric, epoch)
 
 
 def test(epoch, dataset, model, args):
@@ -202,6 +213,11 @@ def test(epoch, dataset, model, args):
     if args.opt == 'ivon':
         print(f'Epoch {epoch} MC Test {mc_metric}')
         wandb.log({'test/mc_accuracy': mc_metric.accuracy}, epoch)
+
+
+def cos_sche(minv, maxv, i, n, s):
+    return minv + (maxv - minv) / 2 * (1 + math.cos(math.pi * (i - s) /
+                                                    (n - s)))
 
 
 if __name__ == '__main__':
@@ -274,7 +290,7 @@ if __name__ == '__main__':
                    momentum_grad=args.momentum_grad,
                    momentum_hess=args.momentum_hess,
                    prior_precision=args.prior_prec,
-                   dampening=args.dampening,
+                   dampening=args.init_dp,
                    hess_init=args.hess_init,
                    world_size=args.world_size)
         base_opt = opt
@@ -296,9 +312,11 @@ if __name__ == '__main__':
 
     # ========== TRAINING ==========
     for e in range(args.epochs):
-        temp = args.init_temp + (1. - args.init_temp) / args.temp_warmup_epochs * min(e, args.temp_warmup_epochs)
-        for group in base_opt.param_groups:
-            group['prior_precsion'] = args.prior_prec * temp
+        if e >= args.dp_warmup_epochs:
+            for group in base_opt.param_groups:
+                group['dampening'] = cos_sche(args.dp, args.init_dp, e,
+                                              args.epochs,
+                                              args.dp_warmup_epochs)
         train(e, dataset, model, opt, args)
         test(e, dataset, model, args)
 
