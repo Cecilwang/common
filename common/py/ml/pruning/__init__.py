@@ -23,9 +23,18 @@ def define_pruning_arguments(parser):
 
     parser_obs = subparsers.add_parser('obs', help='optimal brain surgeon')
     parser_obs.set_defaults(pruner='obs')
-    parser_obs.add_argument('--fisher_batch_size', type=int, default=32)
-    parser_obs.add_argument('--n_batch', type=int, default=64)
-    parser_obs.add_argument('--n_recompute', type=int, default=16)
+    parser_obs.add_argument('--fisher_batch_size',
+                            type=int,
+                            default=32,
+                            help='batch size of fisher dataset')
+    parser_obs.add_argument('--n_batch',
+                            type=int,
+                            default=64,
+                            help='how many batches are used to compute fisher')
+    parser_obs.add_argument('--n_recompute',
+                            type=int,
+                            default=16,
+                            help='how many times to recompute fisher')
     parser_obs.add_argument('--damping', type=float, default=1e-4)
     parser_obs.add_argument('--block_size', type=int, default=128)
     parser_obs.add_argument('--block_batch', type=int, default=10000)
