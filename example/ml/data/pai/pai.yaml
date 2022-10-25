@@ -24,10 +24,10 @@ command:
     - ${env}
     - python
     -   13_pai.py
-    -     --dir=$HOME/log/pai
+    -     --dir=.pai/log
     -     --device=cuda
     -     --dataset=CIFAR10
-    -     --data_path=$HOME/data
+    -     --data_path=.pai/data
     -     --model=cifar_resnet_20
     -     ${args}
     -     magnitude

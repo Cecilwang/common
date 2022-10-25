@@ -19,4 +19,4 @@ export https_proxy="https://ibgw1f-ib0:3128"
 
 cd $PBS_O_WORKDIR
 
-wandb agent --count 8 2nd-order-opt-survey/pai/tnxk27vt
+wandb agent --count 8 2nd-order-opt-survey/pai/94igcmfr
