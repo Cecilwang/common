@@ -20,6 +20,7 @@ def percentile(data, percentage):
 
 
 class Mask(nn.Module):
+
     def __init__(self, weight):
         super().__init__()
         self.n = weight.numel()
@@ -32,12 +33,14 @@ class Mask(nn.Module):
 
 
 class StaticMask(Mask):
+
     def __init__(self, weight):
         super().__init__(weight)
         self.mask = nn.Parameter(torch.ones_like(weight), requires_grad=False)
 
 
 class ScoreMask(Mask):
+
     def __init__(self, weight, init_score):
         super().__init__(weight)
         self.scores = nn.Parameter(torch.empty_like(weight))
@@ -53,7 +56,9 @@ class ScoreMask(Mask):
 
 
 class TopKMask(ScoreMask):
+
     class Op(torch.autograd.Function):
+
         @staticmethod
         def forward(ctx, scores, sparsity):
             zeros = torch.zeros_like(scores).to(scores.device)
@@ -75,7 +80,9 @@ class TopKMask(ScoreMask):
 
 
 class ThresholdMask(ScoreMask):
+
     class Op(torch.autograd.Function):
+
         @staticmethod
         def forward(ctx, scores, threshold):
             zeros = torch.zeros_like(scores).to(scores.device)
@@ -96,12 +103,12 @@ class ThresholdMask(ScoreMask):
 
 
 class Prunner:
+
     def __init__(self, model, ignore, without_bias=False):
         self.model = model
-        self.modules = list_module(
-            model,
-            condition=lambda x:
-            (not isinstance(x, ignore)) and hasattr(x, 'weight'))
+        condition = lambda x: (not isinstance(x, ignore)) and hasattr(
+            x, 'weight') and (x.weight is not None)
+        self.modules = list_module(model, condition=condition)
         self.without_bias = without_bias
         self.n = 0
         self._param = []
@@ -130,6 +137,7 @@ class Prunner:
                 remove_parametrizations(x, 'bias')
 
     def dump(self):
+        self.apply_mask()
         state = {}
         for k, v in self.model.state_dict().items():
             if 'parametrizations' in k:
@@ -144,7 +152,7 @@ class Prunner:
 
     @property
     def param(self):
-        return to_vector(self._param)
+        return to_vector(self._param) * self.mask
 
     @param.setter
     def param(self, param):
@@ -168,7 +176,7 @@ class Prunner:
 
     @property
     def grad(self):
-        return to_vector([x.grad for x in self._param])
+        return to_vector([x.grad for x in self._param]) * self.mask
 
     @property
     def n_zero(self):
@@ -178,9 +186,9 @@ class Prunner:
     def sparsity(self):
         return self.n_zero / self.n
 
-    #def apply_mask(self):
-    #    for x, m in zip(self._param, self._mask):
-    #        x.data *= m.data
+    def apply_mask(self):
+        for x, m in zip(self._param, self._mask):
+            x.data *= m.data
 
     def prune(self, sparsity):
         with torch.no_grad():
@@ -212,15 +220,16 @@ class Prunner:
 
 
 class Magnitude(Prunner):
+
     def __init__(self, model, ignore=tuple()):
         super().__init__(model, ignore)
 
     def score(self):
-        return torch.abs(self.param).masked_fill(self.mask == 0.0,
-                                                 float('inf'))
+        return torch.abs(self.param).masked_fill(self.mask == 0.0, float('inf'))
 
 
 class OptimalBrainSurgeon(Prunner):
+
     def __init__(self, model, ignore=tuple(), block_size=-1, block_batch=-1):
         super().__init__(model, ignore)
         self.model = model
@@ -233,6 +242,7 @@ class OptimalBrainSurgeon(Prunner):
 
     def calc_fisher(self, loader, n_batch, damping=1e-3):
         grads = []
+        # TODO don't update BN
         for inputs, targets in islice(loader, n_batch):
             inputs = inputs.to(self.device)
             targets = targets.to(self.device)
@@ -263,6 +273,7 @@ class OptimalBrainSurgeon(Prunner):
 
 
 class Movement():
+
     def __init__(self,
                  model,
                  ignore=tuple(),
@@ -282,15 +293,15 @@ class Movement():
             print(f'\t{k}.weight')
             self.n += x.weight.numel()
             register_parametrization(
-                x, 'weight',
-                ThresholdMask(x.weight, init_score, self._threshold))
+                x, 'weight', ThresholdMask(x.weight, init_score,
+                                           self._threshold))
             self._scores.append(x.parametrizations.weight[0].scores)
             if not self.without_bias and x.bias is not None:
                 print(f'\t{k}.bias')
                 self.n += x.bias.numel()
                 register_parametrization(
-                    x, 'bias',
-                    ThresholdMask(x.bias, init_score, self._threshold))
+                    x, 'bias', ThresholdMask(x.bias, init_score,
+                                             self._threshold))
                 self._scores.append(x.parametrizations.bias[0].scores)
         self.update_threshold()
 
