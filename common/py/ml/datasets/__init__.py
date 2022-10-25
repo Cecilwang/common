@@ -8,11 +8,11 @@ def define_dataset_arguments(parser):
                         default='MNIST',
                         type=str,
                         choices=['IMAGENET', 'CIFAR10', 'MNIST'])
-    parser.add_argument('--data-path', default='/tmp', type=str)
-    parser.add_argument('--batch-size', default=256, type=int)
-    parser.add_argument('--val-batch-size', default=2048, type=int)
+    parser.add_argument('--data_path', default='/tmp', type=str)
+    parser.add_argument('--batch_size', default=256, type=int)
+    parser.add_argument('--val_batch_size', default=2048, type=int)
     parser.add_argument('--shuffle', default=True, type=bool)
-    parser.add_argument('--label-smoothing', default=0.0, type=float)
+    parser.add_argument('--label_smoothing', default=0.0, type=float)
     parser.add_argument('--estimate_mean_and_std', default=True, type=bool)
 
 

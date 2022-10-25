@@ -1,0 +1,29 @@
+name: pai
+project: pai
+program: 13_pai.py
+method: grid
+parameters:
+  lr:
+    values: [0.01, 0.03, 0.05, 0.08, 0.24, 0.1, 0.8]
+  batch_size:
+    values: [128, 1024]
+  rewind:
+    values: [
+      'data/pai/kaiming_normal/0',
+      'data/pai/kaiming_normal/1',
+      'data/pai/kaiming_normal/2',
+      'data/pai/kaiming_normal/3',
+      'data/pai/orthogonal/0',
+      'data/pai/orthogonal/1',
+      'data/pai/orthogonal/2',
+      'data/pai/orthogonal/3',
+    ]
+command:
+    - ${env}
+    - python
+    -   13_pai.py
+    -     --device=cuda
+    -     --dataset=CIFAR10
+    -     --model=cifar_resnet_20
+    -     ${args}
+    -     magnitude

@@ -5,10 +5,7 @@ from common.py.ml.pruning.pruner import Movement
 
 def define_pruning_arguments(parser):
     parser.add_argument('--sparsity', type=float, default=0.9)
-    parser.add_argument('--pruning_epochs',
-                        nargs='+',
-                        type=int,
-                        default=[2, 5])
+    parser.add_argument('--pruning_epochs', nargs='+', type=int, default=[2, 5])
 
     subparsers = parser.add_subparsers()
     parser_magnitude = subparsers.add_parser('magnitude', help='magnitude')
@@ -16,7 +13,7 @@ def define_pruning_arguments(parser):
 
     parser_movement = subparsers.add_parser('movement', help='movement')
     parser_movement.set_defaults(pruner='movement')
-    parser_movement.add_argument('--init-score',
+    parser_movement.add_argument('--init_score',
                                  type=str,
                                  default='abs_magnitude',
                                  choices=['abs_magnitude', 'kaiming'])
