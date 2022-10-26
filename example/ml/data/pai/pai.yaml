@@ -24,10 +24,10 @@ command:
     - ${env}
     - python
     -   13_pai.py
-    -     --dir=.pai/log
+    -     --dir=/sqfs/work/jh220009/z6b038/pai
     -     --device=cuda
     -     --dataset=CIFAR10
-    -     --data_path=.pai/data
+    -     --data_path=/sqfs/work/jh220009/z6b038/data
     -     --model=cifar_resnet_20
     -     ${args}
-    -     magnitude
+    -     obs
