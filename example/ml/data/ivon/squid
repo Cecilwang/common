@@ -13,10 +13,13 @@ source /sqfs/home/z6b038/vir/py3/bin/activate
 
 export PYTHONPATH=$PYTHONPATH:/sqfs/home/z6b038/.local/lib/python3.8/site-packages
 export PYTHONPATH=$PYTHONPATH:/sqfs/home/z6b038/common
+export PYTHONPATH=$PYTHONPATH:/sqfs/home/z6b038/asdfghjkl
+export PYTHONPATH=$PYTHONPATH:/sqfs/home/z6b038/sam
+export PYTHONPATH=$PYTHONPATH:/sqfs/home/z6b038/vit-pytorch
 
 export http_proxy="http://ibgw1f-ib0:3128"
 export https_proxy="https://ibgw1f-ib0:3128"
 
 cd $PBS_O_WORKDIR
 
-wandb agent --count 30 2nd-order-opt-survey/ivon/uioxj0ws
+wandb agent --count 30 2nd-order-opt-survey/ivon/lxkyidns
