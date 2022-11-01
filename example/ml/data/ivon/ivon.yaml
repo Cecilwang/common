@@ -7,14 +7,25 @@ metric:
 method: bayes
 parameters:
   lr:
-    values: []
+    distribution: normal
+    mu: 5
+    sigma: 1
   dp:
-    values: []
-  warmup_steps:
+    distribution: log_normal
+    mu: 1
+    sigma: 0.5
   prior_prec:
+    distribution: int_uniform
+    min: 50
+    max: 350
+  warmup_steps:
+    values: [0, 5000, 10000]
+  lr_sche:
+    values: ['cos']
+  cooldown_epochs:
+    values: [0, 10]
   da-factor:
     values: [1, 3, 5, 10]
-
 command:
     - ${env}
     - python
@@ -30,6 +41,5 @@ command:
     -     --test_mc_samples 8
     -     --momentum_grad 0.8
     -     --momentum_hess 0.9
-    -     --epochs=120
+    -     --epochs=160
     -     ${args}
-
