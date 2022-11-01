@@ -37,9 +37,9 @@ command:
     -     --model=cifar_resnet_20
     -     --opt=ivon
     -     --batch_size=2048
-    -     --mc_samples 8
-    -     --test_mc_samples 8
-    -     --momentum_grad 0.8
-    -     --momentum_hess 0.9
+    -     --mc_samples=8
+    -     --test_mc_samples=8
+    -     --momentum_grad=0.8
+    -     --momentum_hess=0.9
     -     --epochs=160
     -     ${args}

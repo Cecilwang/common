@@ -93,14 +93,14 @@ def train(level, epoch, dataset, model, opt, lr_scheduler, args):
         metric.sync()
     lr = opt.param_groups[0]['lr']
     print(f'{level} {epoch} Train A {metric.accuracy} L {metric.loss} LR {lr}')
-    if level != -1:
-        wandb.log(
-            {
-                'train/accuracy': metric.accuracy,
-                'train/loss': metric.loss,
-                'LR': lr
-            },
-            step=epoch)
+    #if level != -1:
+    #    wandb.log(
+    #        {
+    #            'train/accuracy': metric.accuracy,
+    #            'train/loss': metric.loss,
+    #            'LR': lr
+    #        },
+    #        step=epoch)
 
 
 def test(level, epoch, dataset, model, args):
@@ -122,12 +122,12 @@ def test(level, epoch, dataset, model, args):
     if args.distributed:
         metric.sync()
     print(f'{level} {epoch} Test  Acc: {metric.accuracy}')
-    if level != -1:
-        wandb.log({
-            'test/accuracy': metric.accuracy,
-            'test/loss': metric.loss
-        },
-                  step=epoch)
+    #if level != -1:
+    #    wandb.log({
+    #        'test/accuracy': metric.accuracy,
+    #        'test/loss': metric.loss
+    #    },
+    #              step=epoch)
     return metric.accuracy
 
 
