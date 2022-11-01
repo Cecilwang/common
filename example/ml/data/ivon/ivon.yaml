@@ -30,10 +30,10 @@ command:
     - ${env}
     - python
     -   12_sam_vs_ivon.py
-    -     --dir=.ivon/log
+    -     --dir=/sqfs/work/jh220009/z6b038/ivon
     -     --device=cuda
     -     --dataset=CIFAR10
-    -     --data_path=.ivon/data
+    -     --data_path=/sqfs/work/jh220009/z6b038/data
     -     --model=cifar_resnet_20
     -     --opt=ivon
     -     --batch_size=2048
