@@ -228,6 +228,26 @@ class Magnitude(Prunner):
         return torch.abs(self.param).masked_fill(self.mask == 0.0, float('inf'))
 
 
+def disable_running_stats(model):
+
+    def _disable(module):
+        if isinstance(module, _BatchNorm):
+            module.backup_momentum = module.momentum
+            module.momentum = 0
+
+    model.apply(_disable)
+
+
+def enable_running_stats(model):
+
+    def _enable(module):
+        if isinstance(module, _BatchNorm) and hasattr(module,
+                                                      "backup_momentum"):
+            module.momentum = module.backup_momentum
+
+    model.apply(_enable)
+
+
 class OptimalBrainSurgeon(Prunner):
 
     def __init__(self, model, ignore=tuple(), block_size=-1, block_batch=-1):
@@ -243,12 +263,14 @@ class OptimalBrainSurgeon(Prunner):
     def calc_fisher(self, loader, n_batch, damping=1e-3):
         grads = []
         # TODO don't update BN
+        disable_running_stats(self.model)
         for inputs, targets in islice(loader, n_batch):
             inputs = inputs.to(self.device)
             targets = targets.to(self.device)
             nn.CrossEntropyLoss()(self.model(inputs), targets).backward()
             g = self.grad
             grads.append(g)
+        enable_running_stats(self.model)
         grads = torch.vstack(grads)
         self.ifvp = IFVPs(grads, self.block_size, self.block_batch, damping)
         self.ifisher_diag = self.ifvp.diag()

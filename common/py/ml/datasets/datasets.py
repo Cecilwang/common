@@ -9,7 +9,9 @@ from torchvision import transforms
 
 
 def calc_mean_and_stddev(loader):
+
     class Stats(PIL.ImageStat.Stat):
+
         def __add__(self, other):
             return Stats(list(map(operator.add, self.h, other.h)))
 
@@ -25,6 +27,7 @@ def calc_mean_and_stddev(loader):
 
 
 class Dataset(object):
+
     def __init__(self, args, batch_size=None, sampler=None):
         self.batch_size = args.batch_size if batch_size is None else batch_size
         self.val_batch_size = args.val_batch_size
@@ -57,6 +60,7 @@ class Dataset(object):
         self.loader = None
         self._criterion = nn.CrossEntropyLoss(
             label_smoothing=args.label_smoothing)
+        self.iters_per_epoch = len(self.train_loader)
 
     def train(self):
         self.sampler = self.train_sampler

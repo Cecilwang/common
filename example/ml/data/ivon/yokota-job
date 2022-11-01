@@ -1,0 +1,32 @@
+#!/bin/bash
+
+#SBATCH -J ivon
+#YBATCH -r any_1
+#SBATCH -N 1
+#$ -l h_rt=72:00:00
+
+source /etc/profile.d/modules.sh
+module load cuda/11.4
+module load cudnn/cuda-11.4
+
+source $HOME/vir/py3/bin/activate
+export PYTHONPATH=$PYTHONPATH:$HOME/asdfghjkl:$PYTHONPATH:$HOME/common:$HOME/sam:$HOME/vit-pytorch
+
+python 12_sam_vs_ivon.py  \
+  --opt ivon  \
+  --data_path .data \
+  --dataset CIFAR10 \
+  --model=cifar_resnet_20 \
+  --mc_samples 8 \
+  --test_mc_samples 8 \
+  --lr 5 \
+  --prior_prec 250.0 \
+  --momentum_grad 0.8 \
+  --momentum_hess 0.9 \
+  --epochs=120 \
+  --batch_size=2048 \
+  --warmup_steps=0 \
+  --cooldown_epochs=10 \
+  --lr_sche=step \
+  --lr-decay-epoch 60 80 100 \
+  --dp 1

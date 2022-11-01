@@ -1,0 +1,35 @@
+name: ivon
+project: ivon
+program: 12_sam_vs_ivon.py
+metric:
+  name: test/mc_loss
+  goal: minimize
+method: bayes
+parameters:
+  lr:
+    values: []
+  dp:
+    values: []
+  warmup_steps:
+  prior_prec:
+  da-factor:
+    values: [1, 3, 5, 10]
+
+command:
+    - ${env}
+    - python
+    -   12_sam_vs_ivon.py
+    -     --dir=.ivon/log
+    -     --device=cuda
+    -     --dataset=CIFAR10
+    -     --data_path=.ivon/data
+    -     --model=cifar_resnet_20
+    -     --opt=ivon
+    -     --batch_size=2048
+    -     --mc_samples 8
+    -     --test_mc_samples 8
+    -     --momentum_grad 0.8
+    -     --momentum_hess 0.9
+    -     --epochs=120
+    -     ${args}
+

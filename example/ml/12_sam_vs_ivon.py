@@ -9,6 +9,7 @@ import torch.nn.functional as F
 from torch.nn.modules.batchnorm import _BatchNorm
 from torch.nn.parallel import DistributedDataParallel
 import torch.distributed as dist
+from torch.optim.lr_scheduler import MultiStepLR
 from torch.optim.lr_scheduler import OneCycleLR
 import torchvision
 from torchvision import datasets
@@ -51,11 +52,19 @@ def parse_args():
     parser.add_argument('--rho', type=float, default=0.05)
     parser.set_defaults(sam=False)
     parser.add_argument('--lr', type=float, default=3e-3)
-    parser.add_argument('--warmup-steps', type=float, default=10000)
-    parser.add_argument('--lr-sche', type=str, default='cos', choices=['cos'])
+    parser.add_argument('--warmup_steps', type=float, default=10000)
+    parser.add_argument('--cooldown_epochs', type=int, default=0)
+    parser.add_argument('--lr_sche',
+                        type=str,
+                        default='cos',
+                        choices=['cos', 'step'])
+    parser.add_argument('--lr-decay-epoch',
+                        nargs='+',
+                        type=int,
+                        default=[60, 75])
 
     parser.add_argument('--momentum', type=float, default=0.9)
-    parser.add_argument('--weight-decay', type=float, default=0.3)
+    parser.add_argument('--weight_decay', type=float, default=0.3)
     parser.add_argument('--clip', type=float, default=None)
 
     parser.add_argument('--mc_samples', default=1, type=int)
@@ -66,14 +75,51 @@ def parse_args():
     parser.add_argument('--init_dp', default=10, type=float)
     parser.add_argument('--dp', default=0.001, type=float)
     parser.add_argument('--dp_warmup_epochs', default=20, type=int)
-    parser.add_argument('--init_temp', default=0.01, type=float)
-    parser.add_argument('--temp_warmup_epochs', default=10, type=int)
+    #parser.add_argument('--init_temp', default=0.01, type=float)
+    #parser.add_argument('--temp_warmup_epochs', default=10, type=int)
     parser.add_argument('--hess_init', type=float)
 
     return parser.parse_args()
 
 
+def cos_sche(minv, maxv, i, n, s):
+    return minv + (maxv - minv) / 2 * (1 + math.cos(math.pi * (i - s) /
+                                                    (n - s)))
+
+
+class CosSche(object):
+
+    def __init__(self, minv, maxv, n, warmup):
+        self.minv = minv
+        self.maxv = maxv
+        self.n = n
+        self.warmup = warmup
+        self.i = -1
+
+    def step(self):
+        self.i += 1
+        if self.i >= self.n:
+            return self.minv
+        return cos_sche(self.minv, self.maxv, self.i, self.n, self.warmup)
+
+
+class StepSche(object):
+
+    def __init__(self, initv, steps, ratio=0.1):
+        self.initv = initv
+        self.steps = steps
+        self.ratio = ratio
+        self.i = -1
+
+    def step(self):
+        self.i += 1
+        if self.i in self.steps:
+            self.initv *= self.ratio
+        return self.initv
+
+
 def disable_running_stats(model):
+
     def _disable(module):
         if isinstance(module, _BatchNorm):
             module.backup_momentum = module.momentum
@@ -83,6 +129,7 @@ def disable_running_stats(model):
 
 
 def enable_running_stats(model):
+
     def _enable(module):
         if isinstance(module, _BatchNorm) and hasattr(module,
                                                       "backup_momentum"):
@@ -98,7 +145,6 @@ def train(epoch, dataset, model, opt, args):
     model.train()
 
     lr = opt.param_groups[0]['lr']
-    dp = opt.param_groups[0]['dampening']
     metric = Metric(args.device)
     for i, (inputs, targets) in enumerate(dataset.loader):
         inputs = inputs.to(args.device)
@@ -143,11 +189,13 @@ def train(epoch, dataset, model, opt, args):
             opt.step()
             opt.zero_grad()
 
-        lr_scheduler.step()
-        metric.update(inputs.shape[0], loss, outputs, targets)
+        if epoch < args.epochs - args.cooldown_epochs:
+            lr_scheduler.step()
+        new_dp = dp_scheduler.step()
+        for group in opt.param_groups:
+            group['dampening'] = new_dp
 
-        if i % 100 == 0:
-            print(f'Epoch {epoch} {i}/{len(dataset.loader)} Train {metric}')
+        metric.update(inputs.shape[0], loss, outputs, targets)
 
     if args.distributed:
         metric.sync()
@@ -158,17 +206,30 @@ def train(epoch, dataset, model, opt, args):
         'train/lr': lr
     }
     if args.opt == 'ivon':
-        v = 0.
-        n = 0.
-        group = opt.param_groups[0]
-        for p in group['params']:
-            if p.requires_grad:
-                v += opt.state[p]['momentum_hess_buffer'].sum()
-                n += opt.state[p]['momentum_hess_buffer'].numel()
-        metric['train/avg_hess'] = v / n
-        metric['train/dampening'] = dp
-        metric['train/p_avg_norm'] = opt.p_avg_norm
-        metric['train/p_noise_norm'] = opt.p_noise_norm
+        metric['train/dampening'] = opt.param_groups[0]['dampening']
+        i = 0
+        for group in opt.param_groups:
+            for p in group['params']:
+                if p.requires_grad:
+                    p_avg = p.data
+                    m_hess = opt.state[p]['momentum_hess_buffer']
+                    noises = torch.vstack(opt.state[p]['noises'])
+                    noise_norms = noises.norm(dim=1)
+                    metric[f'model/{i}/p_avg'] = wandb.Histogram(p_avg.cpu())
+                    metric[f'model/{i}/m_hess'] = wandb.Histogram(m_hess.cpu())
+                    metric[f'model/{i}/p_avg_norm'] = p_avg.norm()
+                    metric[f'model/{i}/m_hess_norm'] = m_hess.norm()
+                    metric[f'model/{i}/noise_min'] = wandb.Histogram(
+                        noises.min(dim=0).values.cpu())
+                    metric[f'model/{i}/noise_max'] = wandb.Histogram(
+                        noises.max(dim=0).values.cpu())
+                    metric[f'model/{i}/noise_avg'] = wandb.Histogram(
+                        noises.mean(dim=0).cpu())
+                    metric[f'model/{i}/noise_norm_min'] = noise_norms.min()
+                    metric[f'model/{i}/noise_norm_max'] = noise_norms.max()
+                    metric[f'model/{i}/noise_norm_avg'] = noise_norms.mean()
+                    opt.state[p]['noises'] = []
+                    i += 1
     wandb.log(metric, epoch)
 
 
@@ -193,14 +254,19 @@ def test(epoch, dataset, model, args):
 
             if args.opt == 'ivon' and args.test_mc_samples > 0:
                 sampled_probs = []
+                sampled_losses = []
 
                 for i in range(args.test_mc_samples):
                     with opt.sampled_params():
                         sampled_logits = model(inputs)
+                        sampled_losses.append(
+                            dataset.criterion(sampled_logits, targets))
                         sampled_probs.append(F.softmax(sampled_logits, dim=1))
 
                 sampled_probs = torch.mean(torch.stack(sampled_probs), dim=0)
-                mc_metric.update(inputs.shape[0], 0, sampled_probs, targets)
+                mc_metric.update(inputs.shape[0],
+                                 torch.mean(torch.stack(sampled_losses)),
+                                 sampled_probs, targets)
 
     if args.distributed:
         metric.sync()
@@ -212,12 +278,11 @@ def test(epoch, dataset, model, args):
     }, epoch)
     if args.opt == 'ivon':
         print(f'Epoch {epoch} MC Test {mc_metric}')
-        wandb.log({'test/mc_accuracy': mc_metric.accuracy}, epoch)
-
-
-def cos_sche(minv, maxv, i, n, s):
-    return minv + (maxv - minv) / 2 * (1 + math.cos(math.pi * (i - s) /
-                                                    (n - s)))
+        wandb.log(
+            {
+                'test/mc_accuracy': mc_metric.accuracy,
+                'test/mc_loss': mc_metric.loss
+            }, epoch)
 
 
 if __name__ == '__main__':
@@ -253,6 +318,10 @@ if __name__ == '__main__':
             model = DistributedDataParallel(model, device_ids=[args.gpu])
     else:
         model = create_model(args)
+    for k, v in model.named_parameters():
+        if 'bn' in k:
+            setattr(v, 'disable_ivon', True)
+            print(f'disable ivon for {k}')
 
     # ========== OPTIMIZER ==========
     if args.opt == 'sgd':
@@ -298,25 +367,31 @@ if __name__ == '__main__':
         raise ValueError(f'Unknown optimizer {args.opt}')
 
     # ========== LEARNING RATE SCHEDULER ==========
+    iters_per_epoch = len(dataset.train_loader)
     if args.lr_sche == 'cos':
-        pct_warm = args.warmup_steps / len(dataset.train_loader) / args.epochs
+        cos_epochs = args.epochs - args.cooldown_epochs
+        pct_warm = args.warmup_steps / iters_per_epoch / cos_epochs
         lr_scheduler = OneCycleLR(base_opt,
                                   max_lr=args.lr,
                                   anneal_strategy=args.lr_sche,
                                   steps_per_epoch=len(dataset.train_loader),
-                                  epochs=args.epochs,
+                                  epochs=cos_epochs,
                                   pct_start=pct_warm,
                                   cycle_momentum=False)
+        dp_scheduler = CosSche(args.dp, args.init_dp,
+                               cos_epochs * iters_per_epoch, args.warmup_steps)
+    elif args.lr_sche == 'step':
+        milestones = [x * dataset.iters_per_epoch for x in args.lr_decay_epoch]
+        lr_scheduler = MultiStepLR(opt, milestones, gamma=0.1)
+        ratio = (args.dp / args.init_dp)**(1. / len(milestones))
+        dp_scheduler = StepSche(args.init_dp, milestones, ratio=ratio)
+        #dp_scheduler = CosSche(args.dp, args.init_dp,
+        #                       args.epochs * iters_per_epoch, args.warmup_steps)
     else:
         raise ValueError(f'Unknown learning rate scheduler {args.lr_sche}')
 
     # ========== TRAINING ==========
     for e in range(args.epochs):
-        if e >= args.dp_warmup_epochs:
-            for group in base_opt.param_groups:
-                group['dampening'] = cos_sche(args.dp, args.init_dp, e,
-                                              args.epochs,
-                                              args.dp_warmup_epochs)
         train(e, dataset, model, opt, args)
         test(e, dataset, model, args)
 

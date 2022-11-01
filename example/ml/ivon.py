@@ -9,6 +9,7 @@ ClosureType = Callable[[], Tuple[Tensor, Tensor]]
 
 
 class VON(Optimizer):
+
     def __init__(self,
                  params,
                  lr,
@@ -51,9 +52,14 @@ class VON(Optimizer):
                 hess_init_val = hess_init
             for p in group['params']:
                 if p.requires_grad:
+                    self.state[p]['noises'] = []
                     self.state[p]['momentum_grad_buffer'] = torch.zeros_like(p)
-                    self.state[p]['momentum_hess_buffer'] = torch.full_like(
-                        p, hess_init_val)
+                    if hasattr(p, 'disable_ivon') and p.disable_ivon:
+                        self.state[p]['momentum_hess_buffer'] = torch.ones_like(
+                            p)
+                    else:
+                        self.state[p]['momentum_hess_buffer'] = torch.full_like(
+                            p, hess_init_val)
 
     def _reset_param_and_grad_samples(self):
         for group in self.param_groups:
@@ -80,24 +86,24 @@ class VON(Optimizer):
             outputs.append(output.detach())
             self._collect_grad_samples()
 
-        p_avg = []
-        for group in self.param_groups:
-            for p in group['params']:
-                if p.requires_grad:
-                    p_avg.append(self.state[p]['param_average'].flatten())
-        p_avg = torch.hstack(p_avg)
-        self.p_avg_norm = p_avg.norm()
-        self.p_noise_norm = []
-        for i in range(self.mc_samples):
-            noise = []
-            for group in self.param_groups:
-                for p in group['params']:
-                    if p.requires_grad:
-                        noise.append(
-                            self.state[p]['param_samples'][i].flatten())
-            noise = torch.hstack(noise) - p_avg
-            self.p_noise_norm = noise.norm()
-        self.p_noise_norm = torch.tensor(self.p_noise_norm).mean()
+        #p_avg = []
+        #for group in self.param_groups:
+        #    for p in group['params']:
+        #        if p.requires_grad:
+        #            p_avg.append(self.state[p]['param_average'].flatten())
+        #p_avg = torch.hstack(p_avg)
+        #self.p_avg_norm = p_avg.norm()
+        #self.p_noise_norm = []
+        #for i in range(self.mc_samples):
+        #    noise = []
+        #    for group in self.param_groups:
+        #        for p in group['params']:
+        #            if p.requires_grad:
+        #                noise.append(
+        #                    self.state[p]['param_samples'][i].flatten())
+        #    noise = torch.hstack(noise) - p_avg
+        #    self.p_noise_norm = noise.norm()
+        #self.p_noise_norm = torch.tensor(self.p_noise_norm).mean()
 
         self._update()
 
@@ -126,6 +132,7 @@ class VON(Optimizer):
                     p_sample = noise + p_avg
                     p.data = p_sample
                     self.state[p]['param_samples'].append(p_sample)
+                    self.state[p]['noises'].append(noise.flatten())
 
     def _collect_grad_samples(self):
         for group in self.param_groups:
@@ -162,10 +169,15 @@ class VON(Optimizer):
         if self.world_size > 1:
             dist.all_reduce(grad_avg, op=dist.ReduceOp.SUM)
             grad_avg /= self.world_size
-        self.state[p]['momentum_grad_buffer'] = \
-            m * m_grad + (1 - m) * ((lamb / n) * p_avg + grad_avg)
+        if hasattr(p, 'disable_ivon') and p.disable_ivon:
+            self.state[p]['momentum_grad_buffer'] = grad_avg
+        else:
+            self.state[p]['momentum_grad_buffer'] = \
+               m * m_grad + (1 - m) * ((lamb / n) * p_avg + grad_avg)
 
     def _update_momentum_hess_buffers(self, p, lamb, n, d, h):
+        if hasattr(p, 'disable_ivon') and p.disable_ivon:
+            return
         m_hess = self.state[p]['momentum_hess_buffer']
         p_avg = self.state[p]['param_average']
         temp = [(ps - p_avg) * g for ps, g in zip(
@@ -206,6 +218,7 @@ class VON(Optimizer):
 
 
 class IVON(VON):
+
     def _update(self):
         for group in self.param_groups:
             lr = group['lr']
