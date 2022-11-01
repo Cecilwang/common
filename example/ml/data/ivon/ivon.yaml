@@ -19,7 +19,7 @@ parameters:
     min: 50
     max: 350
   warmup_steps:
-    values: [0, 5000, 10000]
+    values: [0, 50, 100]
   lr_sche:
     values: ['cos']
   cooldown_epochs:

@@ -98,6 +98,8 @@ class CosSche(object):
 
     def step(self):
         self.i += 1
+        if self.i <= self.warmup:
+            return self.maxv
         if self.i >= self.n:
             return self.minv
         return cos_sche(self.minv, self.maxv, self.i, self.n, self.warmup)
@@ -382,7 +384,7 @@ if __name__ == '__main__':
                                cos_epochs * iters_per_epoch, args.warmup_steps)
     elif args.lr_sche == 'step':
         milestones = [x * dataset.iters_per_epoch for x in args.lr_decay_epoch]
-        lr_scheduler = MultiStepLR(opt, milestones, gamma=0.1)
+        lr_scheduler = MultiStepLR(opt, milestones, gamma=0.5)
         ratio = (args.dp / args.init_dp)**(1. / len(milestones))
         dp_scheduler = StepSche(args.init_dp, milestones, ratio=ratio)
         #dp_scheduler = CosSche(args.dp, args.init_dp,
