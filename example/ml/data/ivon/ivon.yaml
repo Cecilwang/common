@@ -7,17 +7,11 @@ metric:
 method: bayes
 parameters:
   lr:
-    distribution: normal
-    mu: 5
-    sigma: 1
+    values: [8,7,6,5,4,3]
   dp:
-    distribution: log_normal
-    mu: 1
-    sigma: 0.5
+    values: [7,6,5,4,3,2,1]
   prior_prec:
-    distribution: int_uniform
-    min: 50
-    max: 350
+    values: [350,300,250,200]
   warmup_steps:
     values: [0, 50, 100]
   lr_sche:
@@ -25,7 +19,7 @@ parameters:
   cooldown_epochs:
     values: [0, 10]
   da-factor:
-    values: [1, 3, 5, 10]
+    values: [1]
 command:
     - ${env}
     - python

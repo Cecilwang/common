@@ -20,6 +20,8 @@ export PYTHONPATH=$PYTHONPATH:/sqfs/home/z6b038/vit-pytorch
 export http_proxy="http://ibgw1f-ib0:3128"
 export https_proxy="https://ibgw1f-ib0:3128"
 
+export WANDB_DIR=/sqfs/work/jh220009/z6b038/wandb
+
 cd $PBS_O_WORKDIR
 
-wandb agent --count 30 2nd-order-opt-survey/ivon/lxkyidns
+wandb agent --count 50 2nd-order-opt-survey/ivon/6g2v5741
