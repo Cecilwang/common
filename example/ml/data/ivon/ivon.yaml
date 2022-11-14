@@ -2,24 +2,28 @@ name: ivon
 project: ivon
 program: 12_sam_vs_ivon.py
 metric:
-  name: test/mc_loss
-  goal: minimize
+  name: test/mc_accuracy
+  goal: maximize
 method: bayes
 parameters:
   lr:
-    values: [8,7,6,5,4,3]
-  dp:
-    values: [7,6,5,4,3,2,1]
-  prior_prec:
-    values: [350,300,250,200]
+    distribution: uniform
+    min: 1
+    max: 10
   warmup_steps:
-    values: [0, 50, 100]
-  lr_sche:
-    values: ['cos']
-  cooldown_epochs:
-    values: [0, 10]
+    values: [0]
+  dp:
+    values: [2]
+  prior_prec:
+    values: [200]
   da-factor:
     values: [1]
+  lr_sche:
+    values: ['cos']
+  epochs:
+    values: [200]
+  cooldown_epochs:
+    values: [10]
 command:
     - ${env}
     - python
@@ -35,5 +39,4 @@ command:
     -     --test_mc_samples=8
     -     --momentum_grad=0.8
     -     --momentum_hess=0.9
-    -     --epochs=160
     -     ${args}

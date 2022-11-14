@@ -24,4 +24,5 @@ export WANDB_DIR=/sqfs/work/jh220009/z6b038/wandb
 
 cd $PBS_O_WORKDIR
 
-wandb agent --count 50 2nd-order-opt-survey/ivon/6g2v5741
+# wandb agent --count 50 2nd-order-opt-survey/ivon/6g2v5741 #bayes
+wandb agent --count 4 2nd-order-opt-survey/ivon/63tjr46w # lr
