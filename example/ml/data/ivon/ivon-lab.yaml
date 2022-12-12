@@ -1,0 +1,42 @@
+name: ivon
+project: ivon
+program: 12_sam_vs_ivon.py
+metric:
+  name: test/accuracy
+  goal: maximize
+method: bayes
+parameters:
+  lr:
+    values: [9.2]
+  warmup_steps:
+    values: [100]
+  dp:
+    distribution: uniform
+    min: 1
+    max: 10
+  prior_prec:
+    values: [200]
+  da-factor:
+    values: [1]
+  lr_sche:
+    values: ['cos']
+  epochs:
+    values: [200]
+  cooldown_epochs:
+    values: [10]
+command:
+    - ${env}
+    - python
+    -   12_sam_vs_ivon.py
+    -     --dir=.ivon
+    -     --device=cuda
+    -     --dataset=CIFAR10
+    -     --data_path=.data
+    -     --model=cifar_resnet_20
+    -     --opt=ivon
+    -     --batch_size=2048
+    -     --mc_samples=8
+    -     --test_mc_samples=8
+    -     --momentum_grad=0.8
+    -     --momentum_hess=0.9
+    -     ${args}
