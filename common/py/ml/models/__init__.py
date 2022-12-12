@@ -10,11 +10,13 @@ from common.py.ml.models import initializers
 
 
 def define_model_arguments(parser):
-    parser.add_argument(
-        '--model',
-        default='MNISTToy',
-        type=str,
-        choices=['resnet50', 'resnet18', 'MNISTToy', 'cifar_resnet_20'])
+    parser.add_argument('--model',
+                        default='MNISTToy',
+                        type=str,
+                        choices=[
+                            'resnet50', 'resnet18', 'MNISTToy',
+                            'cifar_resnet_20', 'vgg16_bn'
+                        ])
     parser.add_argument('--model-path', default=None, type=str)
     parser.add_argument(
         '--initializer',
@@ -34,6 +36,9 @@ def create_model(args, model_path=None):
         else:
             model = getattr(torchvision.models,
                             args.model)(num_classes=args.num_classes)
+    elif args.model.startswith('vgg'):
+        model = getattr(torchvision.models,
+                        args.model)(num_classes=args.num_classes)
     elif args.model == 'MNISTToy':
         model = MNISTToy()
     else:
